@@ -15,39 +15,45 @@
 <!-- Abas -->
 <div class="tabs">
     <button class="tab {% if aba_ativa == 'oficiais' %}active{% endif %}" 
+            data-tipo="oficiais"
             hx-get="{% url 'htmx_oficiais_lista' %}" 
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'oficiais')">
         <i data-lucide="users"></i> Oficiais
     </button>
     <button class="tab {% if aba_ativa == 'missoes' %}active{% endif %}"
+            data-tipo="missoes"
             hx-get="{% url 'htmx_missoes_lista' %}"
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'missoes')">
         <i data-lucide="folder-kanban"></i> Missões
     </button>
     <button class="tab {% if aba_ativa == 'designacoes' %}active{% endif %}"
+            data-tipo="designacoes"
             hx-get="{% url 'htmx_designacoes_lista' %}"
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'designacoes')">
         <i data-lucide="link"></i> Designações
     </button>
     <button class="tab {% if aba_ativa == 'unidades' %}active{% endif %}"
+            data-tipo="unidades"
             hx-get="{% url 'htmx_unidades_lista' %}"
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'unidades')">
         <i data-lucide="building"></i> Unidades
     </button>
     <button class="tab {% if aba_ativa == 'usuarios' %}active{% endif %}"
+            data-tipo="usuarios"
             hx-get="{% url 'htmx_usuarios_lista' %}"
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'usuarios')">
         <i data-lucide="user-cog"></i> Usuários
     </button>
     <button class="tab"
+            data-tipo="solicitacoes"
             hx-get="{% url 'htmx_solicitacoes_lista' %}"
             hx-target="#tab-content"
-            onclick="setActiveTab(this)">
+            onclick="setActiveTab(this, 'solicitacoes')">
         <i data-lucide="inbox"></i> Solicitações
     </button>
 </div>
@@ -55,15 +61,31 @@
 <!-- Ações Gerais -->
 <div class="flex justify-between items-center mb-4">
     <div class="flex gap-1">
-        <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
-            <i data-lucide="upload"></i>
-            Importar Excel
-            <input type="file" accept=".xlsx,.xls" style="display:none;" id="importar-arquivo">
-        </label>
-        <a href="{% url 'exportar_excel' 'oficiais' %}" class="btn btn-sm btn-success" id="btn-exportar">
+        <!-- Formulário de Importação -->
+        <form id="form-importar" method="post" enctype="multipart/form-data" style="display: inline-flex; gap: 0.5rem;">
+            {% csrf_token %}
+            <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
+                <i data-lucide="upload"></i>
+                Selecionar Excel
+                <input type="file" name="arquivo" accept=".xlsx,.xls" style="display:none;" id="importar-arquivo" onchange="mostrarNomeArquivo(this)">
+            </label>
+            <span id="nome-arquivo" style="font-size: 0.85rem; color: #666; align-self: center;"></span>
+            <button type="submit" class="btn btn-sm btn-primary" id="btn-importar" style="display: none;">
+                <i data-lucide="upload-cloud"></i>
+                Importar
+            </button>
+        </form>
+        
+        <a href="#" class="btn btn-sm btn-success" id="btn-exportar" onclick="exportarDados()">
             <i data-lucide="download"></i>
             Exportar Excel
         </a>
+    </div>
+    
+    <div class="flex gap-1">
+        <span class="badge badge-info" id="badge-tipo" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+            📁 Oficiais
+        </span>
     </div>
 </div>
 
@@ -75,36 +97,78 @@
         </div>
     </div>
 </div>
+
+<!-- Legenda de Importação -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i data-lucide="info"></i>
+            Instruções de Importação
+        </h3>
+    </div>
+    <div class="card-body">
+        <p style="margin-bottom: 1rem;">
+            <strong>Ordem recomendada de importação:</strong>
+        </p>
+        <ol style="margin-left: 1.5rem; color: #555;">
+            <li><strong>Unidades</strong> - Cadastre primeiro as OBMs</li>
+            <li><strong>Oficiais</strong> - Cadastre os oficiais (usuários são criados automaticamente)</li>
+            <li><strong>Missões</strong> - Cadastre as missões/operações</li>
+            <li><strong>Designações</strong> - Vincule oficiais às missões (use o ID da missão e RG do oficial)</li>
+            <li><strong>Usuários</strong> - Apenas se precisar criar usuários adicionais ou alterar perfis</li>
+        </ol>
+        <p style="margin-top: 1rem; color: #888; font-size: 0.9rem;">
+            💡 <strong>Dica:</strong> Baixe a planilha modelo com todas as abas e valores válidos.
+            <a href="{% url 'exportar_excel' 'modelo' %}" style="color: #8b0000;">Clique aqui para baixar o modelo</a>.
+        </p>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function setActiveTab(clickedTab) {
+let tipoAtual = 'oficiais';
+
+function setActiveTab(clickedTab, tipo) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     clickedTab.classList.add('active');
+    tipoAtual = tipo;
+    
+    // Atualizar badge
+    const nomes = {
+        'oficiais': '📁 Oficiais',
+        'missoes': '📁 Missões',
+        'designacoes': '📁 Designações',
+        'unidades': '📁 Unidades',
+        'usuarios': '📁 Usuários',
+        'solicitacoes': '📁 Solicitações'
+    };
+    document.getElementById('badge-tipo').textContent = nomes[tipo] || tipo;
+    
+    // Atualizar action do formulário
+    document.getElementById('form-importar').action = '/importar/' + tipo + '/';
+    
+    // Atualizar link de exportação
+    document.getElementById('btn-exportar').href = '/exportar/excel/' + tipo + '/';
+    
+    // Limpar arquivo selecionado
+    document.getElementById('importar-arquivo').value = '';
+    document.getElementById('nome-arquivo').textContent = '';
+    document.getElementById('btn-importar').style.display = 'none';
 }
 
-// Importação de arquivo
-document.getElementById('importar-arquivo')?.addEventListener('change', function(e) {
-    if (this.files.length > 0) {
-        const formData = new FormData();
-        formData.append('arquivo', this.files[0]);
-        
-        // Detectar tipo baseado na aba ativa
-        const abaAtiva = document.querySelector('.tab.active')?.textContent.toLowerCase().trim() || 'oficiais';
-        
-        fetch(`/importar/${abaAtiva}/`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            }
-        }).then(response => {
-            if (response.ok) {
-                location.reload();
-            }
-        });
+function mostrarNomeArquivo(input) {
+    if (input.files.length > 0) {
+        document.getElementById('nome-arquivo').textContent = input.files[0].name;
+        document.getElementById('btn-importar').style.display = 'inline-flex';
     }
-});
+}
+
+function exportarDados() {
+    window.location.href = '/exportar/excel/' + tipoAtual + '/';
+}
+
+// Inicializar
+document.getElementById('form-importar').action = '/importar/oficiais/';
 </script>
 {% endblock %}
