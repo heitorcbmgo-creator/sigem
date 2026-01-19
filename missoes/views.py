@@ -845,31 +845,180 @@ def exportar_excel(request, tipo):
     """Exporta dados para Excel."""
     
     import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
     from django.http import HttpResponse as HR
     
     wb = openpyxl.Workbook()
     ws = wb.active
     
+    # Estilos
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill('solid', fgColor='8B0000')
+    header_alignment = Alignment(horizontal='center', vertical='center')
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    def style_header(sheet, num_cols):
+        for col in range(1, num_cols + 1):
+            cell = sheet.cell(row=1, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+    
     if tipo == 'oficiais':
         ws.title = 'Oficiais'
-        ws.append(['ID', 'CPF', 'RG', 'Nome', 'Posto', 'Quadro', 'OBM', 'Função', 'Email', 'Score'])
+        ws.append(['CPF', 'RG', 'Nome', 'Nome de Guerra', 'Posto', 'Quadro', 'OBM', 'Função', 'Email', 'Telefone', 'Score'])
+        style_header(ws, 11)
         for o in Oficial.objects.all():
-            ws.append([o.id, o.cpf, o.rg, o.nome, o.posto, o.quadro, o.obm, o.funcao, o.email, o.score])
+            ws.append([o.cpf, o.rg, o.nome, o.nome_guerra, o.posto, o.quadro, o.obm, o.funcao, o.email, o.telefone, o.score])
     
     elif tipo == 'missoes':
         ws.title = 'Missões'
-        ws.append(['ID', 'Tipo', 'Nome', 'Local', 'Data Início', 'Data Fim', 'Status'])
+        ws.append(['ID', 'Tipo', 'Nome', 'Descrição', 'Local', 'Data Início', 'Data Fim', 'Status', 'Documento'])
+        style_header(ws, 9)
         for m in Missao.objects.all():
-            ws.append([m.id, m.tipo, m.nome, m.local, str(m.data_inicio), str(m.data_fim), m.status])
+            ws.append([m.id, m.tipo, m.nome, m.descricao, m.local, 
+                      m.data_inicio.strftime('%Y-%m-%d') if m.data_inicio else '', 
+                      m.data_fim.strftime('%Y-%m-%d') if m.data_fim else '', 
+                      m.status, m.documento_referencia])
     
     elif tipo == 'designacoes':
         ws.title = 'Designações'
-        ws.append(['ID', 'Missão', 'Oficial', 'Função', 'Complexidade'])
+        ws.append(['ID', 'ID Missão', 'Nome Missão', 'RG Oficial', 'Nome Oficial', 'Função', 'Complexidade', 'Observações'])
+        style_header(ws, 8)
         for d in Designacao.objects.select_related('missao', 'oficial').all():
-            ws.append([d.id, d.missao.nome, str(d.oficial), d.funcao_na_missao, d.complexidade])
+            ws.append([d.id, d.missao.id, d.missao.nome, d.oficial.rg, str(d.oficial), 
+                      d.funcao_na_missao, d.complexidade, d.observacoes])
+    
+    elif tipo == 'unidades':
+        ws.title = 'Unidades'
+        ws.append(['ID', 'Nome', 'Sigla', 'Tipo', 'ID Comando Superior'])
+        style_header(ws, 5)
+        for u in Unidade.objects.all():
+            ws.append([u.id, u.nome, u.sigla, u.tipo, u.comando_superior_id or ''])
+    
+    elif tipo == 'usuarios':
+        ws.title = 'Usuários'
+        ws.append(['ID', 'CPF', 'Perfil', 'RG Oficial', 'Nome Oficial', 'Ativo'])
+        style_header(ws, 6)
+        for u in Usuario.objects.select_related('oficial').all():
+            ws.append([u.id, u.cpf, u.role, 
+                      u.oficial.rg if u.oficial else '', 
+                      str(u.oficial) if u.oficial else '', 
+                      'Sim' if u.is_active else 'Não'])
+    
+    elif tipo == 'modelo':
+        # Criar planilha modelo com todas as abas
+        return gerar_modelo_importacao()
+    
+    # Ajustar largura das colunas
+    for column_cells in ws.columns:
+        length = max(len(str(cell.value or '')) for cell in column_cells)
+        ws.column_dimensions[get_column_letter(column_cells[0].column)].width = min(length + 2, 50)
     
     response = HR(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=sigem_{tipo}.xlsx'
+    wb.save(response)
+    
+    return response
+
+
+def gerar_modelo_importacao():
+    """Gera planilha modelo para importação."""
+    
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse as HR
+    
+    wb = openpyxl.Workbook()
+    
+    # Estilos
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill('solid', fgColor='8B0000')
+    info_font = Font(bold=True, color='8B0000')
+    
+    def setup_sheet(sheet, headers, widths, example, info_col, info_data):
+        for col, header in enumerate(headers, 1):
+            cell = sheet.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            sheet.column_dimensions[get_column_letter(col)].width = widths[col-1]
+        
+        for col, value in enumerate(example, 1):
+            sheet.cell(row=2, column=col, value=value)
+        
+        if info_data:
+            for row, (title, values) in enumerate(info_data.items(), 1):
+                sheet.cell(row=row, column=info_col, value=title).font = info_font
+                for i, v in enumerate(values, 1):
+                    sheet.cell(row=row+i, column=info_col, value=v)
+        
+        sheet.freeze_panes = 'A2'
+    
+    # Aba Oficiais
+    ws = wb.active
+    ws.title = 'Oficiais'
+    setup_sheet(ws,
+        ['CPF*', 'RG*', 'Nome Completo*', 'Nome de Guerra', 'Posto*', 'Quadro*', 'OBM', 'Função', 'Email', 'Telefone'],
+        [15, 15, 35, 20, 12, 15, 25, 25, 30, 18],
+        ['12345678901', 'RG123456', 'JOÃO DA SILVA', 'SILVA', 'Cap', 'QOC', '1º BBM', 'Cmt Cia', 'joao@email.com', '62999999999'],
+        12,
+        {'POSTOS:': ['Cel', 'Ten Cel', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp'],
+         'QUADROS:': ['QOC', 'QOA/Adm', 'QOA/Mús', 'QOM/Médico', 'QOM/Dentista']}
+    )
+    
+    # Aba Missões
+    ws2 = wb.create_sheet('Missoes')
+    setup_sheet(ws2,
+        ['Tipo*', 'Nome*', 'Descrição', 'Local', 'Data Início', 'Data Fim', 'Status*', 'Documento'],
+        [18, 35, 40, 25, 15, 15, 18, 20],
+        ['OPERACIONAL', 'Operação Exemplo', 'Descrição da missão', 'Goiânia-GO', '2024-01-15', '2024-01-20', 'EM_ANDAMENTO', 'SEI-123'],
+        10,
+        {'TIPOS:': ['OPERACIONAL', 'ADMINISTRATIVA', 'ENSINO', 'CORREICIONAL', 'COMISSAO', 'ACAO_SOCIAL'],
+         'STATUS:': ['PLANEJADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA']}
+    )
+    
+    # Aba Designações
+    ws3 = wb.create_sheet('Designacoes')
+    setup_sheet(ws3,
+        ['ID Missão*', 'RG Oficial*', 'Função*', 'Complexidade*', 'Observações'],
+        [15, 18, 20, 15, 40],
+        [1, 'RG123456', 'COMANDANTE', 'ALTA', 'Observação opcional'],
+        7,
+        {'FUNÇÕES:': ['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'MEMBRO', 'AUXILIAR', 'INSTRUTOR', 'ENCARREGADO', 'RELATOR', 'ESCRIVAO'],
+         'COMPLEXIDADE:': ['BAIXA', 'MEDIA', 'ALTA']}
+    )
+    
+    # Aba Unidades
+    ws4 = wb.create_sheet('Unidades')
+    setup_sheet(ws4,
+        ['Nome*', 'Sigla', 'Tipo*', 'ID Cmd Superior'],
+        [40, 15, 18, 18],
+        ['1º Batalhão BM', '1º BBM', 'BBM', ''],
+        6,
+        {'TIPOS:': ['COMANDO_GERAL', 'DIRETORIA', 'BBM', 'CIBM', 'CBM', 'SECAO']}
+    )
+    
+    # Aba Usuários
+    ws5 = wb.create_sheet('Usuarios')
+    setup_sheet(ws5,
+        ['CPF*', 'Perfil*', 'RG Oficial Vinculado'],
+        [18, 15, 22],
+        ['12345678901', 'oficial', 'RG123456'],
+        5,
+        {'PERFIS:': ['admin', 'gestor', 'comandante', 'oficial'],
+         'NOTA:': ['Senha padrão: 123456']}
+    )
+    
+    response = HR(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=sigem_modelo_importacao.xlsx'
     wb.save(response)
     
     return response
@@ -896,6 +1045,7 @@ def importar_excel(request, tipo):
         return redirect('admin_painel')
     
     import openpyxl
+    from datetime import datetime
     
     arquivo = request.FILES.get('arquivo')
     
@@ -908,25 +1058,183 @@ def importar_excel(request, tipo):
         ws = wb.active
         
         count = 0
+        errors = []
         
+        # ============================================================
+        # IMPORTAR OFICIAIS
+        # ============================================================
         if tipo == 'oficiais':
-            for row in ws.iter_rows(min_row=2, values_only=True):
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row[0]:  # Se tem CPF
-                    Oficial.objects.update_or_create(
-                        cpf=str(row[0]).replace('.', '').replace('-', ''),
-                        defaults={
-                            'rg': str(row[1]) if row[1] else '',
-                            'nome': str(row[2]) if row[2] else '',
-                            'posto': str(row[3]) if row[3] else '',
-                            'quadro': str(row[4]) if row[4] else '',
-                            'obm': str(row[5]) if row[5] else '',
-                            'funcao': str(row[6]) if row[6] else '',
-                            'email': str(row[7]) if row[7] else '',
-                        }
-                    )
-                    count += 1
+                    try:
+                        cpf = str(row[0]).replace('.', '').replace('-', '').strip()
+                        oficial, created = Oficial.objects.update_or_create(
+                            cpf=cpf,
+                            defaults={
+                                'rg': str(row[1]).strip() if row[1] else '',
+                                'nome': str(row[2]).strip() if row[2] else '',
+                                'nome_guerra': str(row[3]).strip() if row[3] else '',
+                                'posto': str(row[4]).strip() if row[4] else '',
+                                'quadro': str(row[5]).strip() if row[5] else '',
+                                'obm': str(row[6]).strip() if row[6] else '',
+                                'funcao': str(row[7]).strip() if row[7] else '',
+                                'email': str(row[8]).strip() if row[8] else '',
+                                'telefone': str(row[9]).strip() if row[9] else '',
+                            }
+                        )
+                        count += 1
+                        
+                        # Criar usuário automaticamente se não existir
+                        if created and not Usuario.objects.filter(cpf=cpf).exists():
+                            Usuario.objects.create_user(
+                                cpf=cpf,
+                                password='123456',
+                                oficial=oficial,
+                                role='oficial'
+                            )
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
         
-        messages.success(request, f'{count} registros importados/atualizados!')
+        # ============================================================
+        # IMPORTAR MISSÕES
+        # ============================================================
+        elif tipo == 'missoes':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0] and row[1]:  # Se tem tipo e nome
+                    try:
+                        # Processar datas
+                        data_inicio = None
+                        data_fim = None
+                        
+                        if row[4]:
+                            if isinstance(row[4], datetime):
+                                data_inicio = row[4].date()
+                            else:
+                                data_inicio = datetime.strptime(str(row[4]), '%Y-%m-%d').date()
+                        
+                        if row[5]:
+                            if isinstance(row[5], datetime):
+                                data_fim = row[5].date()
+                            else:
+                                data_fim = datetime.strptime(str(row[5]), '%Y-%m-%d').date()
+                        
+                        Missao.objects.create(
+                            tipo=str(row[0]).strip().upper(),
+                            nome=str(row[1]).strip(),
+                            descricao=str(row[2]).strip() if row[2] else '',
+                            local=str(row[3]).strip() if row[3] else '',
+                            data_inicio=data_inicio,
+                            data_fim=data_fim,
+                            status=str(row[6]).strip().upper() if row[6] else 'PLANEJADA',
+                            documento_referencia=str(row[7]).strip() if row[7] else '',
+                        )
+                        count += 1
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+        
+        # ============================================================
+        # IMPORTAR DESIGNAÇÕES
+        # ============================================================
+        elif tipo == 'designacoes':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0] and row[1]:  # Se tem missao_id e oficial_rg
+                    try:
+                        missao_id = int(row[0])
+                        oficial_rg = str(row[1]).strip()
+                        
+                        # Buscar missão e oficial
+                        missao = Missao.objects.get(id=missao_id)
+                        oficial = Oficial.objects.get(rg=oficial_rg)
+                        
+                        Designacao.objects.update_or_create(
+                            missao=missao,
+                            oficial=oficial,
+                            defaults={
+                                'funcao_na_missao': str(row[2]).strip().upper() if row[2] else 'MEMBRO',
+                                'complexidade': str(row[3]).strip().upper() if row[3] else 'MEDIA',
+                                'observacoes': str(row[4]).strip() if row[4] else '',
+                            }
+                        )
+                        count += 1
+                    except Missao.DoesNotExist:
+                        errors.append(f'Linha {row_num}: Missão ID {row[0]} não encontrada')
+                    except Oficial.DoesNotExist:
+                        errors.append(f'Linha {row_num}: Oficial RG {row[1]} não encontrado')
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+        
+        # ============================================================
+        # IMPORTAR UNIDADES
+        # ============================================================
+        elif tipo == 'unidades':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0]:  # Se tem nome
+                    try:
+                        comando_superior = None
+                        if row[3]:
+                            try:
+                                comando_superior = Unidade.objects.get(id=int(row[3]))
+                            except Unidade.DoesNotExist:
+                                pass
+                        
+                        Unidade.objects.update_or_create(
+                            nome=str(row[0]).strip(),
+                            defaults={
+                                'sigla': str(row[1]).strip() if row[1] else '',
+                                'tipo': str(row[2]).strip().upper() if row[2] else '',
+                                'comando_superior': comando_superior,
+                            }
+                        )
+                        count += 1
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+        
+        # ============================================================
+        # IMPORTAR USUÁRIOS
+        # ============================================================
+        elif tipo == 'usuarios':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0]:  # Se tem CPF
+                    try:
+                        cpf = str(row[0]).replace('.', '').replace('-', '').strip()
+                        role = str(row[1]).strip().lower() if row[1] else 'oficial'
+                        
+                        # Buscar oficial vinculado pelo RG
+                        oficial = None
+                        if row[2]:
+                            try:
+                                oficial = Oficial.objects.get(rg=str(row[2]).strip())
+                            except Oficial.DoesNotExist:
+                                pass
+                        
+                        if not Usuario.objects.filter(cpf=cpf).exists():
+                            Usuario.objects.create_user(
+                                cpf=cpf,
+                                password='123456',
+                                role=role,
+                                oficial=oficial,
+                            )
+                            count += 1
+                        else:
+                            # Atualizar usuário existente
+                            usuario = Usuario.objects.get(cpf=cpf)
+                            usuario.role = role
+                            if oficial:
+                                usuario.oficial = oficial
+                            usuario.save()
+                            count += 1
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+        
+        # Mensagem de resultado
+        if count > 0:
+            messages.success(request, f'{count} registros importados/atualizados com sucesso!')
+        
+        if errors:
+            error_msg = f'Erros encontrados ({len(errors)}): ' + '; '.join(errors[:5])
+            if len(errors) > 5:
+                error_msg += f' ... e mais {len(errors) - 5} erros.'
+            messages.warning(request, error_msg)
         
     except Exception as e:
         messages.error(request, f'Erro na importação: {str(e)}')
