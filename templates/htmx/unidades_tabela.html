@@ -1,0 +1,40 @@
+<!-- Tabela de unidades -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Sigla</th>
+                <th>Tipo</th>
+                <th>Comando Superior</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in unidades %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td><strong>{{ u.nome }}</strong></td>
+                <td>{{ u.sigla|default:"—" }}</td>
+                <td>{{ u.get_tipo_display }}</td>
+                <td>{{ u.comando_superior|default:"—" }}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger"
+                            hx-post="{% url 'htmx_unidade_excluir' u.id %}"
+                            hx-target="closest tr"
+                            hx-swap="outerHTML"
+                            hx-confirm="Confirma exclusão?">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-gray">Nenhuma unidade cadastrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>lucide.createIcons();</script>

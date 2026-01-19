@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Administração{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="settings"></i>
+        Painel Administrativo
+    </h1>
+    <p class="page-subtitle">Gerencie oficiais, missões, designações e usuários</p>
+</div>
+
+<!-- Abas -->
+<div class="tabs">
+    <button class="tab {% if aba_ativa == 'oficiais' %}active{% endif %}" 
+            hx-get="{% url 'htmx_oficiais_lista' %}" 
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="users"></i> Oficiais
+    </button>
+    <button class="tab {% if aba_ativa == 'missoes' %}active{% endif %}"
+            hx-get="{% url 'htmx_missoes_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="folder-kanban"></i> Missões
+    </button>
+    <button class="tab {% if aba_ativa == 'designacoes' %}active{% endif %}"
+            hx-get="{% url 'htmx_designacoes_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="link"></i> Designações
+    </button>
+    <button class="tab {% if aba_ativa == 'unidades' %}active{% endif %}"
+            hx-get="{% url 'htmx_unidades_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="building"></i> Unidades
+    </button>
+    <button class="tab {% if aba_ativa == 'usuarios' %}active{% endif %}"
+            hx-get="{% url 'htmx_usuarios_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="user-cog"></i> Usuários
+    </button>
+    <button class="tab"
+            hx-get="{% url 'htmx_solicitacoes_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this)">
+        <i data-lucide="inbox"></i> Solicitações
+    </button>
+</div>
+
+<!-- Ações Gerais -->
+<div class="flex justify-between items-center mb-4">
+    <div class="flex gap-1">
+        <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
+            <i data-lucide="upload"></i>
+            Importar Excel
+            <input type="file" accept=".xlsx,.xls" style="display:none;" id="importar-arquivo">
+        </label>
+        <a href="{% url 'exportar_excel' 'oficiais' %}" class="btn btn-sm btn-success" id="btn-exportar">
+            <i data-lucide="download"></i>
+            Exportar Excel
+        </a>
+    </div>
+</div>
+
+<!-- Conteúdo da Aba -->
+<div class="card">
+    <div class="card-body">
+        <div id="tab-content" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
+            <p class="text-gray text-center">Carregando...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setActiveTab(clickedTab) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    clickedTab.classList.add('active');
+}
+
+// Importação de arquivo
+document.getElementById('importar-arquivo')?.addEventListener('change', function(e) {
+    if (this.files.length > 0) {
+        const formData = new FormData();
+        formData.append('arquivo', this.files[0]);
+        
+        // Detectar tipo baseado na aba ativa
+        const abaAtiva = document.querySelector('.tab.active')?.textContent.toLowerCase().trim() || 'oficiais';
+        
+        fetch(`/importar/${abaAtiva}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

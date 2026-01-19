@@ -1,0 +1,176 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SIGEM{% endblock %} | Sistema de Gestão de Missões</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- CSS Principal -->
+    <link rel="stylesheet" href="{% static 'css/sigem.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    
+    {% if user.is_authenticated %}
+    <!-- ========== NAVBAR ========== -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <!-- Logo e Título -->
+            <a href="{% url 'dashboard' %}" class="navbar-brand">
+                <img src="{% static 'img/brasao_cbmgo.png' %}" alt="Brasão CBMGO" class="navbar-logo">
+                <div class="navbar-title">
+                    <span class="navbar-title-main">SIGEM</span>
+                    <span class="navbar-title-sub">Sistema de Gestão de Missões</span>
+                </div>
+            </a>
+            
+            <!-- Menu Principal -->
+            <div class="navbar-menu">
+                <a href="{% url 'dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Visão Geral</span>
+                </a>
+                
+                <a href="{% url 'comparar_oficiais' %}" class="navbar-link {% if request.resolver_match.url_name == 'comparar_oficiais' %}active{% endif %}">
+                    <i data-lucide="users"></i>
+                    <span>Comparar Oficiais</span>
+                </a>
+                
+                <a href="{% url 'missoes_dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'missoes_dashboard' %}active{% endif %}">
+                    <i data-lucide="folder-kanban"></i>
+                    <span>Missões</span>
+                </a>
+                
+                <a href="{% url 'painel_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
+                    <i data-lucide="user-circle"></i>
+                    <span>Meu Painel</span>
+                </a>
+                
+                {% if user.is_gestor %}
+                <a href="{% url 'admin_painel' %}" class="navbar-link {% if request.resolver_match.url_name == 'admin_painel' %}active{% endif %}">
+                    <i data-lucide="settings"></i>
+                    <span>Administração</span>
+                </a>
+                {% endif %}
+            </div>
+            
+            <!-- Perfil do Usuário -->
+            <div class="navbar-user">
+                <div class="navbar-user-info">
+                    <span class="navbar-user-name">
+                        {% if user.oficial %}
+                            {{ user.oficial.posto }} {{ user.oficial.nome_guerra|default:user.oficial.nome }}
+                        {% else %}
+                            {{ user.cpf }}
+                        {% endif %}
+                    </span>
+                    <span class="navbar-user-role">{{ user.get_role_display }}</span>
+                </div>
+                <div class="navbar-avatar-container">
+                    <img src="{{ user.foto_url }}" alt="Foto" class="navbar-avatar" id="userAvatar">
+                    
+                    <!-- Dropdown -->
+                    <div class="navbar-dropdown" id="userDropdown">
+                        <div class="navbar-dropdown-header">
+                            <img src="{{ user.foto_url }}" alt="Foto" class="navbar-dropdown-avatar">
+                            <div>
+                                <strong>{% if user.oficial %}{{ user.oficial }}{% else %}{{ user.cpf }}{% endif %}</strong>
+                                <small>{{ user.get_role_display }}</small>
+                            </div>
+                        </div>
+                        <div class="navbar-dropdown-divider"></div>
+                        <a href="{% url 'painel_oficial' %}" class="navbar-dropdown-item">
+                            <i data-lucide="user"></i>
+                            Meu Perfil
+                        </a>
+                        <a href="{% url 'logout' %}" class="navbar-dropdown-item navbar-dropdown-logout">
+                            <i data-lucide="log-out"></i>
+                            Sair
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- ========== MENSAGENS ========== -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="message message-{{ message.tags }}" role="alert">
+            <i data-lucide="{% if message.tags == 'success' %}check-circle{% elif message.tags == 'danger' %}alert-circle{% elif message.tags == 'warning' %}alert-triangle{% else %}info{% endif %}"></i>
+            <span>{{ message }}</span>
+            <button type="button" class="message-close" onclick="this.parentElement.remove()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- ========== CONTEÚDO PRINCIPAL ========== -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- ========== FOOTER ========== -->
+    {% if user.is_authenticated %}
+    <footer class="footer">
+        <p>&copy; 2024 SIGEM - Corpo de Bombeiros Militar do Estado de Goiás</p>
+    </footer>
+    {% endif %}
+    
+    <!-- Scripts -->
+    <script>
+        // Inicializar ícones Lucide
+        lucide.createIcons();
+        
+        // Dropdown do usuário
+        const avatar = document.getElementById('userAvatar');
+        const dropdown = document.getElementById('userDropdown');
+        
+        if (avatar && dropdown) {
+            avatar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            });
+            
+            document.addEventListener('click', () => {
+                dropdown.classList.remove('show');
+            });
+        }
+        
+        // Auto-hide messages
+        setTimeout(() => {
+            document.querySelectorAll('.message').forEach(msg => {
+                msg.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => msg.remove(), 300);
+            });
+        }, 5000);
+        
+        // HTMX - Reinicializar ícones após swap
+        document.body.addEventListener('htmx:afterSwap', () => {
+            lucide.createIcons();
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

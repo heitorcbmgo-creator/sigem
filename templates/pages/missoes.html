@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Missões{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="folder-kanban"></i>
+        Painel de Missões
+    </h1>
+    <p class="page-subtitle">Visualize e gerencie todas as missões do CBMGO</p>
+</div>
+
+<!-- Totalizadores por Tipo -->
+<div class="dashboard-grid mb-4">
+    {% for item in totais_por_tipo %}
+    <div class="stat-card {{ item.tipo|lower }}" 
+         style="cursor: pointer;"
+         hx-get="{% url 'htmx_missoes_lista' %}?tipo={{ item.tipo }}&status=EM_ANDAMENTO"
+         hx-target="#lista-missoes">
+        <p class="stat-card-label">{{ item.tipo_display }}</p>
+        <p class="stat-card-value">{{ item.total }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Filtros -->
+<div class="filter-bar">
+    <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" id="filtro-tipo">
+            <option value="">Todos os tipos</option>
+            {% for value, label in tipo_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="filtro-status">
+            <option value="">Todos os status</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Local</label>
+        <input type="text" class="form-input" id="filtro-local" placeholder="Buscar por local...">
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Data Início</label>
+        <input type="date" class="form-input" id="filtro-data-inicio">
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Data Fim</label>
+        <input type="date" class="form-input" id="filtro-data-fim">
+    </div>
+    
+    <button class="btn btn-primary"
+            hx-get="{% url 'htmx_missoes_lista' %}"
+            hx-target="#lista-missoes"
+            hx-include="#filtro-tipo, #filtro-status, #filtro-local, #filtro-data-inicio, #filtro-data-fim">
+        <i data-lucide="search"></i>
+        Filtrar
+    </button>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+    <!-- Lista de Missões -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="list"></i>
+                Missões
+            </h2>
+        </div>
+        <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+            <div id="lista-missoes" hx-get="{% url 'htmx_missoes_lista' %}" hx-trigger="load">
+                <p class="text-gray text-center">Carregando missões...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Organograma da Missão Selecionada -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="git-branch"></i>
+                Estrutura da Missão
+            </h2>
+        </div>
+        <div class="card-body">
+            <div id="organograma-container">
+                <p class="text-gray text-center">Selecione uma missão para ver o organograma</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

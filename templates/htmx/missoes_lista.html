@@ -1,0 +1,29 @@
+<!-- Lista de missões clicáveis -->
+<div class="flex flex-wrap gap-1" style="flex-direction: column;">
+    {% for missao in missoes %}
+    <div class="card" 
+         style="cursor: pointer; padding: 1rem; margin-bottom: 0.5rem; transition: all 0.2s;"
+         hx-get="{% url 'htmx_missao_organograma' missao.id %}"
+         hx-target="#organograma-container"
+         onclick="this.parentElement.querySelectorAll('.card').forEach(c => c.style.borderColor = '#e5e7eb'); this.style.borderColor = '#8b0000';">
+        <h4 style="font-size: 1rem; color: #8b0000; margin-bottom: 0.25rem;">{{ missao.nome }}</h4>
+        <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">
+            <strong>Tipo:</strong> {{ missao.get_tipo_display }} | 
+            <strong>Local:</strong> {{ missao.local|default:"—" }}
+        </p>
+        <div class="flex justify-between items-center">
+            <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+                {{ missao.get_status_display }}
+            </span>
+            <small style="color: #9ca3af;">
+                {% if missao.data_inicio %}
+                {{ missao.data_inicio|date:"d/m/Y" }}
+                {% if missao.data_fim %} → {{ missao.data_fim|date:"d/m/Y" }}{% endif %}
+                {% endif %}
+            </small>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-gray text-center">Nenhuma missão encontrada.</p>
+    {% endfor %}
+</div>

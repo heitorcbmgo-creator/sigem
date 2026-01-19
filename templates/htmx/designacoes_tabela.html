@@ -1,0 +1,44 @@
+<!-- Tabela de designações -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Missão</th>
+                <th>Oficial</th>
+                <th>Função</th>
+                <th>Complexidade</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in designacoes %}
+            <tr>
+                <td>{{ d.id }}</td>
+                <td>{{ d.missao.nome }}</td>
+                <td>{{ d.oficial }}</td>
+                <td>{{ d.get_funcao_na_missao_display }}</td>
+                <td>
+                    <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                        {{ d.get_complexidade_display }}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-danger"
+                            hx-post="{% url 'htmx_designacao_excluir' d.id %}"
+                            hx-target="closest tr"
+                            hx-swap="outerHTML"
+                            hx-confirm="Confirma exclusão?">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-gray">Nenhuma designação cadastrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>lucide.createIcons();</script>

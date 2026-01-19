@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Comparar Oficiais{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="users"></i>
+        Comparar Oficiais
+    </h1>
+    <p class="page-subtitle">Selecione oficiais para comparar a carga de trabalho</p>
+</div>
+
+<!-- Filtros -->
+<div class="filter-bar">
+    <div class="form-group">
+        <label class="form-label">Posto</label>
+        <select class="form-select" id="filtro-posto" 
+                hx-get="{% url 'htmx_oficiais_lista' %}" 
+                hx-target="#lista-oficiais"
+                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
+            <option value="">Todos</option>
+            {% for value, label in postos %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">Quadro</label>
+        <select class="form-select" id="filtro-quadro"
+                hx-get="{% url 'htmx_oficiais_lista' %}" 
+                hx-target="#lista-oficiais"
+                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
+            <option value="">Todos</option>
+            {% for value, label in quadros %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label class="form-label">OBM</label>
+        <select class="form-select" id="filtro-obm"
+                hx-get="{% url 'htmx_oficiais_lista' %}" 
+                hx-target="#lista-oficiais"
+                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
+            <option value="">Todas</option>
+            {% for obm in obms %}
+            {% if obm %}
+            <option value="{{ obm }}">{{ obm }}</option>
+            {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- Lista de Oficiais para Seleção -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="list-checks"></i>
+            Selecione os Oficiais
+        </h2>
+        <button class="btn btn-primary btn-sm" onclick="carregarCards()">
+            <i data-lucide="refresh-cw"></i>
+            Comparar Selecionados
+        </button>
+    </div>
+    <div class="card-body">
+        <div id="lista-oficiais" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
+            <p class="text-gray text-center">Carregando oficiais...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Comparação -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="git-compare"></i>
+            Comparação de Carga de Trabalho
+        </h2>
+    </div>
+    <div class="card-body">
+        <div id="cards-comparacao" class="flex flex-wrap gap-2 justify-center">
+            <p class="text-gray">Selecione oficiais acima e clique em "Comparar Selecionados"</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function carregarCards() {
+    const checkboxes = document.querySelectorAll('input[name="oficial"]:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value).join(',');
+    
+    if (ids) {
+        htmx.ajax('GET', '{% url "htmx_oficiais_cards" %}?ids=' + ids, '#cards-comparacao');
+    } else {
+        document.getElementById('cards-comparacao').innerHTML = 
+            '<p class="text-gray">Selecione ao menos um oficial para comparar.</p>';
+    }
+}
+</script>
+{% endblock %}
