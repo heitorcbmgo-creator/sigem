@@ -1,6 +1,6 @@
 # 🔥 SIGEM - Sistema de Gestão de Missões
 
-**Corpo de Bombeiros Militar do Estado de Goiás**
+** Um projeto amador em desenvolvimento para o Corpo de Bombeiros Militar do Estado de Goiás - 1º Ten Heitor Braga de Paula**
 
 Sistema para gerenciamento de missões, designações e avaliação de carga de trabalho dos oficiais.
 
