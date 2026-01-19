@@ -53,12 +53,11 @@ class Oficial(models.Model):
     ]
     
     QUADRO_CHOICES = [
-        ('QOBM', 'Quadro de Oficiais BM'),
-        ('QOS', 'Quadro de Oficiais de Saúde'),
-        ('QOBM/Comb.', 'QOBM/Combatente'),
-        ('QOBM/Intd.', 'QOBM/Intendente'),
-        ('QOBM/Mnt.', 'QOBM/Manutenção'),
-        ('QOBM/Mus.', 'QOBM/Músico'),
+        ('QOC', 'QOC'),
+        ('QOA/Adm', 'QOA/Adm'),
+        ('QOA/Mús', 'QOA/Mús'),
+        ('QOM/Médico', 'QOM/Médico'),
+        ('QOM/Dentista', 'QOM/Dentista'),
     ]
     
     cpf = models.CharField('CPF', max_length=11, unique=True)
