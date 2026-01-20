@@ -1,23 +1,289 @@
-<!-- Cards de oficiais para comparação -->
-<div class="flex flex-wrap gap-2 justify-center">
-    {% for oficial in oficiais %}
-    <div class="officer-card">
-        <img src="{{ oficial.foto_url }}" alt="Foto" class="officer-photo">
-        <h3 class="officer-name">{{ oficial.nome_guerra|default:oficial.nome }}</h3>
-        <p class="officer-rank">{{ oficial.posto }} — {{ oficial.quadro }}</p>
-        <p class="officer-unit">{{ oficial.obm|default:"Sem lotação" }}</p>
-        
-        <div class="officer-stats">
-            <p><strong>Missões Ativas:</strong> {{ oficial.total_missoes }}</p>
-            <p><strong>Funções de Chefia:</strong> {{ oficial.total_chefia }}</p>
-            <p><strong>Score:</strong> {{ oficial.score|floatformat:1 }}</p>
+<!-- 
+============================================================
+Template: htmx/oficiais_cards.html
+Cards de comparação de oficiais com mini-gráfico de barras
+============================================================
+-->
+
+{% if oficiais_data %}
+<div class="oficiais-cards-grid">
+    {% for data in oficiais_data %}
+    <div class="oficial-card-comparar">
+        <!-- Cabeçalho do Card -->
+        <div class="oficial-card-header">
+            <img src="{{ data.oficial.foto_url }}" alt="" class="oficial-card-foto">
+            <div class="oficial-card-info">
+                <h4>{{ data.oficial.posto }} {{ data.oficial.nome_guerra|default:data.oficial.nome }}</h4>
+                <span class="text-muted">{{ data.oficial.quadro }} • {{ data.oficial.obm|default:"Sem OBM" }}</span>
+            </div>
+            <button class="btn-remove-card" onclick="removerCard({{ data.oficial.id }})" title="Remover">
+                <i data-lucide="x"></i>
+            </button>
         </div>
         
-        {% if oficial.funcao %}
-        <span class="officer-function">{{ oficial.funcao }}</span>
-        {% endif %}
+        <!-- Mini Gráfico de Barras -->
+        <div class="oficial-card-grafico">
+            <div class="grafico-barra">
+                <div class="grafico-barra-fill baixa" style="height: {{ data.total_baixa|default:0 }}0%;"></div>
+                <span class="grafico-valor">{{ data.total_baixa }}</span>
+                <span class="grafico-label">Baixa</span>
+            </div>
+            <div class="grafico-barra">
+                <div class="grafico-barra-fill media" style="height: {{ data.total_media|default:0 }}0%;"></div>
+                <span class="grafico-valor">{{ data.total_media }}</span>
+                <span class="grafico-label">Média</span>
+            </div>
+            <div class="grafico-barra">
+                <div class="grafico-barra-fill alta" style="height: {{ data.total_alta|default:0 }}0%;"></div>
+                <span class="grafico-valor">{{ data.total_alta }}</span>
+                <span class="grafico-label">Alta</span>
+            </div>
+        </div>
+        
+        <!-- Carga Total -->
+        <div class="oficial-card-carga">
+            <span class="carga-label">Carga Ponderada</span>
+            <span class="carga-valor">{{ data.carga_total }}</span>
+        </div>
+        
+        <!-- Últimas Missões -->
+        <div class="oficial-card-missoes">
+            <h5><i data-lucide="briefcase"></i> Missões Ativas</h5>
+            {% if data.ultimas_missoes %}
+            <ul>
+                {% for d in data.ultimas_missoes %}
+                <li>
+                    <span class="missao-nome">{{ d.missao.nome|truncatechars:30 }}</span>
+                    <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                        {{ d.get_complexidade_display }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted text-sm">Nenhuma missão ativa</p>
+            {% endif %}
+        </div>
     </div>
-    {% empty %}
-    <p class="text-gray">Nenhum oficial selecionado.</p>
     {% endfor %}
 </div>
+{% else %}
+<div class="text-center text-muted py-4">
+    <i data-lucide="users" style="width:48px;height:48px;opacity:0.3;display:block;margin:0 auto 1rem;"></i>
+    <p>Selecione oficiais na lista acima para comparar.</p>
+</div>
+{% endif %}
+
+<style>
+.oficiais-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.oficial-card-comparar {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.oficial-card-comparar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.oficial-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #8b0000 0%, #6b0000 100%);
+    color: white;
+    position: relative;
+}
+
+.oficial-card-foto {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.oficial-card-info {
+    flex: 1;
+}
+
+.oficial-card-info h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.oficial-card-info .text-muted {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.btn-remove-card {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-remove-card:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.3);
+}
+
+.btn-remove-card i {
+    width: 14px;
+    height: 14px;
+}
+
+/* Mini Gráfico de Barras */
+.oficial-card-grafico {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 1.25rem 1rem;
+    background: #f9fafb;
+}
+
+.grafico-barra {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 50px;
+}
+
+.grafico-barra-fill {
+    width: 100%;
+    min-height: 10px;
+    max-height: 80px;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+}
+
+.grafico-barra-fill.baixa { background: #16a34a; }
+.grafico-barra-fill.media { background: #eab308; }
+.grafico-barra-fill.alta { background: #dc2626; }
+
+.grafico-valor {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.grafico-label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+/* Carga Total */
+.oficial-card-carga {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #1f2937;
+    color: white;
+}
+
+.carga-label {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.carga-valor {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Últimas Missões */
+.oficial-card-missoes {
+    padding: 1rem;
+}
+
+.oficial-card-missoes h5 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.oficial-card-missoes h5 i {
+    width: 14px;
+    height: 14px;
+}
+
+.oficial-card-missoes ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.oficial-card-missoes li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.8rem;
+}
+
+.oficial-card-missoes li:last-child {
+    border-bottom: none;
+}
+
+.missao-nome {
+    color: #374151;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.5rem;
+}
+
+.oficial-card-missoes .badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+}
+
+.text-sm {
+    font-size: 0.85rem;
+}
+</style>
+
+<script>
+function removerCard(oficialId) {
+    // Desmarcar checkbox correspondente
+    const checkbox = document.querySelector(`#oficial-${oficialId}`);
+    if (checkbox) {
+        checkbox.checked = false;
+    }
+    // Atualizar cards
+    atualizarCards();
+}
+
+lucide.createIcons();
+</script>

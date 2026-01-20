@@ -1,0 +1,151 @@
+<!-- 
+============================================================
+Template: htmx/oficiais_selecao.html
+Lista de oficiais com checkboxes para seleção (página Comparar)
+============================================================
+-->
+
+<!-- Filtros inline -->
+<div class="table-filters mb-3">
+    <form hx-get="{% url 'htmx_oficiais_selecao' %}" 
+          hx-target="#lista-oficiais" 
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+        
+        <div class="filters-row">
+            <div class="filter-group filter-group-search">
+                <label>Buscar</label>
+                <input type="text" name="busca" placeholder="Nome..." 
+                       value="{{ filtros.busca|default:'' }}" class="form-control">
+            </div>
+            
+            <div class="filter-group">
+                <label>Posto</label>
+                <select name="posto" class="form-control">
+                    <option value="">Todos</option>
+                    {% for value, label in posto_choices %}
+                    <option value="{{ value }}" {% if filtros.posto == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Quadro</label>
+                <select name="quadro" class="form-control">
+                    <option value="">Todos</option>
+                    {% for value, label in quadro_choices %}
+                    <option value="{{ value }}" {% if filtros.quadro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>OBM</label>
+                <select name="obm" class="form-control">
+                    <option value="">Todas</option>
+                    {% for obm in obms_disponiveis %}
+                    {% if obm %}
+                    <option value="{{ obm }}" {% if filtros.obm == obm %}selected{% endif %}>{{ obm }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Lista com checkboxes -->
+<div class="oficiais-selecao-lista">
+    {% for o in oficiais %}
+    <label class="oficial-selecao-item" for="oficial-{{ o.id }}">
+        <input type="checkbox" 
+               name="oficial" 
+               value="{{ o.id }}" 
+               id="oficial-{{ o.id }}"
+               class="oficial-checkbox"
+               onchange="atualizarCards()">
+        <img src="{{ o.foto_url }}" alt="" class="oficial-selecao-foto">
+        <div class="oficial-selecao-info">
+            <strong>{{ o.posto }} {{ o.nome_guerra|default:o.nome }}</strong>
+            <span class="text-muted">{{ o.obm|default:"-" }}</span>
+        </div>
+        <div class="oficial-selecao-stats">
+            <span class="badge badge-success" title="Baixa">{{ o.total_baixa }}</span>
+            <span class="badge badge-warning" title="Média">{{ o.total_media }}</span>
+            <span class="badge badge-danger" title="Alta">{{ o.total_alta }}</span>
+        </div>
+    </label>
+    {% empty %}
+    <p class="text-center text-muted py-4">Nenhum oficial encontrado.</p>
+    {% endfor %}
+</div>
+
+<style>
+.oficiais-selecao-lista {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.oficial-selecao-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.oficial-selecao-item:hover {
+    background: #f9fafb;
+}
+
+.oficial-selecao-item:has(input:checked) {
+    background: #fef2f2;
+    border-left: 3px solid #8b0000;
+}
+
+.oficial-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #8b0000;
+}
+
+.oficial-selecao-foto {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.oficial-selecao-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+}
+
+.oficial-selecao-info strong {
+    color: #1f2937;
+}
+
+.oficial-selecao-info .text-muted {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.oficial-selecao-stats {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.oficial-selecao-stats .badge {
+    min-width: 24px;
+    text-align: center;
+    font-size: 0.75rem;
+}
+</style>
+
+<script>
+lucide.createIcons();
+</script>
