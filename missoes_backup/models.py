@@ -274,10 +274,8 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     
     ROLE_CHOICES = [
         ('admin', 'Administrador'),
-        ('corregedor', 'Corregedor'),
-        ('bm3', 'BM/3'),
-        ('comando_geral', 'Comando-Geral'),
-        ('comandante', 'Comandante'),
+        ('gestor', 'Gestor'),
+        ('comandante', 'Comandante de Unidade'),
         ('oficial', 'Oficial'),
     ]
     
@@ -310,161 +308,13 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
             return f"{self.oficial.posto} {self.oficial.nome_guerra or self.oficial.nome}"
         return self.cpf
     
-    # ============================================================
-    # 🔐 PROPRIEDADES DE PERMISSÃO
-    # ============================================================
-    
     @property
     def is_admin(self):
-        """Administrador - acesso total"""
         return self.role == 'admin'
     
     @property
-    def is_corregedor(self):
-        """Corregedor - acesso a Missões e Designações"""
-        return self.role == 'corregedor'
-    
-    @property
-    def is_bm3(self):
-        """BM/3 - acesso a Missões, Designações e Solicitações"""
-        return self.role == 'bm3'
-    
-    @property
-    def is_comando_geral(self):
-        """Comando-Geral - visualização ampla, sem admin"""
-        return self.role == 'comando_geral'
-    
-    @property
-    def is_comandante(self):
-        """Comandante - acesso restrito à sua OBM"""
-        return self.role == 'comandante'
-    
-    @property
-    def is_oficial(self):
-        """Oficial comum"""
-        return self.role == 'oficial'
-    
-    # ============================================================
-    # 🔑 PERMISSÕES DE ACESSO ÀS PÁGINAS
-    # ============================================================
-    
-    @property
-    def pode_ver_dashboard(self):
-        """Quem pode ver a página Visão Geral"""
-        return self.role in ['admin', 'comando_geral']
-    
-    @property
-    def pode_ver_comparar(self):
-        """Quem pode ver a página Comparar Oficiais"""
-        return self.role in ['admin', 'corregedor', 'bm3', 'comando_geral', 'comandante']
-    
-    @property
-    def pode_ver_missoes(self):
-        """Quem pode ver a página Missões"""
-        return True  # Todos podem ver
-    
-    @property
-    def pode_ver_painel(self):
-        """Quem pode ver o Meu Painel"""
-        return True  # Todos podem ver
-    
-    @property
-    def pode_ver_admin(self):
-        """Quem pode ver a página de Administração"""
-        return self.role in ['admin', 'corregedor', 'bm3']
-    
-    # ============================================================
-    # 🔑 PERMISSÕES DE AÇÕES NA ADMINISTRAÇÃO
-    # ============================================================
-    
-    @property
-    def pode_gerenciar_oficiais(self):
-        """Quem pode CRUD de oficiais"""
-        return self.role == 'admin'
-    
-    @property
-    def pode_gerenciar_missoes(self):
-        """Quem pode CRUD de missões"""
-        return self.role in ['admin', 'corregedor', 'bm3']
-    
-    @property
-    def pode_gerenciar_designacoes(self):
-        """Quem pode CRUD de designações"""
-        return self.role in ['admin', 'corregedor', 'bm3']
-    
-    @property
-    def pode_gerenciar_unidades(self):
-        """Quem pode CRUD de unidades"""
-        return self.role == 'admin'
-    
-    @property
-    def pode_gerenciar_usuarios(self):
-        """Quem pode CRUD de usuários"""
-        return self.role == 'admin'
-    
-    @property
-    def pode_gerenciar_solicitacoes(self):
-        """Quem pode avaliar solicitações"""
-        return self.role in ['admin', 'bm3']
-    
-    # ============================================================
-    # 🏢 MÉTODOS PARA COMANDANTE (OBM)
-    # ============================================================
-    
-    def get_obm_subordinadas(self):
-        """Retorna lista de OBMs subordinadas ao comandante."""
-        if not self.oficial:
-            return []
-        
-        obm_usuario = self.oficial.obm
-        if not obm_usuario:
-            return []
-        
-        # Buscar a unidade do comandante
-        try:
-            unidade_comandante = Unidade.objects.get(
-                models.Q(nome__icontains=obm_usuario) | models.Q(sigla__icontains=obm_usuario)
-            )
-        except Unidade.DoesNotExist:
-            return [obm_usuario]
-        except Unidade.MultipleObjectsReturned:
-            unidade_comandante = Unidade.objects.filter(
-                models.Q(nome__icontains=obm_usuario) | models.Q(sigla__icontains=obm_usuario)
-            ).first()
-        
-        # Buscar subordinadas recursivamente
-        obms = [obm_usuario]
-        obms.extend(self._get_subordinadas_recursivo(unidade_comandante))
-        
-        return list(set(obms))
-    
-    def _get_subordinadas_recursivo(self, unidade):
-        """Busca recursiva de unidades subordinadas."""
-        subordinadas = []
-        for sub in unidade.subordinadas.all():
-            if sub.sigla:
-                subordinadas.append(sub.sigla)
-            if sub.nome:
-                subordinadas.append(sub.nome)
-            subordinadas.extend(self._get_subordinadas_recursivo(sub))
-        return subordinadas
-    
-    def pode_ver_oficial(self, oficial):
-        """Verifica se o usuário pode ver determinado oficial."""
-        # Admin, Corregedor, BM/3 e Comando-Geral veem todos
-        if self.role in ['admin', 'corregedor', 'bm3', 'comando_geral']:
-            return True
-        
-        # Comandante vê apenas sua OBM e subordinadas
-        if self.role == 'comandante':
-            obms_permitidas = self.get_obm_subordinadas()
-            return any(obm in (oficial.obm or '') for obm in obms_permitidas)
-        
-        # Oficial comum vê apenas a si mesmo
-        if self.role == 'oficial':
-            return self.oficial and self.oficial.id == oficial.id
-        
-        return False
+    def is_gestor(self):
+        return self.role in ['admin', 'gestor']
     
     @property
     def foto_url(self):
