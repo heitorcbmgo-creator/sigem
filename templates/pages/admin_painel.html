@@ -9,11 +9,12 @@
         <i data-lucide="settings"></i>
         Painel Administrativo
     </h1>
-    <p class="page-subtitle">Gerencie oficiais, missões, designações e usuários</p>
+    <p class="page-subtitle">Gerencie missões, designações e outros dados do sistema</p>
 </div>
 
-<!-- Abas -->
+<!-- Abas - Visíveis conforme permissão -->
 <div class="tabs">
+    {% if user.pode_gerenciar_oficiais %}
     <button class="tab {% if aba_ativa == 'oficiais' %}active{% endif %}" 
             data-tipo="oficiais"
             hx-get="{% url 'htmx_oficiais_lista' %}" 
@@ -21,6 +22,9 @@
             onclick="setActiveTab(this, 'oficiais')">
         <i data-lucide="users"></i> Oficiais
     </button>
+    {% endif %}
+    
+    {% if user.pode_gerenciar_missoes %}
     <button class="tab {% if aba_ativa == 'missoes' %}active{% endif %}"
             data-tipo="missoes"
             hx-get="{% url 'htmx_missoes_lista' %}"
@@ -28,6 +32,9 @@
             onclick="setActiveTab(this, 'missoes')">
         <i data-lucide="folder-kanban"></i> Missões
     </button>
+    {% endif %}
+    
+    {% if user.pode_gerenciar_designacoes %}
     <button class="tab {% if aba_ativa == 'designacoes' %}active{% endif %}"
             data-tipo="designacoes"
             hx-get="{% url 'htmx_designacoes_lista' %}"
@@ -35,6 +42,9 @@
             onclick="setActiveTab(this, 'designacoes')">
         <i data-lucide="link"></i> Designações
     </button>
+    {% endif %}
+    
+    {% if user.pode_gerenciar_unidades %}
     <button class="tab {% if aba_ativa == 'unidades' %}active{% endif %}"
             data-tipo="unidades"
             hx-get="{% url 'htmx_unidades_lista' %}"
@@ -42,6 +52,9 @@
             onclick="setActiveTab(this, 'unidades')">
         <i data-lucide="building"></i> Unidades
     </button>
+    {% endif %}
+    
+    {% if user.pode_gerenciar_usuarios %}
     <button class="tab {% if aba_ativa == 'usuarios' %}active{% endif %}"
             data-tipo="usuarios"
             hx-get="{% url 'htmx_usuarios_lista' %}"
@@ -49,16 +62,21 @@
             onclick="setActiveTab(this, 'usuarios')">
         <i data-lucide="user-cog"></i> Usuários
     </button>
-    <button class="tab"
+    {% endif %}
+    
+    {% if user.pode_gerenciar_solicitacoes %}
+    <button class="tab {% if aba_ativa == 'solicitacoes' %}active{% endif %}"
             data-tipo="solicitacoes"
             hx-get="{% url 'htmx_solicitacoes_lista' %}"
             hx-target="#tab-content"
             onclick="setActiveTab(this, 'solicitacoes')">
         <i data-lucide="inbox"></i> Solicitações
     </button>
+    {% endif %}
 </div>
 
-<!-- Ações Gerais -->
+<!-- Ações Gerais - Apenas admin pode importar/exportar -->
+{% if user.is_admin %}
 <div class="flex justify-between items-center mb-4">
     <div class="flex gap-1">
         <!-- Formulário de Importação -->
@@ -84,21 +102,38 @@
     
     <div class="flex gap-1">
         <span class="badge badge-info" id="badge-tipo" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-            📁 Oficiais
+            📁 {{ aba_ativa|default:'missoes'|title }}
         </span>
     </div>
 </div>
+{% endif %}
 
 <!-- Conteúdo da Aba -->
 <div class="card">
     <div class="card-body">
+        <!-- Carregar aba inicial baseada nas permissões -->
+        {% if user.is_admin %}
         <div id="tab-content" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
             <p class="text-gray text-center">Carregando...</p>
         </div>
+        {% elif user.pode_gerenciar_missoes %}
+        <div id="tab-content" hx-get="{% url 'htmx_missoes_lista' %}" hx-trigger="load">
+            <p class="text-gray text-center">Carregando...</p>
+        </div>
+        {% elif user.pode_gerenciar_solicitacoes %}
+        <div id="tab-content" hx-get="{% url 'htmx_solicitacoes_lista' %}" hx-trigger="load">
+            <p class="text-gray text-center">Carregando...</p>
+        </div>
+        {% else %}
+        <div id="tab-content">
+            <p class="text-gray text-center">Sem conteúdo disponível.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Legenda de Importação -->
+<!-- Legenda de Importação - Apenas admin -->
+{% if user.is_admin %}
 <div class="card mt-4">
     <div class="card-header">
         <h3 class="card-title">
@@ -123,11 +158,12 @@
         </p>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let tipoAtual = 'oficiais';
+let tipoAtual = '{% if user.is_admin %}oficiais{% else %}missoes{% endif %}';
 
 function setActiveTab(clickedTab, tipo) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -143,18 +179,24 @@ function setActiveTab(clickedTab, tipo) {
         'usuarios': '📁 Usuários',
         'solicitacoes': '📁 Solicitações'
     };
-    document.getElementById('badge-tipo').textContent = nomes[tipo] || tipo;
+    const badge = document.getElementById('badge-tipo');
+    if (badge) badge.textContent = nomes[tipo] || tipo;
     
     // Atualizar action do formulário
-    document.getElementById('form-importar').action = '/importar/' + tipo + '/';
+    const form = document.getElementById('form-importar');
+    if (form) form.action = '/importar/' + tipo + '/';
     
     // Atualizar link de exportação
-    document.getElementById('btn-exportar').href = '/exportar/excel/' + tipo + '/';
+    const btnExportar = document.getElementById('btn-exportar');
+    if (btnExportar) btnExportar.href = '/exportar/excel/' + tipo + '/';
     
     // Limpar arquivo selecionado
-    document.getElementById('importar-arquivo').value = '';
-    document.getElementById('nome-arquivo').textContent = '';
-    document.getElementById('btn-importar').style.display = 'none';
+    const inputArquivo = document.getElementById('importar-arquivo');
+    const nomeArquivo = document.getElementById('nome-arquivo');
+    const btnImportar = document.getElementById('btn-importar');
+    if (inputArquivo) inputArquivo.value = '';
+    if (nomeArquivo) nomeArquivo.textContent = '';
+    if (btnImportar) btnImportar.style.display = 'none';
 }
 
 function mostrarNomeArquivo(input) {
@@ -169,6 +211,7 @@ function exportarDados() {
 }
 
 // Inicializar
-document.getElementById('form-importar').action = '/importar/oficiais/';
+const form = document.getElementById('form-importar');
+if (form) form.action = '/importar/' + tipoAtual + '/';
 </script>
 {% endblock %}
