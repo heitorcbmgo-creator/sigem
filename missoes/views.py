@@ -605,6 +605,24 @@ def htmx_missao_excluir(request, pk):
     return htmx_missoes_lista(request)
 
 
+@login_required
+def htmx_missao_dados(request, pk):
+    """Retorna dados de uma missão em JSON para edição."""
+    
+    missao = get_object_or_404(Missao, pk=pk)
+    
+    return JsonResponse({
+        'id': missao.id,
+        'nome': missao.nome,
+        'tipo': missao.tipo,
+        'status': missao.status,
+        'descricao': missao.descricao,
+        'local': missao.local,
+        'data_inicio': missao.data_inicio.strftime('%Y-%m-%d') if missao.data_inicio else '',
+        'data_fim': missao.data_fim.strftime('%Y-%m-%d') if missao.data_fim else '',
+        'documento_referencia': missao.documento_referencia,
+    })
+
 # ============================================================
 # 🔄 HTMX - DESIGNAÇÕES
 # ============================================================
