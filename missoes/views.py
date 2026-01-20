@@ -340,24 +340,89 @@ def htmx_oficiais_lista(request):
 
 
 @login_required
+def htmx_oficiais_selecao(request):
+    """Retorna lista de oficiais com checkboxes para seleção (página Comparar)."""
+    
+    user = request.user
+    oficiais = Oficial.objects.filter(ativo=True)
+    
+    # Filtros
+    posto = request.GET.get('posto', '')
+    quadro = request.GET.get('quadro', '')
+    obm = request.GET.get('obm', '')
+    busca = request.GET.get('busca', '')
+    
+    if posto:
+        oficiais = oficiais.filter(posto=posto)
+    if quadro:
+        oficiais = oficiais.filter(quadro=quadro)
+    if obm:
+        oficiais = oficiais.filter(obm__icontains=obm)
+    if busca:
+        oficiais = oficiais.filter(
+            Q(nome__icontains=busca) | 
+            Q(nome_guerra__icontains=busca)
+        )
+    
+    # Filtro de OBM para comandante
+    if user.role == 'comandante' and hasattr(user, 'get_obm_subordinadas'):
+        obms_permitidas = user.get_obm_subordinadas()
+        if obms_permitidas:
+            q_filter = Q()
+            for obm_perm in obms_permitidas:
+                q_filter |= Q(obm__icontains=obm_perm)
+            oficiais = oficiais.filter(q_filter)
+    
+    oficiais = oficiais.order_by('posto', 'nome')
+    
+    # Lista de OBMs disponíveis
+    obms_disponiveis = Oficial.objects.filter(ativo=True).values_list('obm', flat=True).distinct().order_by('obm')
+    
+    context = {
+        'oficiais': oficiais,
+        'filtros': {
+            'busca': busca,
+            'posto': posto,
+            'quadro': quadro,
+            'obm': obm,
+        },
+        'posto_choices': Oficial.POSTO_CHOICES,
+        'quadro_choices': Oficial.QUADRO_CHOICES,
+        'obms_disponiveis': obms_disponiveis,
+    }
+    
+    return render(request, 'htmx/oficiais_selecao.html', context)
+
+
+@login_required
 def htmx_oficiais_cards(request):
-    """Retorna cards de oficiais para comparação."""
+    """Retorna cards de oficiais para comparação com gráficos."""
     
     ids = request.GET.get('ids', '')
     
     if ids:
         ids_list = [int(id) for id in ids.split(',') if id.isdigit()]
-        oficiais = Oficial.objects.filter(id__in=ids_list).annotate(
-            total_missoes=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO')),
-            total_chefia=Count('designacoes', filter=Q(
-                designacoes__funcao_na_missao__in=['COMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO'],
-                designacoes__missao__status='EM_ANDAMENTO'
-            ))
-        )
+        oficiais = Oficial.objects.filter(id__in=ids_list)
+        
+        # Para cada oficial, buscar dados para o card
+        oficiais_data = []
+        for oficial in oficiais:
+            ultimas_missoes = oficial.designacoes.select_related('missao').filter(
+                missao__status='EM_ANDAMENTO'
+            ).order_by('-criado_em')[:5]
+            
+            oficiais_data.append({
+                'oficial': oficial,
+                'total_baixa': oficial.total_baixa,
+                'total_media': oficial.total_media,
+                'total_alta': oficial.total_alta,
+                'carga_total': oficial.carga_total,
+                'ultimas_missoes': ultimas_missoes,
+            })
     else:
-        oficiais = []
+        oficiais_data = []
     
-    return render(request, 'htmx/oficiais_cards.html', {'oficiais': oficiais})
+    return render(request, 'htmx/oficiais_cards.html', {'oficiais_data': oficiais_data})
 
 
 @login_required
@@ -366,17 +431,21 @@ def htmx_oficial_card(request, pk):
     
     oficial = get_object_or_404(Oficial, pk=pk)
     
-    # Adiciona contagens
-    oficial.total_missoes = oficial.designacoes.filter(missao__status='EM_ANDAMENTO').count()
-    oficial.total_chefia = oficial.designacoes.filter(
-        funcao_na_missao__in=['COMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO'],
+    # Últimas missões ativas
+    ultimas_missoes = oficial.designacoes.select_related('missao').filter(
         missao__status='EM_ANDAMENTO'
-    ).count()
+    ).order_by('-criado_em')[:5]
     
-    # Últimas missões
-    oficial.ultimas_missoes = oficial.designacoes.select_related('missao').order_by('-criado_em')[:5]
+    context = {
+        'oficial': oficial,
+        'total_baixa': oficial.total_baixa,
+        'total_media': oficial.total_media,
+        'total_alta': oficial.total_alta,
+        'carga_total': oficial.carga_total,
+        'ultimas_missoes': ultimas_missoes,
+    }
     
-    return render(request, 'htmx/oficial_card.html', {'oficial': oficial})
+    return render(request, 'htmx/oficial_card.html', context)
 
 
 @login_required
