@@ -16,6 +16,12 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.paginator import Paginator
 
 from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao
+from .decorators import (
+    acesso_dashboard, acesso_comparar, acesso_admin_painel,
+    permissao_gerenciar_oficiais, permissao_gerenciar_missoes,
+    permissao_gerenciar_designacoes, permissao_gerenciar_unidades,
+    permissao_gerenciar_usuarios, permissao_gerenciar_solicitacoes
+)
 
 
 # ============================================================
@@ -24,7 +30,7 @@ from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDe
 def login_view(request):
     """Página de login."""
     if request.user.is_authenticated:
-        return redirect('dashboard')
+        return redirect('redirecionar_por_perfil')
     
     if request.method == 'POST':
         cpf = request.POST.get('cpf', '').replace('.', '').replace('-', '')
@@ -37,11 +43,24 @@ def login_view(request):
             user.ultimo_acesso = timezone.now()
             user.save(update_fields=['ultimo_acesso'])
             messages.success(request, f'Bem-vindo, {user}!')
-            return redirect('dashboard')
+            return redirect('redirecionar_por_perfil')
         else:
             messages.error(request, 'CPF ou senha incorretos.')
     
     return render(request, 'auth/login.html')
+
+
+@login_required
+def redirecionar_por_perfil(request):
+    """Redireciona o usuário para a página inicial conforme seu perfil."""
+    user = request.user
+    
+    if user.role in ['admin', 'comando_geral']:
+        return redirect('dashboard')
+    elif user.role in ['corregedor', 'bm3', 'comandante']:
+        return redirect('comparar_oficiais')
+    else:  # oficial
+        return redirect('painel_oficial')
 
 
 @login_required
@@ -56,6 +75,7 @@ def logout_view(request):
 # 📊 DASHBOARD - VISÃO GERAL
 # ============================================================
 @login_required
+@acesso_dashboard
 def dashboard(request):
     """Página principal - Visão Geral."""
     
@@ -93,18 +113,28 @@ def dashboard(request):
 # ⚖️ COMPARAR OFICIAIS
 # ============================================================
 @login_required
+@acesso_comparar
 def comparar_oficiais(request):
     """Página para comparar carga de trabalho entre oficiais."""
+    
+    user = request.user
     
     # Filtros disponíveis
     postos = Oficial.POSTO_CHOICES
     quadros = Oficial.QUADRO_CHOICES
-    obms = Oficial.objects.values_list('obm', flat=True).distinct().order_by('obm')
+    
+    # Para comandante, filtrar apenas OBMs permitidas
+    if user.is_comandante:
+        obms_permitidas = user.get_obm_subordinadas()
+        obms = obms_permitidas
+    else:
+        obms = Oficial.objects.values_list('obm', flat=True).distinct().order_by('obm')
     
     context = {
         'postos': postos,
         'quadros': quadros,
         'obms': obms,
+        'is_comandante': user.is_comandante,
     }
     
     return render(request, 'pages/comparar_oficiais.html', context)
@@ -189,16 +219,22 @@ def painel_oficial(request):
 # 🔧 PAINEL ADMINISTRATIVO
 # ============================================================
 @login_required
+@acesso_admin_painel
 def admin_painel(request):
     """Painel administrativo com CRUD de todas as entidades."""
     
-    # Verificar permissão
-    if not request.user.is_gestor:
-        messages.error(request, 'Acesso restrito a administradores e gestores.')
-        return redirect('dashboard')
+    user = request.user
+    
+    # Determinar aba inicial baseado nas permissões
+    if user.is_admin:
+        aba_padrao = 'oficiais'
+    elif user.is_corregedor or user.is_bm3:
+        aba_padrao = 'missoes'
+    else:
+        aba_padrao = 'missoes'
     
     context = {
-        'aba_ativa': request.GET.get('aba', 'oficiais'),
+        'aba_ativa': request.GET.get('aba', aba_padrao),
     }
     
     return render(request, 'pages/admin_painel.html', context)
@@ -209,11 +245,21 @@ def admin_painel(request):
 # ============================================================
 @login_required
 def htmx_oficiais_lista(request):
-    """Retorna a lista de oficiais para a tabela administrativa."""
+    """Retorna a lista de oficiais para a tabela administrativa ou comparação."""
     
+    user = request.user
     oficiais = Oficial.objects.all().order_by('posto', 'nome')
     
-    # Filtros
+    # Se for comandante, filtrar apenas OBMs permitidas
+    if user.is_comandante:
+        obms_permitidas = user.get_obm_subordinadas()
+        if obms_permitidas:
+            q_filter = Q()
+            for obm in obms_permitidas:
+                q_filter |= Q(obm__icontains=obm)
+            oficiais = oficiais.filter(q_filter)
+    
+    # Filtros da interface
     posto = request.GET.get('posto', '')
     quadro = request.GET.get('quadro', '')
     obm = request.GET.get('obm', '')
@@ -232,7 +278,13 @@ def htmx_oficiais_lista(request):
             Q(cpf__icontains=busca)
         )
     
-    return render(request, 'htmx/oficiais_tabela.html', {'oficiais': oficiais})
+    # Determinar qual template usar
+    template = request.GET.get('template', 'tabela')
+    
+    if template == 'lista':
+        return render(request, 'htmx/oficiais_lista.html', {'oficiais': oficiais})
+    
+    return render(request, 'htmx/oficiais_tabela.html', {'oficiais': oficiais, 'user': user})
 
 
 @login_required
@@ -280,7 +332,7 @@ def htmx_oficial_card(request, pk):
 def htmx_oficial_criar(request):
     """Cria um novo oficial via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_oficiais:
         return HttpResponse('Sem permissão', status=403)
     
     try:
@@ -318,7 +370,7 @@ def htmx_oficial_criar(request):
 def htmx_oficial_editar(request, pk):
     """Edita um oficial via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_oficiais:
         return HttpResponse('Sem permissão', status=403)
     
     oficial = get_object_or_404(Oficial, pk=pk)
@@ -347,7 +399,7 @@ def htmx_oficial_editar(request, pk):
 def htmx_oficial_excluir(request, pk):
     """Exclui um oficial via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_oficiais:
         return HttpResponse('Sem permissão', status=403)
     
     oficial = get_object_or_404(Oficial, pk=pk)
@@ -422,7 +474,7 @@ def htmx_missao_organograma(request, pk):
 def htmx_missao_criar(request):
     """Cria uma nova missão via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_missoes:
         return HttpResponse('Sem permissão', status=403)
     
     try:
@@ -449,7 +501,7 @@ def htmx_missao_criar(request):
 def htmx_missao_editar(request, pk):
     """Edita uma missão via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_missoes:
         return HttpResponse('Sem permissão', status=403)
     
     missao = get_object_or_404(Missao, pk=pk)
@@ -483,7 +535,7 @@ def htmx_missao_editar(request, pk):
 def htmx_missao_excluir(request, pk):
     """Exclui uma missão via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_missoes:
         return HttpResponse('Sem permissão', status=403)
     
     missao = get_object_or_404(Missao, pk=pk)
@@ -515,7 +567,7 @@ def htmx_designacoes_lista(request):
 def htmx_designacao_criar(request):
     """Cria uma nova designação via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_designacoes:
         return HttpResponse('Sem permissão', status=403)
     
     try:
@@ -542,7 +594,7 @@ def htmx_designacao_criar(request):
 def htmx_designacao_editar(request, pk):
     """Edita uma designação via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_designacoes:
         return HttpResponse('Sem permissão', status=403)
     
     designacao = get_object_or_404(Designacao, pk=pk)
@@ -565,7 +617,7 @@ def htmx_designacao_editar(request, pk):
 def htmx_designacao_excluir(request, pk):
     """Exclui uma designação via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_designacoes:
         return HttpResponse('Sem permissão', status=403)
     
     designacao = get_object_or_404(Designacao, pk=pk)
@@ -596,7 +648,7 @@ def htmx_unidades_lista(request):
 def htmx_unidade_criar(request):
     """Cria uma nova unidade via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_unidades:
         return HttpResponse('Sem permissão', status=403)
     
     try:
@@ -621,7 +673,7 @@ def htmx_unidade_criar(request):
 def htmx_unidade_editar(request, pk):
     """Edita uma unidade via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_unidades:
         return HttpResponse('Sem permissão', status=403)
     
     unidade = get_object_or_404(Unidade, pk=pk)
@@ -648,7 +700,7 @@ def htmx_unidade_editar(request, pk):
 def htmx_unidade_excluir(request, pk):
     """Exclui uma unidade via HTMX."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_unidades:
         return HttpResponse('Sem permissão', status=403)
     
     unidade = get_object_or_404(Unidade, pk=pk)
@@ -670,7 +722,7 @@ def htmx_unidade_excluir(request, pk):
 def htmx_usuarios_lista(request):
     """Retorna a lista de usuários."""
     
-    if not request.user.is_admin:
+    if not request.user.pode_gerenciar_usuarios:
         return HttpResponse('Sem permissão', status=403)
     
     usuarios = Usuario.objects.select_related('oficial').all().order_by('cpf')
@@ -800,9 +852,9 @@ def htmx_solicitacao_criar(request):
 
 @login_required
 def htmx_solicitacoes_lista(request):
-    """Lista solicitações pendentes (para admin)."""
+    """Lista solicitações pendentes (para admin e bm3)."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_solicitacoes:
         return HttpResponse('Sem permissão', status=403)
     
     solicitacoes = SolicitacaoDesignacao.objects.filter(status='PENDENTE').select_related('solicitante').order_by('-criado_em')
@@ -815,7 +867,7 @@ def htmx_solicitacoes_lista(request):
 def htmx_solicitacao_avaliar(request, pk):
     """Avalia uma solicitação (aprovar/recusar)."""
     
-    if not request.user.is_gestor:
+    if not request.user.pode_gerenciar_solicitacoes:
         return HttpResponse('Sem permissão', status=403)
     
     solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
