@@ -905,3 +905,392 @@ tr:hover td {
 .gap-4 { gap: 2rem; }
 .grid { display: grid; }
 .hidden { display: none; }
+
+/* ============================================================
+   FILTROS DE TABELA
+   ============================================================ */
+
+.table-filters {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid #e9ecef;
+}
+
+.filters-form {
+    width: 100%;
+}
+
+.filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 120px;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group .form-control-sm {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    height: auto;
+}
+
+/* ============================================================
+   INFORMAÇÕES DA TABELA
+   ============================================================ */
+
+.table-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+/* ============================================================
+   COLUNAS ORDENÁVEIS
+   ============================================================ */
+
+.table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.table th.sortable:hover {
+    background: #f0f0f0;
+}
+
+.table th.sortable i {
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ============================================================
+   PAGINAÇÃO
+   ============================================================ */
+
+.pagination-container {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.page-item {
+    display: inline-block;
+}
+
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.5rem;
+    border: 1px solid #dee2e6;
+    background: white;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.page-link:hover {
+    background: #f8f9fa;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.page-item.active .page-link {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.page-link i {
+    width: 16px;
+    height: 16px;
+}
+
+/* ============================================================
+   AVATAR PEQUENO
+   ============================================================ */
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+}
+
+/* ============================================================
+   BADGES DE TIPO E STATUS
+   ============================================================ */
+
+.badge-tipo-operacional { background: #dc3545; color: white; }
+.badge-tipo-administrativa { background: #6c757d; color: white; }
+.badge-tipo-ensino { background: #17a2b8; color: white; }
+.badge-tipo-correicional { background: #6f42c1; color: white; }
+.badge-tipo-comissao { background: #fd7e14; color: white; }
+.badge-tipo-acao_social { background: #28a745; color: white; }
+
+.badge-status-planejada { background: #ffc107; color: #212529; }
+.badge-status-em_andamento { background: #17a2b8; color: white; }
+.badge-status-concluida { background: #28a745; color: white; }
+.badge-status-cancelada { background: #dc3545; color: white; }
+
+.badge-complexidade-baixa { background: #28a745; color: white; }
+.badge-complexidade-media { background: #ffc107; color: #212529; }
+.badge-complexidade-alta { background: #dc3545; color: white; }
+
+/* ============================================================
+   FORMULÁRIO INLINE (Card Form)
+   ============================================================ */
+
+.card-form {
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.1);
+}
+
+.card-form .card-header {
+    background: var(--primary-color);
+    color: white;
+}
+
+.card-form .card-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* ============================================================
+   BOTÃO FLUTUANTE (FAB)
+   ============================================================ */
+
+.btn-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 100;
+}
+
+.btn-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn-fab i {
+    width: 24px;
+    height: 24px;
+}
+
+/* ============================================================
+   MODAL MELHORADO
+   ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-container {
+    background: white;
+    border-radius: var(--border-radius);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-container.modal-lg {
+    max-width: 900px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    opacity: 0.8;
+}
+
+.modal-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* ============================================================
+   UTILITÁRIOS
+   ============================================================ */
+
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.5rem; }
+.py-4 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-8 { flex: 0 0 66.666%; max-width: 66.666%; }
+
+@media (max-width: 768px) {
+    .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .filters-row {
+        flex-direction: column;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .btn-fab {
+        bottom: 1rem;
+        right: 1rem;
+    }
+}
+
+/* ============================================================
+   BOTÃO GHOST (transparente)
+   ============================================================ */
+
+.btn-ghost {
+    background: transparent;
+    border: none;
+    padding: 0.4rem;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    transition: background 0.2s;
+}
+
+.btn-ghost:hover {
+    background: #f0f0f0;
+}
+
+.btn-ghost i {
+    width: 18px;
+    height: 18px;
+}
+
+.btn-ghost.text-danger:hover {
+    background: #fff5f5;
+}
+
+/* ============================================================
+   GRUPO DE BOTÕES
+   ============================================================ */
+
+.btn-group {
+    display: flex;
+    gap: 0.25rem;
+}
