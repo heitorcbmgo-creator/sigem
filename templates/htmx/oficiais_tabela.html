@@ -292,6 +292,8 @@ function novoOficial() {
     document.getElementById('form-oficial-titulo').textContent = 'Novo Oficial';
     document.getElementById('oficial-form').reset();
     document.getElementById('oficial_id').value = '';
+    document.getElementById('of-cpf').readOnly = false;
+    document.getElementById('of-rg').readOnly = false;
     document.getElementById('oficial-form').setAttribute('hx-post', '{% url "htmx_oficial_criar" %}');
     document.getElementById('form-oficial').style.display = 'block';
     document.getElementById('form-oficial').scrollIntoView({behavior: 'smooth'});
@@ -299,9 +301,33 @@ function novoOficial() {
 }
 
 function editarOficial(id) {
-    // Para edição completa, seria necessário um endpoint de dados
-    // Por enquanto, abre o formulário vazio
-    alert('Funcionalidade de edição em desenvolvimento. Use o Django Admin para edições.');
+    fetch('/htmx/oficial/' + id + '/dados/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('form-oficial-titulo').textContent = 'Editar Oficial';
+            document.getElementById('oficial_id').value = id;
+            document.getElementById('of-cpf').value = data.cpf;
+            document.getElementById('of-cpf').readOnly = true; // CPF não pode ser alterado
+            document.getElementById('of-rg').value = data.rg;
+            document.getElementById('of-rg').readOnly = true; // RG não pode ser alterado
+            document.getElementById('of-nome').value = data.nome;
+            document.getElementById('of-nome_guerra').value = data.nome_guerra || '';
+            document.getElementById('of-posto').value = data.posto;
+            document.getElementById('of-quadro').value = data.quadro;
+            document.getElementById('of-obm').value = data.obm || '';
+            document.getElementById('of-funcao').value = data.funcao || '';
+            document.getElementById('of-email').value = data.email || '';
+            document.getElementById('of-telefone').value = data.telefone || '';
+            
+            document.getElementById('oficial-form').setAttribute('hx-post', '/htmx/oficial/' + id + '/editar/');
+            document.getElementById('form-oficial').style.display = 'block';
+            document.getElementById('form-oficial').scrollIntoView({behavior: 'smooth'});
+            htmx.process(document.getElementById('oficial-form'));
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados:', error);
+            alert('Erro ao carregar dados do oficial.');
+        });
 }
 
 function fecharFormOficial() {
