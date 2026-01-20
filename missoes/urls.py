@@ -54,6 +54,9 @@ urlpatterns = [
     path('htmx/designacao/criar/', views.htmx_designacao_criar, name='htmx_designacao_criar'),
     path('htmx/designacao/<int:pk>/editar/', views.htmx_designacao_editar, name='htmx_designacao_editar'),
     path('htmx/designacao/<int:pk>/excluir/', views.htmx_designacao_excluir, name='htmx_designacao_excluir'),
+        # Endpoint para dados JSON (edição)
+    path('htmx/designacao/<int:pk>/dados/', views.htmx_designacao_dados, name='htmx_designacao_dados'),
+    path('htmx/missao/<int:pk>/dados/', views.htmx_missao_dados, name='htmx_missao_dados'),
     
     # ============================================================
     # 🔄 ENDPOINTS HTMX - UNIDADES
