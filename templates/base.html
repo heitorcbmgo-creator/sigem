@@ -32,7 +32,7 @@
     <nav class="navbar">
         <div class="navbar-container">
             <!-- Logo e Título -->
-            <a href="{% url 'dashboard' %}" class="navbar-brand">
+            <a href="{% url 'redirecionar_por_perfil' %}" class="navbar-brand">
                 <img src="{% static 'img/brasao_cbmgo.png' %}" alt="Brasão CBMGO" class="navbar-logo">
                 <div class="navbar-title">
                     <span class="navbar-title-main">SIGEM</span>
@@ -42,27 +42,35 @@
             
             <!-- Menu Principal -->
             <div class="navbar-menu">
+                {% if user.pode_ver_dashboard %}
                 <a href="{% url 'dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Visão Geral</span>
                 </a>
+                {% endif %}
                 
+                {% if user.pode_ver_comparar %}
                 <a href="{% url 'comparar_oficiais' %}" class="navbar-link {% if request.resolver_match.url_name == 'comparar_oficiais' %}active{% endif %}">
                     <i data-lucide="users"></i>
                     <span>Comparar Oficiais</span>
                 </a>
+                {% endif %}
                 
+                {% if user.pode_ver_missoes %}
                 <a href="{% url 'missoes_dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'missoes_dashboard' %}active{% endif %}">
                     <i data-lucide="folder-kanban"></i>
                     <span>Missões</span>
                 </a>
+                {% endif %}
                 
+                {% if user.pode_ver_painel %}
                 <a href="{% url 'painel_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
                     <i data-lucide="user-circle"></i>
                     <span>Meu Painel</span>
                 </a>
+                {% endif %}
                 
-                {% if user.is_gestor %}
+                {% if user.pode_ver_admin %}
                 <a href="{% url 'admin_painel' %}" class="navbar-link {% if request.resolver_match.url_name == 'admin_painel' %}active{% endif %}">
                     <i data-lucide="settings"></i>
                     <span>Administração</span>
