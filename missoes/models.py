@@ -71,7 +71,6 @@ class Oficial(models.Model):
     email = models.EmailField('E-mail', blank=True)
     telefone = models.CharField('Telefone', max_length=20, blank=True)
     foto = models.ImageField('Foto', upload_to='fotos_oficiais/', blank=True, null=True)
-    score = models.FloatField('Score de Carga', default=0.0)
     ativo = models.BooleanField('Ativo', default=True)
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
@@ -95,6 +94,41 @@ class Oficial(models.Model):
     def total_missoes_ativas(self):
         """Retorna o total de missões ativas do oficial."""
         return self.designacoes.filter(missao__status='EM_ANDAMENTO').count()
+    
+    @property
+    def total_baixa(self):
+        """Total de designações de complexidade BAIXA em missões EM_ANDAMENTO."""
+        return self.designacoes.filter(
+            missao__status='EM_ANDAMENTO',
+            complexidade='BAIXA'
+        ).count()
+    
+    @property
+    def total_media(self):
+        """Total de designações de complexidade MÉDIA em missões EM_ANDAMENTO."""
+        return self.designacoes.filter(
+            missao__status='EM_ANDAMENTO',
+            complexidade='MEDIA'
+        ).count()
+    
+    @property
+    def total_alta(self):
+        """Total de designações de complexidade ALTA em missões EM_ANDAMENTO."""
+        return self.designacoes.filter(
+            missao__status='EM_ANDAMENTO',
+            complexidade='ALTA'
+        ).count()
+    
+    @property
+    def carga_total(self):
+        """Carga ponderada: Baixa=1, Média=2, Alta=3."""
+        return self.total_baixa + (self.total_media * 2) + (self.total_alta * 3)
+    
+    def get_ultimas_missoes(self, limit=5):
+        """Retorna as últimas missões do oficial."""
+        return self.designacoes.select_related('missao').filter(
+            missao__status='EM_ANDAMENTO'
+        ).order_by('-criado_em')[:limit]
 
 
 # ============================================================
