@@ -1,0 +1,357 @@
+<!-- Filtros -->
+<div class="table-filters mb-3">
+    <form hx-get="{% url 'htmx_missoes_lista' %}" 
+          hx-target="#missoes-container" 
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+        
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Buscar:</label>
+                <input type="text" name="busca" placeholder="Nome, local ou documento..." 
+                       value="{{ filtros.busca|default:'' }}" class="form-control form-control-sm">
+            </div>
+            
+            <div class="filter-group">
+                <label>Tipo:</label>
+                <select name="tipo" class="form-control form-control-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Status:</label>
+                <select name="status" class="form-control form-control-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>De:</label>
+                <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" class="form-control form-control-sm">
+            </div>
+            
+            <div class="filter-group">
+                <label>Até:</label>
+                <input type="date" name="data_fim" value="{{ filtros.data_fim }}" class="form-control form-control-sm">
+            </div>
+            
+            <div class="filter-group">
+                <label>Por página:</label>
+                <select name="por_pagina" class="form-control form-control-sm">
+                    <option value="10" {% if filtros.por_pagina == '10' %}selected{% endif %}>10</option>
+                    <option value="25" {% if filtros.por_pagina == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.por_pagina == '50' %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.por_pagina == '100' %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button type="button" class="btn btn-sm btn-secondary" 
+                        hx-get="{% url 'htmx_missoes_lista' %}" 
+                        hx-target="#missoes-container">
+                    <i data-lucide="refresh-cw"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Info de resultados -->
+<div class="table-info mb-2">
+    <span class="text-muted">
+        Exibindo {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
+    </span>
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th class="sortable" 
+                    hx-get="{% url 'htmx_missoes_lista' %}?ordenar=nome&direcao={% if ordenacao.campo == 'nome' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}&{{ query_string }}"
+                    hx-target="#missoes-container">
+                    Nome
+                    {% if ordenacao.campo == 'nome' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Local</th>
+                <th class="sortable"
+                    hx-get="{% url 'htmx_missoes_lista' %}?ordenar=data_inicio&direcao={% if ordenacao.campo == 'data_inicio' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}&{{ query_string }}"
+                    hx-target="#missoes-container">
+                    Período
+                    {% if ordenacao.campo == 'data_inicio' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
+                <th class="text-center">Designados</th>
+                {% if user.pode_gerenciar_missoes %}
+                <th class="text-center">Ações</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in page_obj %}
+            <tr id="missao-{{ m.id }}">
+                <td>
+                    <strong>{{ m.nome }}</strong>
+                    {% if m.documento_referencia %}
+                    <br><small class="text-muted">{{ m.documento_referencia }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-tipo-{{ m.tipo|lower }}">{{ m.get_tipo_display }}</span>
+                </td>
+                <td>
+                    <span class="badge badge-status-{{ m.status|lower }}">{{ m.get_status_display }}</span>
+                </td>
+                <td>{{ m.local|default:"-"|truncatechars:25 }}</td>
+                <td>
+                    {% if m.data_inicio %}
+                        {{ m.data_inicio|date:"d/m/Y" }}
+                        {% if m.data_fim %} - {{ m.data_fim|date:"d/m/Y" }}{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-secondary">{{ m.total_designados }}</span>
+                </td>
+                {% if user.pode_gerenciar_missoes %}
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-ghost" 
+                                hx-get="{% url 'htmx_missao_organograma' m.id %}"
+                                hx-target="#modal-content"
+                                hx-trigger="click"
+                                onclick="document.getElementById('modal-organograma').classList.add('show')"
+                                title="Ver Organograma">
+                            <i data-lucide="git-branch"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost" 
+                                onclick="editarMissao({{ m.id }})"
+                                title="Editar">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-danger" 
+                                hx-post="{% url 'htmx_missao_excluir' m.id %}"
+                                hx-target="#missoes-container"
+                                hx-confirm="Excluir esta missão e todas as designações vinculadas?"
+                                title="Excluir">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                    <i data-lucide="folder-open" style="width:48px;height:48px;opacity:0.3"></i>
+                    <p class="mt-2">Nenhuma missão encontrada</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination-container mt-3">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina=1&{{ query_string }}"
+               hx-target="#missoes-container">
+                <i data-lucide="chevrons-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}"
+               hx-target="#missoes-container">
+                <i data-lucide="chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" 
+                   hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ num }}&{{ query_string }}"
+                   hx-target="#missoes-container">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}"
+               hx-target="#missoes-container">
+                <i data-lucide="chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}"
+               hx-target="#missoes-container">
+                <i data-lucide="chevrons-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Formulário de Criação/Edição -->
+{% if user.pode_gerenciar_missoes %}
+<div id="form-missao" class="mt-4" style="display: none;">
+    <div class="card card-form">
+        <div class="card-header">
+            <h4 id="form-missao-titulo">Nova Missão</h4>
+        </div>
+        <div class="card-body">
+            <form id="missao-form" hx-post="{% url 'htmx_missao_criar' %}" hx-target="#missoes-container">
+                {% csrf_token %}
+                <input type="hidden" name="missao_id" id="missao_id">
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Nome da Missão *</label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Tipo *</label>
+                        <select name="tipo" class="form-control" required>
+                            {% for value, label in tipo_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Status *</label>
+                        <select name="status" class="form-control" required>
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Local</label>
+                        <input type="text" name="local" class="form-control">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label>Documento (SEI/BG)</label>
+                        <input type="text" name="documento_referencia" class="form-control">
+                    </div>
+                    <div class="form-group col-md-8">
+                        <label>Descrição</label>
+                        <textarea name="descricao" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharFormMissao()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Botão Flutuante para Nova Missão -->
+<button class="btn-fab" onclick="novaMissao()" title="Nova Missão">
+    <i data-lucide="plus"></i>
+</button>
+{% endif %}
+
+<!-- Modal para Organograma -->
+<div id="modal-organograma" class="modal-overlay">
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <h3>Organograma da Missão</h3>
+            <button class="modal-close" onclick="document.getElementById('modal-organograma').classList.remove('show')">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="modal-content">
+            <!-- Conteúdo carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+<script>
+function novaMissao() {
+    document.getElementById('form-missao-titulo').textContent = 'Nova Missão';
+    document.getElementById('missao-form').reset();
+    document.getElementById('missao_id').value = '';
+    document.getElementById('missao-form').setAttribute('hx-post', '{% url "htmx_missao_criar" %}');
+    document.getElementById('form-missao').style.display = 'block';
+    document.getElementById('form-missao').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('missao-form'));
+}
+
+function editarMissao(id) {
+    fetch(`/htmx/missao/${id}/dados/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('form-missao-titulo').textContent = 'Editar Missão';
+            document.getElementById('missao_id').value = id;
+            document.getElementById('missao-form').querySelector('[name=nome]').value = data.nome;
+            document.getElementById('missao-form').querySelector('[name=tipo]').value = data.tipo;
+            document.getElementById('missao-form').querySelector('[name=status]').value = data.status;
+            document.getElementById('missao-form').querySelector('[name=local]').value = data.local || '';
+            document.getElementById('missao-form').querySelector('[name=data_inicio]').value = data.data_inicio || '';
+            document.getElementById('missao-form').querySelector('[name=data_fim]').value = data.data_fim || '';
+            document.getElementById('missao-form').querySelector('[name=documento_referencia]').value = data.documento_referencia || '';
+            document.getElementById('missao-form').querySelector('[name=descricao]').value = data.descricao || '';
+            document.getElementById('missao-form').setAttribute('hx-post', `/htmx/missao/${id}/editar/`);
+            document.getElementById('form-missao').style.display = 'block';
+            document.getElementById('form-missao').scrollIntoView({behavior: 'smooth'});
+            htmx.process(document.getElementById('missao-form'));
+        });
+}
+
+function fecharFormMissao() {
+    document.getElementById('form-missao').style.display = 'none';
+}
+
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'missoes-container') {
+        fecharFormMissao();
+        lucide.createIcons();
+    }
+});
+</script>

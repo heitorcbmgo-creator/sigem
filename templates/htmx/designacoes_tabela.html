@@ -1,44 +1,336 @@
-<!-- Tabela de designações -->
-<div class="table-container">
-    <table>
+<!-- Filtros -->
+<div class="table-filters mb-3">
+    <form hx-get="{% url 'htmx_designacoes_lista' %}" 
+          hx-target="#designacoes-container" 
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+        
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Buscar:</label>
+                <input type="text" name="busca" placeholder="Oficial ou Missão..." 
+                       value="{{ filtros.busca|default:'' }}" class="form-control form-control-sm">
+            </div>
+            
+            <div class="filter-group">
+                <label>Missão:</label>
+                <select name="missao_id" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    {% for m in missoes_disponiveis %}
+                    <option value="{{ m.id }}" {% if filtros.missao_id == m.id|stringformat:"s" %}selected{% endif %}>
+                        {{ m.nome|truncatechars:40 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Função:</label>
+                <select name="funcao" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    {% for value, label in funcao_choices %}
+                    <option value="{{ value }}" {% if filtros.funcao == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Complexidade:</label>
+                <select name="complexidade" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    {% for value, label in complexidade_choices %}
+                    <option value="{{ value }}" {% if filtros.complexidade == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Por página:</label>
+                <select name="por_pagina" class="form-control form-control-sm">
+                    <option value="10" {% if filtros.por_pagina == '10' %}selected{% endif %}>10</option>
+                    <option value="25" {% if filtros.por_pagina == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.por_pagina == '50' %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.por_pagina == '100' %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <button type="button" class="btn btn-sm btn-secondary" 
+                        hx-get="{% url 'htmx_designacoes_lista' %}" 
+                        hx-target="#designacoes-container">
+                    <i data-lucide="refresh-cw"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Info de resultados -->
+<div class="table-info mb-2">
+    <span class="text-muted">
+        Exibindo {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
+    </span>
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+    <table class="table table-hover">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Missão</th>
-                <th>Oficial</th>
+                <th class="sortable" data-sort="oficial__nome" 
+                    hx-get="{% url 'htmx_designacoes_lista' %}?ordenar=oficial__nome&direcao={% if ordenacao.campo == 'oficial__nome' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#designacoes-container">
+                    Oficial
+                    {% if ordenacao.campo == 'oficial__nome' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
+                <th class="sortable" data-sort="missao__nome"
+                    hx-get="{% url 'htmx_designacoes_lista' %}?ordenar=missao__nome&direcao={% if ordenacao.campo == 'missao__nome' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#designacoes-container">
+                    Missão
+                    {% if ordenacao.campo == 'missao__nome' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
                 <th>Função</th>
                 <th>Complexidade</th>
-                <th>Ações</th>
+                <th class="sortable" data-sort="criado_em"
+                    hx-get="{% url 'htmx_designacoes_lista' %}?ordenar=criado_em&direcao={% if ordenacao.campo == 'criado_em' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}"
+                    hx-target="#designacoes-container">
+                    Data
+                    {% if ordenacao.campo == 'criado_em' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
+                {% if user.pode_gerenciar_designacoes %}
+                <th class="text-center">Ações</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
-            {% for d in designacoes %}
-            <tr>
-                <td>{{ d.id }}</td>
-                <td>{{ d.missao.nome }}</td>
-                <td>{{ d.oficial }}</td>
-                <td>{{ d.get_funcao_na_missao_display }}</td>
+            {% for d in page_obj %}
+            <tr id="designacao-{{ d.id }}">
                 <td>
-                    <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="{{ d.oficial.foto_url }}" alt="" class="avatar-sm rounded-circle">
+                        <div>
+                            <strong>{{ d.oficial.posto }} {{ d.oficial.nome_guerra|default:d.oficial.nome }}</strong>
+                            <br><small class="text-muted">{{ d.oficial.obm }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <strong>{{ d.missao.nome|truncatechars:35 }}</strong>
+                    <br>
+                    <span class="badge badge-{{ d.missao.tipo|lower }}">{{ d.missao.get_tipo_display }}</span>
+                    <span class="badge badge-{{ d.missao.status|lower }}">{{ d.missao.get_status_display }}</span>
+                </td>
+                <td>
+                    <span class="badge badge-info">{{ d.get_funcao_na_missao_display }}</span>
+                </td>
+                <td>
+                    <span class="badge badge-complexidade-{{ d.complexidade|lower }}">
                         {{ d.get_complexidade_display }}
                     </span>
                 </td>
-                <td>
-                    <button class="btn btn-sm btn-danger"
-                            hx-post="{% url 'htmx_designacao_excluir' d.id %}"
-                            hx-target="closest tr"
-                            hx-swap="outerHTML"
-                            hx-confirm="Confirma exclusão?">
-                        <i data-lucide="trash-2"></i>
-                    </button>
+                <td>{{ d.criado_em|date:"d/m/Y" }}</td>
+                {% if user.pode_gerenciar_designacoes %}
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-ghost" 
+                                onclick="editarDesignacao({{ d.id }})"
+                                title="Editar">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-danger" 
+                                hx-post="{% url 'htmx_designacao_excluir' d.id %}"
+                                hx-target="#designacoes-container"
+                                hx-confirm="Excluir esta designação?"
+                                title="Excluir">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" class="text-center text-gray">Nenhuma designação cadastrada.</td>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i data-lucide="inbox" style="width:48px;height:48px;opacity:0.3"></i>
+                    <p class="mt-2">Nenhuma designação encontrada</p>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-<script>lucide.createIcons();</script>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination-container mt-3">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_designacoes_lista' %}?pagina=1&{{ query_string }}"
+               hx-target="#designacoes-container">
+                <i data-lucide="chevrons-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_designacoes_lista' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}"
+               hx-target="#designacoes-container">
+                <i data-lucide="chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" 
+                   hx-get="{% url 'htmx_designacoes_lista' %}?pagina={{ num }}&{{ query_string }}"
+                   hx-target="#designacoes-container">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_designacoes_lista' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}"
+               hx-target="#designacoes-container">
+                <i data-lucide="chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" 
+               hx-get="{% url 'htmx_designacoes_lista' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}"
+               hx-target="#designacoes-container">
+                <i data-lucide="chevrons-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Formulário de Criação/Edição (Modal inline) -->
+{% if user.pode_gerenciar_designacoes %}
+<div id="form-designacao" class="mt-4" style="display: none;">
+    <div class="card card-form">
+        <div class="card-header">
+            <h4 id="form-designacao-titulo">Nova Designação</h4>
+        </div>
+        <div class="card-body">
+            <form id="designacao-form" hx-post="{% url 'htmx_designacao_criar' %}" hx-target="#designacoes-container">
+                {% csrf_token %}
+                <input type="hidden" name="designacao_id" id="designacao_id">
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Missão *</label>
+                        <select name="missao_id" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for m in missoes_disponiveis %}
+                            <option value="{{ m.id }}">{{ m.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>Oficial *</label>
+                        <select name="oficial_id" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for o in oficiais_disponiveis %}
+                            <option value="{{ o.id }}">{{ o.posto }} {{ o.nome_guerra|default:o.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label>Função *</label>
+                        <select name="funcao_na_missao" class="form-control" required>
+                            {% for value, label in funcao_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Complexidade *</label>
+                        <select name="complexidade" class="form-control" required>
+                            {% for value, label in complexidade_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Observações</label>
+                        <input type="text" name="observacoes" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharFormDesignacao()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Botão Flutuante para Nova Designação -->
+<button class="btn-fab" onclick="novaDesignacao()" title="Nova Designação">
+    <i data-lucide="plus"></i>
+</button>
+{% endif %}
+
+<script>
+function novaDesignacao() {
+    document.getElementById('form-designacao-titulo').textContent = 'Nova Designação';
+    document.getElementById('designacao-form').reset();
+    document.getElementById('designacao_id').value = '';
+    document.getElementById('designacao-form').setAttribute('hx-post', '{% url "htmx_designacao_criar" %}');
+    document.getElementById('form-designacao').style.display = 'block';
+    document.getElementById('form-designacao').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('designacao-form'));
+}
+
+function editarDesignacao(id) {
+    // Buscar dados da designação via AJAX
+    fetch(`/htmx/designacao/${id}/dados/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('form-designacao-titulo').textContent = 'Editar Designação';
+            document.getElementById('designacao_id').value = id;
+            document.getElementById('designacao-form').querySelector('[name=missao_id]').value = data.missao_id;
+            document.getElementById('designacao-form').querySelector('[name=oficial_id]').value = data.oficial_id;
+            document.getElementById('designacao-form').querySelector('[name=funcao_na_missao]').value = data.funcao_na_missao;
+            document.getElementById('designacao-form').querySelector('[name=complexidade]').value = data.complexidade;
+            document.getElementById('designacao-form').querySelector('[name=observacoes]').value = data.observacoes || '';
+            document.getElementById('designacao-form').setAttribute('hx-post', `/htmx/designacao/${id}/editar/`);
+            document.getElementById('form-designacao').style.display = 'block';
+            document.getElementById('form-designacao').scrollIntoView({behavior: 'smooth'});
+            htmx.process(document.getElementById('designacao-form'));
+        });
+}
+
+function fecharFormDesignacao() {
+    document.getElementById('form-designacao').style.display = 'none';
+}
+
+// Fechar form após submit bem-sucedido
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'designacoes-container') {
+        fecharFormDesignacao();
+        lucide.createIcons();
+    }
+});
+</script>
