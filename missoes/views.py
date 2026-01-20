@@ -516,6 +516,28 @@ def htmx_oficial_editar(request, pk):
 
 
 @login_required
+def htmx_oficial_dados(request, pk):
+    """Retorna dados de um oficial em JSON para edição."""
+    
+    oficial = get_object_or_404(Oficial, pk=pk)
+    
+    return JsonResponse({
+        'id': oficial.id,
+        'cpf': oficial.cpf,
+        'rg': oficial.rg,
+        'nome': oficial.nome,
+        'nome_guerra': oficial.nome_guerra,
+        'posto': oficial.posto,
+        'quadro': oficial.quadro,
+        'obm': oficial.obm,
+        'funcao': oficial.funcao,
+        'email': oficial.email,
+        'telefone': oficial.telefone,
+        'ativo': oficial.ativo,
+    })
+
+
+@login_required
 @require_POST
 def htmx_oficial_excluir(request, pk):
     """Exclui um oficial via HTMX."""
