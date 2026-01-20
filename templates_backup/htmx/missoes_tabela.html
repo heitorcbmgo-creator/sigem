@@ -1,14 +1,7 @@
-<!-- 
-============================================================
-Template: htmx/missoes_tabela.html
-Tabela de missões com paginação e filtros para Admin
-============================================================
--->
-
 <!-- Filtros -->
 <div class="table-filters mb-3">
-    <form hx-get="{% url 'htmx_missoes_tabela' %}" 
-          hx-target="#tab-content" 
+    <form hx-get="{% url 'htmx_missoes_lista' %}" 
+          hx-target="#missoes-container" 
           hx-trigger="change, keyup delay:500ms from:input[name=busca]"
           class="filters-form">
         
@@ -59,11 +52,11 @@ Tabela de missões com paginação e filtros para Admin
                 </select>
             </div>
             
-            <div class="filter-group" style="align-self: flex-end;">
+            <div class="filter-group">
                 <button type="button" class="btn btn-sm btn-secondary" 
-                        hx-get="{% url 'htmx_missoes_tabela' %}" 
-                        hx-target="#tab-content">
-                    <i data-lucide="x"></i> Limpar
+                        hx-get="{% url 'htmx_missoes_lista' %}" 
+                        hx-target="#missoes-container">
+                    <i data-lucide="refresh-cw"></i> Limpar
                 </button>
             </div>
         </div>
@@ -73,13 +66,8 @@ Tabela de missões com paginação e filtros para Admin
 <!-- Info de resultados -->
 <div class="table-info mb-2">
     <span class="text-muted">
-        Exibindo {{ page_obj.start_index|default:0 }}-{{ page_obj.end_index|default:0 }} de {{ page_obj.paginator.count }} registros
+        Exibindo {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} registros
     </span>
-    {% if user.pode_gerenciar_missoes %}
-    <button class="btn btn-sm btn-primary" onclick="novaMissao()">
-        <i data-lucide="plus"></i> Nova Missão
-    </button>
-    {% endif %}
 </div>
 
 <!-- Tabela -->
@@ -87,26 +75,38 @@ Tabela de missões com paginação e filtros para Admin
     <table class="table table-hover">
         <thead>
             <tr>
-                <th style="width: 40%;">Nome</th>
+                <th class="sortable" 
+                    hx-get="{% url 'htmx_missoes_lista' %}?ordenar=nome&direcao={% if ordenacao.campo == 'nome' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}&{{ query_string }}"
+                    hx-target="#missoes-container">
+                    Nome
+                    {% if ordenacao.campo == 'nome' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
                 <th>Tipo</th>
                 <th>Status</th>
-                <th>Período</th>
-                <th class="text-center">Oficiais</th>
+                <th>Local</th>
+                <th class="sortable"
+                    hx-get="{% url 'htmx_missoes_lista' %}?ordenar=data_inicio&direcao={% if ordenacao.campo == 'data_inicio' and ordenacao.direcao == 'asc' %}desc{% else %}asc{% endif %}&{{ query_string }}"
+                    hx-target="#missoes-container">
+                    Período
+                    {% if ordenacao.campo == 'data_inicio' %}
+                        <i data-lucide="{% if ordenacao.direcao == 'asc' %}chevron-up{% else %}chevron-down{% endif %}"></i>
+                    {% endif %}
+                </th>
+                <th class="text-center">Designados</th>
                 {% if user.pode_gerenciar_missoes %}
-                <th class="text-center" style="width: 120px;">Ações</th>
+                <th class="text-center">Ações</th>
                 {% endif %}
             </tr>
         </thead>
         <tbody>
             {% for m in page_obj %}
-            <tr>
+            <tr id="missao-{{ m.id }}">
                 <td>
                     <strong>{{ m.nome }}</strong>
                     {% if m.documento_referencia %}
                     <br><small class="text-muted">{{ m.documento_referencia }}</small>
-                    {% endif %}
-                    {% if m.local %}
-                    <br><small class="text-muted"><i data-lucide="map-pin" style="width:12px;height:12px;"></i> {{ m.local|truncatechars:30 }}</small>
                     {% endif %}
                 </td>
                 <td>
@@ -115,12 +115,13 @@ Tabela de missões com paginação e filtros para Admin
                 <td>
                     <span class="badge badge-status-{{ m.status|lower }}">{{ m.get_status_display }}</span>
                 </td>
-                <td style="white-space: nowrap;">
+                <td>{{ m.local|default:"-"|truncatechars:25 }}</td>
+                <td>
                     {% if m.data_inicio %}
                         {{ m.data_inicio|date:"d/m/Y" }}
-                        {% if m.data_fim %}<br><small>até {{ m.data_fim|date:"d/m/Y" }}</small>{% endif %}
+                        {% if m.data_fim %} - {{ m.data_fim|date:"d/m/Y" }}{% endif %}
                     {% else %}
-                        <span class="text-muted">-</span>
+                        -
                     {% endif %}
                 </td>
                 <td class="text-center">
@@ -130,14 +131,22 @@ Tabela de missões com paginação e filtros para Admin
                 <td class="text-center">
                     <div class="btn-group">
                         <button class="btn btn-sm btn-ghost" 
+                                hx-get="{% url 'htmx_missao_organograma' m.id %}"
+                                hx-target="#modal-content"
+                                hx-trigger="click"
+                                onclick="document.getElementById('modal-organograma').classList.add('show')"
+                                title="Ver Organograma">
+                            <i data-lucide="git-branch"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost" 
                                 onclick="editarMissao({{ m.id }})"
                                 title="Editar">
                             <i data-lucide="edit-2"></i>
                         </button>
                         <button class="btn btn-sm btn-ghost text-danger" 
                                 hx-post="{% url 'htmx_missao_excluir' m.id %}"
-                                hx-target="#tab-content"
-                                hx-confirm="Excluir '{{ m.nome }}' e todas as designações vinculadas?"
+                                hx-target="#missoes-container"
+                                hx-confirm="Excluir esta missão e todas as designações vinculadas?"
                                 title="Excluir">
                             <i data-lucide="trash-2"></i>
                         </button>
@@ -147,7 +156,7 @@ Tabela de missões com paginação e filtros para Admin
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" class="text-center text-muted py-4">
+                <td colspan="7" class="text-center text-muted py-4">
                     <i data-lucide="folder-open" style="width:48px;height:48px;opacity:0.3"></i>
                     <p class="mt-2">Nenhuma missão encontrada</p>
                 </td>
@@ -164,15 +173,15 @@ Tabela de missões com paginação e filtros para Admin
         {% if page_obj.has_previous %}
         <li class="page-item">
             <a class="page-link" 
-               hx-get="{% url 'htmx_missoes_tabela' %}?pagina=1&{{ query_string }}"
-               hx-target="#tab-content">
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina=1&{{ query_string }}"
+               hx-target="#missoes-container">
                 <i data-lucide="chevrons-left"></i>
             </a>
         </li>
         <li class="page-item">
             <a class="page-link" 
-               hx-get="{% url 'htmx_missoes_tabela' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}"
-               hx-target="#tab-content">
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}"
+               hx-target="#missoes-container">
                 <i data-lucide="chevron-left"></i>
             </a>
         </li>
@@ -186,8 +195,8 @@ Tabela de missões com paginação e filtros para Admin
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="page-item">
                 <a class="page-link" 
-                   hx-get="{% url 'htmx_missoes_tabela' %}?pagina={{ num }}&{{ query_string }}"
-                   hx-target="#tab-content">{{ num }}</a>
+                   hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ num }}&{{ query_string }}"
+                   hx-target="#missoes-container">{{ num }}</a>
             </li>
             {% endif %}
         {% endfor %}
@@ -195,15 +204,15 @@ Tabela de missões com paginação e filtros para Admin
         {% if page_obj.has_next %}
         <li class="page-item">
             <a class="page-link" 
-               hx-get="{% url 'htmx_missoes_tabela' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}"
-               hx-target="#tab-content">
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}"
+               hx-target="#missoes-container">
                 <i data-lucide="chevron-right"></i>
             </a>
         </li>
         <li class="page-item">
             <a class="page-link" 
-               hx-get="{% url 'htmx_missoes_tabela' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}"
-               hx-target="#tab-content">
+               hx-get="{% url 'htmx_missoes_lista' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}"
+               hx-target="#missoes-container">
                 <i data-lucide="chevrons-right"></i>
             </a>
         </li>
@@ -220,7 +229,7 @@ Tabela de missões com paginação e filtros para Admin
             <h4 id="form-missao-titulo">Nova Missão</h4>
         </div>
         <div class="card-body">
-            <form id="missao-form" hx-post="{% url 'htmx_missao_criar' %}" hx-target="#tab-content">
+            <form id="missao-form" hx-post="{% url 'htmx_missao_criar' %}" hx-target="#missoes-container">
                 {% csrf_token %}
                 <input type="hidden" name="missao_id" id="missao_id">
                 
@@ -281,7 +290,27 @@ Tabela de missões com paginação e filtros para Admin
         </div>
     </div>
 </div>
+
+<!-- Botão Flutuante para Nova Missão -->
+<button class="btn-fab" onclick="novaMissao()" title="Nova Missão">
+    <i data-lucide="plus"></i>
+</button>
 {% endif %}
+
+<!-- Modal para Organograma -->
+<div id="modal-organograma" class="modal-overlay">
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <h3>Organograma da Missão</h3>
+            <button class="modal-close" onclick="document.getElementById('modal-organograma').classList.remove('show')">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="modal-content">
+            <!-- Conteúdo carregado via HTMX -->
+        </div>
+    </div>
+</div>
 
 <script>
 function novaMissao() {
@@ -295,20 +324,20 @@ function novaMissao() {
 }
 
 function editarMissao(id) {
-    fetch('/htmx/missao/' + id + '/dados/')
+    fetch(`/htmx/missao/${id}/dados/`)
         .then(response => response.json())
         .then(data => {
             document.getElementById('form-missao-titulo').textContent = 'Editar Missão';
             document.getElementById('missao_id').value = id;
-            document.querySelector('#missao-form [name=nome]').value = data.nome;
-            document.querySelector('#missao-form [name=tipo]').value = data.tipo;
-            document.querySelector('#missao-form [name=status]').value = data.status;
-            document.querySelector('#missao-form [name=local]').value = data.local || '';
-            document.querySelector('#missao-form [name=data_inicio]').value = data.data_inicio || '';
-            document.querySelector('#missao-form [name=data_fim]').value = data.data_fim || '';
-            document.querySelector('#missao-form [name=documento_referencia]').value = data.documento_referencia || '';
-            document.querySelector('#missao-form [name=descricao]').value = data.descricao || '';
-            document.getElementById('missao-form').setAttribute('hx-post', '/htmx/missao/' + id + '/editar/');
+            document.getElementById('missao-form').querySelector('[name=nome]').value = data.nome;
+            document.getElementById('missao-form').querySelector('[name=tipo]').value = data.tipo;
+            document.getElementById('missao-form').querySelector('[name=status]').value = data.status;
+            document.getElementById('missao-form').querySelector('[name=local]').value = data.local || '';
+            document.getElementById('missao-form').querySelector('[name=data_inicio]').value = data.data_inicio || '';
+            document.getElementById('missao-form').querySelector('[name=data_fim]').value = data.data_fim || '';
+            document.getElementById('missao-form').querySelector('[name=documento_referencia]').value = data.documento_referencia || '';
+            document.getElementById('missao-form').querySelector('[name=descricao]').value = data.descricao || '';
+            document.getElementById('missao-form').setAttribute('hx-post', `/htmx/missao/${id}/editar/`);
             document.getElementById('form-missao').style.display = 'block';
             document.getElementById('form-missao').scrollIntoView({behavior: 'smooth'});
             htmx.process(document.getElementById('missao-form'));
@@ -319,6 +348,10 @@ function fecharFormMissao() {
     document.getElementById('form-missao').style.display = 'none';
 }
 
-// Reinicializar ícones Lucide
-lucide.createIcons();
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'missoes-container') {
+        fecharFormMissao();
+        lucide.createIcons();
+    }
+});
 </script>

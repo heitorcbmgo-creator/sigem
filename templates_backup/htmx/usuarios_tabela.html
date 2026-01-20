@@ -1,0 +1,60 @@
+<!-- Tabela de usuários -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>CPF (Login)</th>
+                <th>Oficial Vinculado</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.cpf }}</td>
+                <td>{{ u.oficial|default:"—" }}</td>
+                <td>
+                    <span class="badge badge-{% if u.role == 'admin' %}danger{% elif u.role == 'gestor' %}warning{% else %}info{% endif %}">
+                        {{ u.get_role_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if u.is_active %}
+                    <span class="badge badge-success">Ativo</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inativo</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="flex gap-1">
+                        <button class="btn btn-sm btn-secondary"
+                                hx-post="{% url 'htmx_usuario_reset_senha' u.id %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Resetar senha para 123456?"
+                                title="Resetar Senha">
+                            <i data-lucide="key"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger"
+                                hx-post="{% url 'htmx_usuario_excluir' u.id %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Confirma exclusão do usuário {{ u.cpf }}?">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-gray">Nenhum usuário cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>lucide.createIcons();</script>

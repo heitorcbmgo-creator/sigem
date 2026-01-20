@@ -1,0 +1,51 @@
+<!-- Lista de solicitações pendentes -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Solicitante</th>
+                <th>Missão</th>
+                <th>Função</th>
+                <th>Documento</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in solicitacoes %}
+            <tr>
+                <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                <td><strong>{{ s.solicitante }}</strong></td>
+                <td>{{ s.nome_missao }}</td>
+                <td>{{ s.funcao_na_missao }}</td>
+                <td>{{ s.documento_referencia|default:"—" }}</td>
+                <td>
+                    <div class="flex gap-1">
+                        <button class="btn btn-sm btn-success"
+                                hx-post="{% url 'htmx_solicitacao_avaliar' s.id %}"
+                                hx-vals='{"acao": "aprovar"}'
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Aprovar esta solicitação?">
+                            <i data-lucide="check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger"
+                                hx-post="{% url 'htmx_solicitacao_avaliar' s.id %}"
+                                hx-vals='{"acao": "recusar"}'
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Recusar esta solicitação?">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-gray">Nenhuma solicitação pendente.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>lucide.createIcons();</script>

@@ -1,0 +1,51 @@
+<!-- Organograma da missão -->
+<div class="organograma">
+    <h3 style="text-align: center; color: #8b0000; margin-bottom: 1rem;">
+        {{ missao.nome }}
+    </h3>
+    
+    <div style="text-align: center; margin-bottom: 1rem;">
+        <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+            {{ missao.get_status_display }}
+        </span>
+        <span style="color: #6b7280; font-size: 0.85rem; margin-left: 0.5rem;">
+            {{ missao.get_tipo_display }} | {{ missao.local|default:"Local não informado" }}
+        </span>
+    </div>
+    
+    {% if superiores %}
+    <!-- Nível Superior (Comando) -->
+    <div class="organograma-nivel">
+        {% for d in superiores %}
+        <div class="organograma-card comando">
+            <img src="{{ d.oficial.foto_url }}" alt="Foto">
+            <h4>{{ d.oficial.nome_guerra|default:d.oficial.nome }}</h4>
+            <p>{{ d.oficial.posto }} — {{ d.oficial.quadro }}</p>
+            <span class="organograma-funcao">{{ d.get_funcao_na_missao_display }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if subordinados %}
+    <div class="organograma-linha"></div>
+    {% endif %}
+    {% endif %}
+    
+    {% if subordinados %}
+    <!-- Nível Subordinado (Membros) -->
+    <div class="organograma-nivel">
+        {% for d in subordinados %}
+        <div class="organograma-card">
+            <img src="{{ d.oficial.foto_url }}" alt="Foto">
+            <h4>{{ d.oficial.nome_guerra|default:d.oficial.nome }}</h4>
+            <p>{{ d.oficial.posto }} — {{ d.oficial.quadro }}</p>
+            <span class="organograma-funcao" style="background: #6b7280;">{{ d.get_funcao_na_missao_display }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if not superiores and not subordinados %}
+    <p class="text-gray text-center">Nenhum oficial designado para esta missão.</p>
+    {% endif %}
+</div>

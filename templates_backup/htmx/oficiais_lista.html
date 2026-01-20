@@ -1,0 +1,21 @@
+<!-- Lista de oficiais com checkboxes para seleção -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem;">
+    {% for oficial in oficiais %}
+    <label class="flex items-center gap-2" style="padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+        <input type="checkbox" name="oficial" value="{{ oficial.id }}" style="accent-color: #8b0000;">
+        <span>
+            <strong>{{ oficial.nome_guerra|default:oficial.nome }}</strong>
+            <small style="color: #6b7280;">({{ oficial.posto }})</small>
+        </span>
+    </label>
+    {% empty %}
+    <p class="text-gray">Nenhum oficial encontrado.</p>
+    {% endfor %}
+</div>
+
+<style>
+label:has(input:checked) {
+    background: #fef2f2;
+    border-color: #8b0000;
+}
+</style>

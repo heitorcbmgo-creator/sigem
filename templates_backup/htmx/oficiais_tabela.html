@@ -1,0 +1,53 @@
+<!-- Tabela de oficiais para administração -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Posto</th>
+                <th>Quadro</th>
+                <th>OBM</th>
+                <th>CPF</th>
+                <th>RG</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for oficial in oficiais %}
+            <tr>
+                <td>{{ oficial.id }}</td>
+                <td><strong>{{ oficial.nome_guerra|default:oficial.nome }}</strong></td>
+                <td>{{ oficial.posto }}</td>
+                <td>{{ oficial.quadro }}</td>
+                <td>{{ oficial.obm|default:"—" }}</td>
+                <td>{{ oficial.cpf }}</td>
+                <td>{{ oficial.rg }}</td>
+                <td>
+                    <div class="flex gap-1">
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="editarOficial({{ oficial.id }})">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger"
+                                hx-post="{% url 'htmx_oficial_excluir' oficial.id %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Confirma exclusão de {{ oficial }}?">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center text-gray">Nenhum oficial cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+lucide.createIcons();
+</script>

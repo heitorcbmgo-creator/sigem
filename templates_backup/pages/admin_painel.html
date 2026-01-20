@@ -27,7 +27,7 @@
     {% if user.pode_gerenciar_missoes %}
     <button class="tab {% if aba_ativa == 'missoes' %}active{% endif %}"
             data-tipo="missoes"
-            hx-get="{% url 'htmx_missoes_tabela' %}"
+            hx-get="{% url 'htmx_missoes_lista' %}"
             hx-target="#tab-content"
             onclick="setActiveTab(this, 'missoes')">
         <i data-lucide="folder-kanban"></i> Missões
@@ -111,18 +111,24 @@
 <!-- Conteúdo da Aba -->
 <div class="card">
     <div class="card-body">
-        <!-- Carregar aba inicial baseada nas permissões -->
+        <!-- O ID muda conforme a aba ativa para o HTMX funcionar corretamente -->
         {% if user.is_admin %}
-        <div id="tab-content" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
-            <p class="text-gray text-center">Carregando...</p>
+        <div id="oficiais-container">
+            <div id="tab-content" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
+                <p class="text-gray text-center">Carregando...</p>
+            </div>
         </div>
         {% elif user.pode_gerenciar_missoes %}
-        <div id="tab-content" hx-get="{% url 'htmx_missoes_tabela' %}" hx-trigger="load">
-            <p class="text-gray text-center">Carregando...</p>
+        <div id="missoes-container">
+            <div id="tab-content" hx-get="{% url 'htmx_missoes_lista' %}" hx-trigger="load">
+                <p class="text-gray text-center">Carregando...</p>
+            </div>
         </div>
         {% elif user.pode_gerenciar_solicitacoes %}
-        <div id="tab-content" hx-get="{% url 'htmx_solicitacoes_lista' %}" hx-trigger="load">
-            <p class="text-gray text-center">Carregando...</p>
+        <div id="solicitacoes-container">
+            <div id="tab-content" hx-get="{% url 'htmx_solicitacoes_lista' %}" hx-trigger="load">
+                <p class="text-gray text-center">Carregando...</p>
+            </div>
         </div>
         {% else %}
         <div id="tab-content">
@@ -165,6 +171,16 @@
 <script>
 let tipoAtual = '{% if user.is_admin %}oficiais{% else %}missoes{% endif %}';
 
+// Mapeamento de tipos para containers
+const containerMap = {
+    'oficiais': 'oficiais-container',
+    'missoes': 'missoes-container',
+    'designacoes': 'designacoes-container',
+    'unidades': 'unidades-container',
+    'usuarios': 'usuarios-container',
+    'solicitacoes': 'solicitacoes-container'
+};
+
 function setActiveTab(clickedTab, tipo) {
     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
     clickedTab.classList.add('active');
@@ -197,6 +213,11 @@ function setActiveTab(clickedTab, tipo) {
     if (inputArquivo) inputArquivo.value = '';
     if (nomeArquivo) nomeArquivo.textContent = '';
     if (btnImportar) btnImportar.style.display = 'none';
+    
+    // Atualizar o container ID para que o HTMX tenha o target correto
+    const cardBody = document.querySelector('.card-body');
+    const containerId = containerMap[tipo] || 'tab-content';
+    cardBody.innerHTML = `<div id="${containerId}"><p class="text-gray text-center">Carregando...</p></div>`;
 }
 
 function mostrarNomeArquivo(input) {

@@ -55,9 +55,9 @@ def redirecionar_por_perfil(request):
     """Redireciona o usuário para a página inicial conforme seu perfil."""
     user = request.user
     
-    if user.role in ['admin', 'comando_geral']:
+    if user.role in ['admin', 'comando_geral', 'bm3']:
         return redirect('dashboard')
-    elif user.role in ['corregedor', 'bm3', 'comandante']:
+    elif user.role in ['corregedor', 'comandante']:
         return redirect('comparar_oficiais')
     else:  # oficial
         return redirect('painel_oficial')
@@ -419,34 +419,7 @@ def htmx_oficial_excluir(request, pk):
 # ============================================================
 @login_required
 def htmx_missoes_lista(request):
-    """Retorna a lista de missões filtrada (cards para página de Missões)."""
-    
-    missoes = Missao.objects.all().order_by('-data_inicio')
-    
-    # Filtros
-    tipo = request.GET.get('tipo', '')
-    status = request.GET.get('status', '')
-    local = request.GET.get('local', '')
-    data_inicio = request.GET.get('data_inicio', '')
-    data_fim = request.GET.get('data_fim', '')
-    
-    if tipo:
-        missoes = missoes.filter(tipo=tipo)
-    if status:
-        missoes = missoes.filter(status=status)
-    if local:
-        missoes = missoes.filter(local__icontains=local)
-    if data_inicio:
-        missoes = missoes.filter(data_inicio__gte=data_inicio)
-    if data_fim:
-        missoes = missoes.filter(data_fim__lte=data_fim)
-    
-    return render(request, 'htmx/missoes_lista.html', {'missoes': missoes})
-
-
-@login_required
-def htmx_missoes_tabela(request):
-    """Retorna tabela de missões com paginação e filtros (para Admin)."""
+    """Retorna a lista de missões com paginação e filtros."""
     
     missoes = Missao.objects.all()
     
@@ -613,25 +586,6 @@ def htmx_missao_editar(request, pk):
 
 
 @login_required
-def htmx_missao_dados(request, pk):
-    """Retorna dados de uma missão em JSON para edição."""
-    
-    missao = get_object_or_404(Missao, pk=pk)
-    
-    return JsonResponse({
-        'id': missao.id,
-        'nome': missao.nome,
-        'tipo': missao.tipo,
-        'status': missao.status,
-        'descricao': missao.descricao,
-        'local': missao.local,
-        'data_inicio': missao.data_inicio.strftime('%Y-%m-%d') if missao.data_inicio else '',
-        'data_fim': missao.data_fim.strftime('%Y-%m-%d') if missao.data_fim else '',
-        'documento_referencia': missao.documento_referencia,
-    })
-
-
-@login_required
 @require_POST
 def htmx_missao_excluir(request, pk):
     """Exclui uma missão via HTMX."""
@@ -651,12 +605,30 @@ def htmx_missao_excluir(request, pk):
     return htmx_missoes_lista(request)
 
 
+@login_required
+def htmx_missao_dados(request, pk):
+    """Retorna dados de uma missão em JSON para edição."""
+    
+    missao = get_object_or_404(Missao, pk=pk)
+    
+    return JsonResponse({
+        'id': missao.id,
+        'nome': missao.nome,
+        'tipo': missao.tipo,
+        'status': missao.status,
+        'descricao': missao.descricao,
+        'local': missao.local,
+        'data_inicio': missao.data_inicio.strftime('%Y-%m-%d') if missao.data_inicio else '',
+        'data_fim': missao.data_fim.strftime('%Y-%m-%d') if missao.data_fim else '',
+        'documento_referencia': missao.documento_referencia,
+    })
+
 # ============================================================
 # 🔄 HTMX - DESIGNAÇÕES
 # ============================================================
 @login_required
 def htmx_designacoes_lista(request):
-    """Retorna a lista de designações com paginação e filtros (para Admin)."""
+    """Retorna a lista de designações com paginação, filtros e ordenação."""
     
     designacoes = Designacao.objects.select_related('missao', 'oficial').all()
     
@@ -706,7 +678,10 @@ def htmx_designacoes_lista(request):
     paginator = Paginator(designacoes, por_pagina)
     page_obj = paginator.get_page(pagina)
     
-    # Query string para paginação
+    # ============================================================
+    # DADOS PARA O TEMPLATE
+    # ============================================================
+    # Montar query string para paginação (sem o parâmetro pagina)
     query_params = request.GET.copy()
     if 'pagina' in query_params:
         del query_params['pagina']
@@ -787,22 +762,6 @@ def htmx_designacao_editar(request, pk):
 
 
 @login_required
-def htmx_designacao_dados(request, pk):
-    """Retorna dados de uma designação em JSON para edição."""
-    
-    designacao = get_object_or_404(Designacao, pk=pk)
-    
-    return JsonResponse({
-        'id': designacao.id,
-        'missao_id': designacao.missao_id,
-        'oficial_id': designacao.oficial_id,
-        'funcao_na_missao': designacao.funcao_na_missao,
-        'complexidade': designacao.complexidade,
-        'observacoes': designacao.observacoes,
-    })
-
-
-@login_required
 @require_POST
 def htmx_designacao_excluir(request, pk):
     """Exclui uma designação via HTMX."""
@@ -820,6 +779,21 @@ def htmx_designacao_excluir(request, pk):
     
     return htmx_designacoes_lista(request)
 
+
+@login_required
+def htmx_designacao_dados(request, pk):
+    """Retorna dados de uma designação em JSON para edição."""
+    
+    designacao = get_object_or_404(Designacao, pk=pk)
+    
+    return JsonResponse({
+        'id': designacao.id,
+        'missao_id': designacao.missao_id,
+        'oficial_id': designacao.oficial_id,
+        'funcao_na_missao': designacao.funcao_na_missao,
+        'complexidade': designacao.complexidade,
+        'observacoes': designacao.observacoes,
+    })
 
 # ============================================================
 # 🔄 HTMX - UNIDADES
@@ -1063,15 +1037,20 @@ def htmx_solicitacao_avaliar(request, pk):
     solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
     
     acao = request.POST.get('acao')  # 'aprovar' ou 'recusar'
+    observacao = request.POST.get('observacao', '')
     
     try:
-        solicitacao.status = 'APROVADA' if acao == 'aprovar' else 'RECUSADA'
-        solicitacao.avaliado_por = request.user
-        solicitacao.data_avaliacao = timezone.now()
-        solicitacao.observacao_avaliador = request.POST.get('observacao', '')
-        solicitacao.save()
-        
-        messages.success(request, f'Solicitação {solicitacao.get_status_display().lower()}!')
+        if acao == 'aprovar':
+            # Usar o método aprovar() que cria a missão e designação automaticamente
+            designacao = solicitacao.aprovar(request.user, observacao)
+            
+            if designacao:
+                messages.success(request, f'Solicitação aprovada! Designação criada para {solicitacao.solicitante}.')
+            else:
+                messages.warning(request, 'Solicitação aprovada, mas não foi possível criar a designação.')
+        else:
+            solicitacao.recusar(request.user, observacao)
+            messages.info(request, 'Solicitação recusada.')
         
     except Exception as e:
         messages.error(request, f'Erro ao avaliar: {str(e)}')

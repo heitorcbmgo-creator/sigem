@@ -42,9 +42,7 @@ urlpatterns = [
     # 🔄 ENDPOINTS HTMX - MISSÕES
     # ============================================================
     path('htmx/missoes/lista/', views.htmx_missoes_lista, name='htmx_missoes_lista'),
-    path('htmx/missoes/tabela/', views.htmx_missoes_tabela, name='htmx_missoes_tabela'),
     path('htmx/missao/<int:pk>/organograma/', views.htmx_missao_organograma, name='htmx_missao_organograma'),
-    path('htmx/missao/<int:pk>/dados/', views.htmx_missao_dados, name='htmx_missao_dados'),
     path('htmx/missao/criar/', views.htmx_missao_criar, name='htmx_missao_criar'),
     path('htmx/missao/<int:pk>/editar/', views.htmx_missao_editar, name='htmx_missao_editar'),
     path('htmx/missao/<int:pk>/excluir/', views.htmx_missao_excluir, name='htmx_missao_excluir'),
@@ -53,10 +51,12 @@ urlpatterns = [
     # 🔄 ENDPOINTS HTMX - DESIGNAÇÕES
     # ============================================================
     path('htmx/designacoes/lista/', views.htmx_designacoes_lista, name='htmx_designacoes_lista'),
-    path('htmx/designacao/<int:pk>/dados/', views.htmx_designacao_dados, name='htmx_designacao_dados'),
     path('htmx/designacao/criar/', views.htmx_designacao_criar, name='htmx_designacao_criar'),
     path('htmx/designacao/<int:pk>/editar/', views.htmx_designacao_editar, name='htmx_designacao_editar'),
     path('htmx/designacao/<int:pk>/excluir/', views.htmx_designacao_excluir, name='htmx_designacao_excluir'),
+        # Endpoint para dados JSON (edição)
+    path('htmx/designacao/<int:pk>/dados/', views.htmx_designacao_dados, name='htmx_designacao_dados'),
+    path('htmx/missao/<int:pk>/dados/', views.htmx_missao_dados, name='htmx_missao_dados'),
     
     # ============================================================
     # 🔄 ENDPOINTS HTMX - UNIDADES
