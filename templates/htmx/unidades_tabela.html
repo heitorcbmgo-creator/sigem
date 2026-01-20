@@ -1,40 +1,232 @@
-<!-- Tabela de unidades -->
-<div class="table-container">
-    <table>
+<!-- 
+============================================================
+Template: htmx/unidades_tabela.html
+Tabela de unidades com paginação e filtros para Admin
+============================================================
+-->
+
+<!-- Filtros -->
+<div class="table-filters">
+    <form hx-get="{% url 'htmx_unidades_lista' %}" 
+          hx-target="#tab-content" 
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+        
+        <div class="filters-row">
+            <div class="filter-group filter-group-search">
+                <label>Buscar</label>
+                <input type="text" name="busca" placeholder="Nome ou sigla..." 
+                       value="{{ filtros.busca|default:'' }}" class="form-control">
+            </div>
+            
+            <div class="filter-group">
+                <label>Tipo</label>
+                <select name="tipo" class="form-control">
+                    <option value="">Todos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Por página</label>
+                <select name="por_pagina" class="form-control">
+                    <option value="10" {% if filtros.por_pagina == '10' %}selected{% endif %}>10</option>
+                    <option value="25" {% if filtros.por_pagina == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.por_pagina == '50' %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.por_pagina == '100' %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            
+            <div class="filter-group filter-group-actions">
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-secondary" 
+                        hx-get="{% url 'htmx_unidades_lista' %}" 
+                        hx-target="#tab-content">
+                    <i data-lucide="x"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Info de resultados -->
+<div class="table-info">
+    <span class="text-muted">
+        Exibindo {{ page_obj.start_index|default:0 }}-{{ page_obj.end_index|default:0 }} de {{ page_obj.paginator.count }} unidades
+    </span>
+    {% if user.pode_gerenciar_unidades %}
+    <button class="btn btn-sm btn-primary" onclick="novaUnidade()">
+        <i data-lucide="plus"></i> Nova Unidade
+    </button>
+    {% endif %}
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+    <table class="table table-hover">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Nome</th>
+                <th style="width: 35%;">Nome</th>
                 <th>Sigla</th>
                 <th>Tipo</th>
                 <th>Comando Superior</th>
-                <th>Ações</th>
+                {% if user.pode_gerenciar_unidades %}
+                <th class="text-center" style="width: 100px;">Ações</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
-            {% for u in unidades %}
+            {% for u in page_obj %}
             <tr>
-                <td>{{ u.id }}</td>
                 <td><strong>{{ u.nome }}</strong></td>
-                <td>{{ u.sigla|default:"—" }}</td>
+                <td><span class="badge badge-secondary">{{ u.sigla|default:"-" }}</span></td>
                 <td>{{ u.get_tipo_display }}</td>
-                <td>{{ u.comando_superior|default:"—" }}</td>
-                <td>
-                    <button class="btn btn-sm btn-danger"
-                            hx-post="{% url 'htmx_unidade_excluir' u.id %}"
-                            hx-target="closest tr"
-                            hx-swap="outerHTML"
-                            hx-confirm="Confirma exclusão?">
-                        <i data-lucide="trash-2"></i>
-                    </button>
+                <td>{{ u.comando_superior|default:"-" }}</td>
+                {% if user.pode_gerenciar_unidades %}
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-ghost" 
+                                onclick="editarUnidade({{ u.id }})"
+                                title="Editar">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-danger" 
+                                hx-post="{% url 'htmx_unidade_excluir' u.id %}"
+                                hx-target="#tab-content"
+                                hx-confirm="Excluir {{ u }}?"
+                                title="Excluir">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" class="text-center text-gray">Nenhuma unidade cadastrada.</td>
+                <td colspan="5" class="text-center text-muted py-4">
+                    <i data-lucide="building" style="width:48px;height:48px;opacity:0.3"></i>
+                    <p class="mt-2">Nenhuma unidade encontrada</p>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-<script>lucide.createIcons();</script>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination-container">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_unidades_lista' %}?pagina=1&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevrons-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_unidades_lista' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" hx-get="{% url 'htmx_unidades_lista' %}?pagina={{ num }}&{{ query_string }}" hx-target="#tab-content">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_unidades_lista' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_unidades_lista' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevrons-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Formulário de Criação/Edição -->
+{% if user.pode_gerenciar_unidades %}
+<div id="form-unidade" class="mt-4" style="display: none;">
+    <div class="card card-form">
+        <div class="card-header">
+            <h4 id="form-unidade-titulo">Nova Unidade</h4>
+        </div>
+        <div class="card-body">
+            <form id="unidade-form" hx-post="{% url 'htmx_unidade_criar' %}" hx-target="#tab-content">
+                {% csrf_token %}
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Nome *</label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Sigla</label>
+                        <input type="text" name="sigla" class="form-control">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Tipo *</label>
+                        <select name="tipo" class="form-control" required>
+                            {% for value, label in tipo_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Comando Superior</label>
+                        <select name="comando_superior_id" class="form-control">
+                            <option value="">Nenhum (Unidade raiz)</option>
+                            {% for un in unidades_disponiveis %}
+                            <option value="{{ un.id }}">{{ un.sigla|default:un.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharFormUnidade()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function novaUnidade() {
+    document.getElementById('form-unidade-titulo').textContent = 'Nova Unidade';
+    document.getElementById('unidade-form').reset();
+    document.getElementById('unidade-form').setAttribute('hx-post', '{% url "htmx_unidade_criar" %}');
+    document.getElementById('form-unidade').style.display = 'block';
+    document.getElementById('form-unidade').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('unidade-form'));
+}
+
+function editarUnidade(id) {
+    alert('Funcionalidade de edição em desenvolvimento.');
+}
+
+function fecharFormUnidade() {
+    document.getElementById('form-unidade').style.display = 'none';
+}
+
+lucide.createIcons();
+</script>

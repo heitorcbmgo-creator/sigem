@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Visão Geral{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="layout-dashboard"></i>
+        Visão Geral
+    </h1>
+    <p class="page-subtitle">Acompanhe as métricas e indicadores do CBMGO</p>
+</div>
+
+<!-- Totalizadores Principais -->
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <p class="stat-card-label">Total de Oficiais Ativos</p>
+        <p class="stat-card-value">{{ total_oficiais }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-card-label">Missões em Andamento</p>
+        <p class="stat-card-value">{{ total_missoes_ativas }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-card-label">Total de Missões</p>
+        <p class="stat-card-value">{{ total_missoes }}</p>
+    </div>
+</div>
+
+<!-- Missões por Tipo -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="pie-chart"></i>
+            Missões em Andamento por Tipo
+        </h2>
+    </div>
+    <div class="card-body">
+        <div class="dashboard-grid">
+            {% for item in missoes_por_tipo %}
+            <div class="stat-card {{ item.tipo|lower }}">
+                <p class="stat-card-label">{{ item.tipo }}</p>
+                <p class="stat-card-value">{{ item.total }}</p>
+            </div>
+            {% empty %}
+            <p class="text-gray">Nenhuma missão em andamento.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- Oficiais Mais Escalados -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="users"></i>
+                Oficiais Mais Escalados
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Oficial</th>
+                            <th>Posto</th>
+                            <th class="text-center">Missões Ativas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for oficial in oficiais_mais_escalados %}
+                        <tr>
+                            <td>
+                                <strong>{{ oficial.nome_guerra|default:oficial.nome }}</strong>
+                            </td>
+                            <td>{{ oficial.posto }}</td>
+                            <td class="text-center">
+                                <span class="badge badge-{% if oficial.total_designacoes > 3 %}danger{% elif oficial.total_designacoes > 1 %}warning{% else %}success{% endif %}">
+                                    {{ oficial.total_designacoes }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-gray">Nenhum oficial com missões ativas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Missões Recentes -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="clock"></i>
+                Missões Recentes
+            </h2>
+            <a href="{% url 'missoes_dashboard' %}" class="btn btn-sm btn-secondary">
+                Ver todas
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Missão</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for missao in missoes_recentes %}
+                        <tr>
+                            <td><strong>{{ missao.nome }}</strong></td>
+                            <td>{{ missao.get_tipo_display }}</td>
+                            <td>
+                                <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+                                    {{ missao.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-gray">Nenhuma missão cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+<!-- Cards de oficiais para comparação -->
+<div class="flex flex-wrap gap-2 justify-center">
+    {% for oficial in oficiais %}
+    <div class="officer-card">
+        <img src="{{ oficial.foto_url }}" alt="Foto" class="officer-photo">
+        <h3 class="officer-name">{{ oficial.nome_guerra|default:oficial.nome }}</h3>
+        <p class="officer-rank">{{ oficial.posto }} — {{ oficial.quadro }}</p>
+        <p class="officer-unit">{{ oficial.obm|default:"Sem lotação" }}</p>
+        
+        <div class="officer-stats">
+            <p><strong>Missões Ativas:</strong> {{ oficial.total_missoes }}</p>
+            <p><strong>Funções de Chefia:</strong> {{ oficial.total_chefia }}</p>
+            <p><strong>Score:</strong> {{ oficial.score|floatformat:1 }}</p>
+        </div>
+        
+        {% if oficial.funcao %}
+        <span class="officer-function">{{ oficial.funcao }}</span>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p class="text-gray">Nenhum oficial selecionado.</p>
+    {% endfor %}
+</div>

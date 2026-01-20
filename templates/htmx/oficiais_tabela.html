@@ -1,53 +1,312 @@
-<!-- Tabela de oficiais para administração -->
-<div class="table-container">
-    <table>
+<!-- 
+============================================================
+Template: htmx/oficiais_tabela.html
+Tabela de oficiais com paginação e filtros para Admin
+============================================================
+-->
+
+<!-- Filtros -->
+<div class="table-filters">
+    <form hx-get="{% url 'htmx_oficiais_lista' %}" 
+          hx-target="#tab-content" 
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+        
+        <div class="filters-row">
+            <div class="filter-group filter-group-search">
+                <label>Buscar</label>
+                <input type="text" name="busca" placeholder="Nome, CPF ou RG..." 
+                       value="{{ filtros.busca|default:'' }}" class="form-control">
+            </div>
+            
+            <div class="filter-group">
+                <label>Posto</label>
+                <select name="posto" class="form-control">
+                    <option value="">Todos</option>
+                    {% for value, label in posto_choices %}
+                    <option value="{{ value }}" {% if filtros.posto == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Quadro</label>
+                <select name="quadro" class="form-control">
+                    <option value="">Todos</option>
+                    {% for value, label in quadro_choices %}
+                    <option value="{{ value }}" {% if filtros.quadro == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>OBM</label>
+                <select name="obm" class="form-control">
+                    <option value="">Todas</option>
+                    {% for obm in obms_disponiveis %}
+                    {% if obm %}
+                    <option value="{{ obm }}" {% if filtros.obm == obm %}selected{% endif %}>{{ obm }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Status</label>
+                <select name="ativo" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="true" {% if filtros.ativo == 'true' %}selected{% endif %}>Ativos</option>
+                    <option value="false" {% if filtros.ativo == 'false' %}selected{% endif %}>Inativos</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Por página</label>
+                <select name="por_pagina" class="form-control">
+                    <option value="10" {% if filtros.por_pagina == '10' %}selected{% endif %}>10</option>
+                    <option value="25" {% if filtros.por_pagina == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.por_pagina == '50' %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.por_pagina == '100' %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            
+            <div class="filter-group filter-group-actions">
+                <label>&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-secondary" 
+                        hx-get="{% url 'htmx_oficiais_lista' %}" 
+                        hx-target="#tab-content">
+                    <i data-lucide="x"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Info de resultados -->
+<div class="table-info">
+    <span class="text-muted">
+        Exibindo {{ page_obj.start_index|default:0 }}-{{ page_obj.end_index|default:0 }} de {{ page_obj.paginator.count }} oficiais
+    </span>
+    {% if user.pode_gerenciar_oficiais %}
+    <button class="btn btn-sm btn-primary" onclick="novoOficial()">
+        <i data-lucide="plus"></i> Novo Oficial
+    </button>
+    {% endif %}
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+    <table class="table table-hover">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Nome</th>
+                <th style="width: 30%;">Oficial</th>
                 <th>Posto</th>
                 <th>Quadro</th>
                 <th>OBM</th>
                 <th>CPF</th>
-                <th>RG</th>
-                <th>Ações</th>
+                <th>Status</th>
+                {% if user.pode_gerenciar_oficiais %}
+                <th class="text-center" style="width: 100px;">Ações</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
-            {% for oficial in oficiais %}
+            {% for o in page_obj %}
             <tr>
-                <td>{{ oficial.id }}</td>
-                <td><strong>{{ oficial.nome_guerra|default:oficial.nome }}</strong></td>
-                <td>{{ oficial.posto }}</td>
-                <td>{{ oficial.quadro }}</td>
-                <td>{{ oficial.obm|default:"—" }}</td>
-                <td>{{ oficial.cpf }}</td>
-                <td>{{ oficial.rg }}</td>
                 <td>
-                    <div class="flex gap-1">
-                        <button class="btn btn-sm btn-secondary" 
-                                onclick="editarOficial({{ oficial.id }})">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="{{ o.foto_url }}" alt="" 
+                             style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <strong>{{ o.nome_guerra|default:o.nome }}</strong>
+                            <br><small class="text-muted">{{ o.nome }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="badge badge-secondary">{{ o.posto }}</span></td>
+                <td>{{ o.quadro }}</td>
+                <td>{{ o.obm|default:"-" }}</td>
+                <td style="font-family: monospace; font-size: 0.85rem;">{{ o.cpf }}</td>
+                <td>
+                    {% if o.ativo %}
+                    <span class="badge badge-success">Ativo</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inativo</span>
+                    {% endif %}
+                </td>
+                {% if user.pode_gerenciar_oficiais %}
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-ghost" 
+                                onclick="editarOficial({{ o.id }})"
+                                title="Editar">
                             <i data-lucide="edit-2"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger"
-                                hx-post="{% url 'htmx_oficial_excluir' oficial.id %}"
-                                hx-target="closest tr"
-                                hx-swap="outerHTML"
-                                hx-confirm="Confirma exclusão de {{ oficial }}?">
+                        <button class="btn btn-sm btn-ghost text-danger" 
+                                hx-post="{% url 'htmx_oficial_excluir' o.id %}"
+                                hx-target="#tab-content"
+                                hx-confirm="Excluir {{ o }}?"
+                                title="Excluir">
                             <i data-lucide="trash-2"></i>
                         </button>
                     </div>
                 </td>
+                {% endif %}
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" class="text-center text-gray">Nenhum oficial cadastrado.</td>
+                <td colspan="7" class="text-center text-muted py-4">
+                    <i data-lucide="users" style="width:48px;height:48px;opacity:0.3"></i>
+                    <p class="mt-2">Nenhum oficial encontrado</p>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination-container">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_oficiais_lista' %}?pagina=1&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevrons-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_oficiais_lista' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" hx-get="{% url 'htmx_oficiais_lista' %}?pagina={{ num }}&{{ query_string }}" hx-target="#tab-content">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_oficiais_lista' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" hx-get="{% url 'htmx_oficiais_lista' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}" hx-target="#tab-content">
+                <i data-lucide="chevrons-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Formulário de Criação/Edição -->
+{% if user.pode_gerenciar_oficiais %}
+<div id="form-oficial" class="mt-4" style="display: none;">
+    <div class="card card-form">
+        <div class="card-header">
+            <h4 id="form-oficial-titulo">Novo Oficial</h4>
+        </div>
+        <div class="card-body">
+            <form id="oficial-form" hx-post="{% url 'htmx_oficial_criar' %}" hx-target="#tab-content">
+                {% csrf_token %}
+                <input type="hidden" name="oficial_id" id="oficial_id">
+                
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Nome Completo *</label>
+                        <input type="text" name="nome" id="of-nome" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Nome de Guerra</label>
+                        <input type="text" name="nome_guerra" id="of-nome_guerra" class="form-control">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Posto *</label>
+                        <select name="posto" id="of-posto" class="form-control" required>
+                            {% for value, label in posto_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label>CPF *</label>
+                        <input type="text" name="cpf" id="of-cpf" class="form-control" required maxlength="11">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>RG Militar *</label>
+                        <input type="text" name="rg" id="of-rg" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>Quadro *</label>
+                        <select name="quadro" id="of-quadro" class="form-control" required>
+                            {% for value, label in quadro_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>OBM</label>
+                        <input type="text" name="obm" id="of-obm" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label>Função</label>
+                        <input type="text" name="funcao" id="of-funcao" class="form-control">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>E-mail</label>
+                        <input type="email" name="email" id="of-email" class="form-control">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label>Telefone</label>
+                        <input type="text" name="telefone" id="of-telefone" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharFormOficial()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
+function novoOficial() {
+    document.getElementById('form-oficial-titulo').textContent = 'Novo Oficial';
+    document.getElementById('oficial-form').reset();
+    document.getElementById('oficial_id').value = '';
+    document.getElementById('oficial-form').setAttribute('hx-post', '{% url "htmx_oficial_criar" %}');
+    document.getElementById('form-oficial').style.display = 'block';
+    document.getElementById('form-oficial').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('oficial-form'));
+}
+
+function editarOficial(id) {
+    // Para edição completa, seria necessário um endpoint de dados
+    // Por enquanto, abre o formulário vazio
+    alert('Funcionalidade de edição em desenvolvimento. Use o Django Admin para edições.');
+}
+
+function fecharFormOficial() {
+    document.getElementById('form-oficial').style.display = 'none';
+}
+
 lucide.createIcons();
 </script>

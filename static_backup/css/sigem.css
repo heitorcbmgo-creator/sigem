@@ -907,15 +907,14 @@ tr:hover td {
 .hidden { display: none; }
 
 /* ============================================================
-   🔍 FILTROS DE TABELA (Admin)
+   FILTROS DE TABELA
    ============================================================ */
+
 .table-filters {
-    background: white;
-    border: 1px solid var(--sigem-gray-200);
-    border-radius: var(--radius-md);
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow-sm);
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid #e9ecef;
 }
 
 .filters-form {
@@ -932,82 +931,63 @@ tr:hover td {
 .filter-group {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    flex: 1;
-    min-width: 140px;
-    max-width: 200px;
-}
-
-.filter-group.filter-group-search {
-    flex: 2;
-    max-width: 280px;
-}
-
-.filter-group.filter-group-actions {
-    flex: 0 0 auto;
-    min-width: auto;
-    max-width: none;
+    gap: 0.25rem;
+    min-width: 120px;
 }
 
 .filter-group label {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: var(--sigem-gray-500);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-.filter-group .form-control,
 .filter-group .form-control-sm {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--sigem-gray-300);
-    border-radius: var(--radius-sm);
-    background: white;
-    color: var(--sigem-gray-800);
-    transition: var(--transition);
-    height: 38px;
-}
-
-.filter-group .form-control:focus,
-.filter-group .form-control-sm:focus {
-    outline: none;
-    border-color: var(--sigem-red);
-    box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.1);
-}
-
-.filter-group select.form-control,
-.filter-group select.form-control-sm {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    padding-right: 2rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    height: auto;
 }
 
 /* ============================================================
-   📊 INFO E AÇÕES DA TABELA
+   INFORMAÇÕES DA TABELA
    ============================================================ */
+
 .table-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 0;
-    font-size: 0.875rem;
-}
-
-.table-info .text-muted {
-    color: var(--sigem-gray-500);
+    font-size: 0.85rem;
 }
 
 /* ============================================================
-   📑 PAGINAÇÃO
+   COLUNAS ORDENÁVEIS
    ============================================================ */
+
+.table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.table th.sortable:hover {
+    background: #f0f0f0;
+}
+
+.table th.sortable i {
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* ============================================================
+   PAGINAÇÃO
+   ============================================================ */
+
 .pagination-container {
     display: flex;
     justify-content: center;
-    padding: 1rem 0;
 }
 
 .pagination {
@@ -1016,11 +996,6 @@ tr:hover td {
     padding: 0;
     margin: 0;
     gap: 0.25rem;
-    background: white;
-    padding: 0.5rem;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--sigem-gray-200);
 }
 
 .page-item {
@@ -1034,26 +1009,26 @@ tr:hover td {
     min-width: 36px;
     height: 36px;
     padding: 0 0.5rem;
-    border: 1px solid transparent;
+    border: 1px solid #dee2e6;
     background: white;
-    color: var(--sigem-gray-700);
-    font-size: 0.875rem;
-    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.9rem;
     text-decoration: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--border-radius);
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.2s;
 }
 
 .page-link:hover {
-    background: var(--sigem-gray-100);
-    color: var(--sigem-red);
+    background: #f8f9fa;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .page-item.active .page-link {
-    background: var(--sigem-red);
+    background: var(--primary-color);
+    border-color: var(--primary-color);
     color: white;
-    border-color: var(--sigem-red);
 }
 
 .page-link i {
@@ -1062,31 +1037,52 @@ tr:hover td {
 }
 
 /* ============================================================
-   📝 FORMULÁRIO DE CRIAÇÃO/EDIÇÃO (Card Form)
+   AVATAR PEQUENO
    ============================================================ */
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+}
+
+/* ============================================================
+   BADGES DE TIPO E STATUS
+   ============================================================ */
+
+.badge-tipo-operacional { background: #dc3545; color: white; }
+.badge-tipo-administrativa { background: #6c757d; color: white; }
+.badge-tipo-ensino { background: #17a2b8; color: white; }
+.badge-tipo-correicional { background: #6f42c1; color: white; }
+.badge-tipo-comissao { background: #fd7e14; color: white; }
+.badge-tipo-acao_social { background: #28a745; color: white; }
+
+.badge-status-planejada { background: #ffc107; color: #212529; }
+.badge-status-em_andamento { background: #17a2b8; color: white; }
+.badge-status-concluida { background: #28a745; color: white; }
+.badge-status-cancelada { background: #dc3545; color: white; }
+
+.badge-complexidade-baixa { background: #28a745; color: white; }
+.badge-complexidade-media { background: #ffc107; color: #212529; }
+.badge-complexidade-alta { background: #dc3545; color: white; }
+
+/* ============================================================
+   FORMULÁRIO INLINE (Card Form)
+   ============================================================ */
+
 .card-form {
-    border: 2px solid var(--sigem-red);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.15);
-    margin-top: 1.5rem;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 4px 15px rgba(139, 0, 0, 0.1);
 }
 
 .card-form .card-header {
-    background: linear-gradient(135deg, var(--sigem-red) 0%, #7f1d1d 100%);
+    background: var(--primary-color);
     color: white;
-    padding: 1rem 1.25rem;
 }
 
 .card-form .card-header h4 {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.card-form .card-body {
-    padding: 1.25rem;
-    background: white;
+    font-size: 1.1rem;
 }
 
 .form-row {
@@ -1096,108 +1092,189 @@ tr:hover td {
     margin-bottom: 1rem;
 }
 
-.form-row:last-of-type {
-    margin-bottom: 0;
-}
-
 .form-row .form-group {
     flex: 1;
     min-width: 200px;
 }
 
-.form-row .form-group.col-md-3 { flex: 0 0 calc(25% - 0.75rem); min-width: 150px; }
-.form-row .form-group.col-md-4 { flex: 0 0 calc(33.333% - 0.67rem); min-width: 180px; }
-.form-row .form-group.col-md-6 { flex: 0 0 calc(50% - 0.5rem); min-width: 220px; }
-.form-row .form-group.col-md-8 { flex: 0 0 calc(66.666% - 0.33rem); min-width: 280px; }
-
 .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
+    margin-bottom: 0;
 }
 
 .form-group label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--sigem-gray-700);
-}
-
-.form-group .form-control {
-    padding: 0.6rem 0.85rem;
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
     font-size: 0.9rem;
-    border: 1px solid var(--sigem-gray-300);
-    border-radius: var(--radius-sm);
-    background: white;
-    transition: var(--transition);
-}
-
-.form-group .form-control:focus {
-    outline: none;
-    border-color: var(--sigem-red);
-    box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.1);
-}
-
-.form-group textarea.form-control {
-    resize: vertical;
-    min-height: 80px;
 }
 
 .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 1.25rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--sigem-gray-200);
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
 }
 
 /* ============================================================
-   🎨 BADGES ADICIONAIS
+   BOTÃO FLUTUANTE (FAB)
    ============================================================ */
-.badge-tipo-operacional { background: #dc2626; color: white; }
-.badge-tipo-administrativa { background: #6b7280; color: white; }
-.badge-tipo-ensino { background: #0891b2; color: white; }
-.badge-tipo-correicional { background: #7c3aed; color: white; }
-.badge-tipo-comissao { background: #ea580c; color: white; }
-.badge-tipo-acao_social { background: #16a34a; color: white; }
 
-.badge-status-planejada { background: #fbbf24; color: #1f2937; }
-.badge-status-em_andamento { background: #0891b2; color: white; }
-.badge-status-concluida { background: #16a34a; color: white; }
-.badge-status-cancelada { background: #dc2626; color: white; }
+.btn-fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 100;
+}
 
-.badge-complexidade-baixa { background: #16a34a; color: white; }
-.badge-complexidade-media { background: #fbbf24; color: #1f2937; }
-.badge-complexidade-alta { background: #dc2626; color: white; }
+.btn-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn-fab i {
+    width: 24px;
+    height: 24px;
+}
 
 /* ============================================================
-   👆 BOTÕES GHOST E GRUPO
+   MODAL MELHORADO
    ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-container {
+    background: white;
+    border-radius: var(--border-radius);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-container.modal-lg {
+    max-width: 900px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    opacity: 0.8;
+}
+
+.modal-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* ============================================================
+   UTILITÁRIOS
+   ============================================================ */
+
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.5rem; }
+.py-4 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-8 { flex: 0 0 66.666%; max-width: 66.666%; }
+
+@media (max-width: 768px) {
+    .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .filters-row {
+        flex-direction: column;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .btn-fab {
+        bottom: 1rem;
+        right: 1rem;
+    }
+}
+
+/* ============================================================
+   BOTÃO GHOST (transparente)
+   ============================================================ */
+
 .btn-ghost {
     background: transparent;
     border: none;
     padding: 0.4rem;
     cursor: pointer;
-    border-radius: var(--radius-sm);
-    color: var(--sigem-gray-600);
-    transition: var(--transition);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: var(--border-radius);
+    transition: background 0.2s;
 }
 
 .btn-ghost:hover {
-    background: var(--sigem-gray-100);
-    color: var(--sigem-gray-800);
-}
-
-.btn-ghost.text-danger {
-    color: #dc2626;
-}
-
-.btn-ghost.text-danger:hover {
-    background: #fef2f2;
-    color: #b91c1c;
+    background: #f0f0f0;
 }
 
 .btn-ghost i {
@@ -1205,59 +1282,15 @@ tr:hover td {
     height: 18px;
 }
 
-.btn-group {
-    display: inline-flex;
-    gap: 0.25rem;
+.btn-ghost.text-danger:hover {
+    background: #fff5f5;
 }
 
 /* ============================================================
-   📱 RESPONSIVIDADE DOS FILTROS
+   GRUPO DE BOTÕES
    ============================================================ */
-@media (max-width: 1200px) {
-    .filter-group {
-        min-width: 120px;
-        max-width: none;
-        flex: 1 1 calc(33.333% - 0.67rem);
-    }
-    
-    .filter-group.filter-group-search {
-        flex: 1 1 calc(50% - 0.5rem);
-        max-width: none;
-    }
-}
 
-@media (max-width: 768px) {
-    .filters-row {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .filter-group,
-    .filter-group.filter-group-search {
-        flex: 1 1 100%;
-        max-width: none;
-    }
-    
-    .table-info {
-        flex-direction: column;
-        gap: 0.75rem;
-        text-align: center;
-    }
-    
-    .form-row .form-group,
-    .form-row .form-group.col-md-3,
-    .form-row .form-group.col-md-4,
-    .form-row .form-group.col-md-6,
-    .form-row .form-group.col-md-8 {
-        flex: 1 1 100%;
-        min-width: 100%;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .form-actions .btn {
-        width: 100%;
-    }
+.btn-group {
+    display: flex;
+    gap: 0.25rem;
 }

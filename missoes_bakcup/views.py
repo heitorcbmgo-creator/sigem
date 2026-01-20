@@ -264,7 +264,6 @@ def htmx_oficiais_lista(request):
     quadro = request.GET.get('quadro', '')
     obm = request.GET.get('obm', '')
     busca = request.GET.get('busca', '')
-    ativo = request.GET.get('ativo', '')
     
     if posto:
         oficiais = oficiais.filter(posto=posto)
@@ -276,11 +275,8 @@ def htmx_oficiais_lista(request):
         oficiais = oficiais.filter(
             Q(nome__icontains=busca) | 
             Q(nome_guerra__icontains=busca) |
-            Q(cpf__icontains=busca) |
-            Q(rg__icontains=busca)
+            Q(cpf__icontains=busca)
         )
-    if ativo:
-        oficiais = oficiais.filter(ativo=(ativo == 'true'))
     
     # Determinar qual template usar
     template = request.GET.get('template', 'tabela')
@@ -288,55 +284,7 @@ def htmx_oficiais_lista(request):
     if template == 'lista':
         return render(request, 'htmx/oficiais_lista.html', {'oficiais': oficiais})
     
-    # Ordenação
-    ordenar = request.GET.get('ordenar', 'posto')
-    direcao = request.GET.get('direcao', 'asc')
-    
-    if direcao == 'desc' and not ordenar.startswith('-'):
-        ordenar = f'-{ordenar}'
-    elif direcao == 'asc' and ordenar.startswith('-'):
-        ordenar = ordenar[1:]
-    
-    oficiais = oficiais.order_by(ordenar, 'nome')
-    
-    # Paginação
-    por_pagina = int(request.GET.get('por_pagina', 25))
-    pagina = request.GET.get('pagina', 1)
-    
-    paginator = Paginator(oficiais, por_pagina)
-    page_obj = paginator.get_page(pagina)
-    
-    # Query string para paginação
-    query_params = request.GET.copy()
-    if 'pagina' in query_params:
-        del query_params['pagina']
-    query_string = query_params.urlencode()
-    
-    # Lista de OBMs disponíveis para filtro
-    obms_disponiveis = Oficial.objects.values_list('obm', flat=True).distinct().order_by('obm')
-    
-    context = {
-        'page_obj': page_obj,
-        'filtros': {
-            'busca': busca,
-            'posto': posto,
-            'quadro': quadro,
-            'obm': obm,
-            'ativo': ativo,
-            'por_pagina': str(por_pagina),
-        },
-        'ordenacao': {
-            'campo': ordenar.lstrip('-'),
-            'direcao': direcao,
-        },
-        'query_string': query_string,
-        'posto_choices': Oficial.POSTO_CHOICES,
-        'quadro_choices': Oficial.QUADRO_CHOICES,
-        'obms_disponiveis': obms_disponiveis,
-        'user': user,
-    }
-    
-    return render(request, 'htmx/oficiais_tabela.html', context)
+    return render(request, 'htmx/oficiais_tabela.html', {'oficiais': oficiais, 'user': user})
 
 
 @login_required
@@ -878,65 +826,11 @@ def htmx_designacao_excluir(request, pk):
 # ============================================================
 @login_required
 def htmx_unidades_lista(request):
-    """Retorna a lista de unidades com paginação e filtros."""
+    """Retorna a lista de unidades."""
     
-    unidades = Unidade.objects.all()
+    unidades = Unidade.objects.all().order_by('nome')
     
-    # Filtros
-    busca = request.GET.get('busca', '').strip()
-    tipo = request.GET.get('tipo', '')
-    
-    if busca:
-        unidades = unidades.filter(
-            Q(nome__icontains=busca) |
-            Q(sigla__icontains=busca)
-        )
-    
-    if tipo:
-        unidades = unidades.filter(tipo=tipo)
-    
-    # Ordenação
-    ordenar = request.GET.get('ordenar', 'nome')
-    direcao = request.GET.get('direcao', 'asc')
-    
-    if direcao == 'desc' and not ordenar.startswith('-'):
-        ordenar = f'-{ordenar}'
-    elif direcao == 'asc' and ordenar.startswith('-'):
-        ordenar = ordenar[1:]
-    
-    unidades = unidades.order_by(ordenar)
-    
-    # Paginação
-    por_pagina = int(request.GET.get('por_pagina', 25))
-    pagina = request.GET.get('pagina', 1)
-    
-    paginator = Paginator(unidades, por_pagina)
-    page_obj = paginator.get_page(pagina)
-    
-    # Query string
-    query_params = request.GET.copy()
-    if 'pagina' in query_params:
-        del query_params['pagina']
-    query_string = query_params.urlencode()
-    
-    context = {
-        'page_obj': page_obj,
-        'filtros': {
-            'busca': busca,
-            'tipo': tipo,
-            'por_pagina': str(por_pagina),
-        },
-        'ordenacao': {
-            'campo': ordenar.lstrip('-'),
-            'direcao': direcao,
-        },
-        'query_string': query_string,
-        'tipo_choices': Unidade.TIPO_CHOICES,
-        'unidades_disponiveis': Unidade.objects.all().order_by('nome'),
-        'user': request.user,
-    }
-    
-    return render(request, 'htmx/unidades_tabela.html', context)
+    return render(request, 'htmx/unidades_tabela.html', {'unidades': unidades})
 
 
 @login_required
@@ -1016,77 +910,14 @@ def htmx_unidade_excluir(request, pk):
 # ============================================================
 @login_required
 def htmx_usuarios_lista(request):
-    """Retorna a lista de usuários com paginação e filtros."""
+    """Retorna a lista de usuários."""
     
     if not request.user.pode_gerenciar_usuarios:
         return HttpResponse('Sem permissão', status=403)
     
-    usuarios = Usuario.objects.select_related('oficial').all()
+    usuarios = Usuario.objects.select_related('oficial').all().order_by('cpf')
     
-    # Filtros
-    busca = request.GET.get('busca', '').strip()
-    role = request.GET.get('role', '')
-    ativo = request.GET.get('ativo', '')
-    
-    if busca:
-        usuarios = usuarios.filter(
-            Q(cpf__icontains=busca) |
-            Q(oficial__nome__icontains=busca) |
-            Q(oficial__nome_guerra__icontains=busca)
-        )
-    
-    if role:
-        usuarios = usuarios.filter(role=role)
-    
-    if ativo:
-        usuarios = usuarios.filter(is_active=(ativo == 'true'))
-    
-    # Ordenação
-    ordenar = request.GET.get('ordenar', 'cpf')
-    direcao = request.GET.get('direcao', 'asc')
-    
-    if direcao == 'desc' and not ordenar.startswith('-'):
-        ordenar = f'-{ordenar}'
-    elif direcao == 'asc' and ordenar.startswith('-'):
-        ordenar = ordenar[1:]
-    
-    usuarios = usuarios.order_by(ordenar)
-    
-    # Paginação
-    por_pagina = int(request.GET.get('por_pagina', 25))
-    pagina = request.GET.get('pagina', 1)
-    
-    paginator = Paginator(usuarios, por_pagina)
-    page_obj = paginator.get_page(pagina)
-    
-    # Query string
-    query_params = request.GET.copy()
-    if 'pagina' in query_params:
-        del query_params['pagina']
-    query_string = query_params.urlencode()
-    
-    # Oficiais sem usuário (para vincular)
-    oficiais_disponiveis = Oficial.objects.filter(usuario__isnull=True).order_by('posto', 'nome')
-    
-    context = {
-        'page_obj': page_obj,
-        'filtros': {
-            'busca': busca,
-            'role': role,
-            'ativo': ativo,
-            'por_pagina': str(por_pagina),
-        },
-        'ordenacao': {
-            'campo': ordenar.lstrip('-'),
-            'direcao': direcao,
-        },
-        'query_string': query_string,
-        'role_choices': Usuario.ROLE_CHOICES,
-        'oficiais_disponiveis': oficiais_disponiveis,
-        'user': request.user,
-    }
-    
-    return render(request, 'htmx/usuarios_tabela.html', context)
+    return render(request, 'htmx/usuarios_tabela.html', {'usuarios': usuarios})
 
 
 @login_required
@@ -1211,68 +1042,14 @@ def htmx_solicitacao_criar(request):
 
 @login_required
 def htmx_solicitacoes_lista(request):
-    """Lista solicitações com paginação e filtros."""
+    """Lista solicitações pendentes (para admin e bm3)."""
     
     if not request.user.pode_gerenciar_solicitacoes:
         return HttpResponse('Sem permissão', status=403)
     
-    solicitacoes = SolicitacaoDesignacao.objects.select_related('solicitante', 'avaliado_por').all()
+    solicitacoes = SolicitacaoDesignacao.objects.filter(status='PENDENTE').select_related('solicitante').order_by('-criado_em')
     
-    # Filtros
-    busca = request.GET.get('busca', '').strip()
-    status = request.GET.get('status', '')
-    
-    if busca:
-        solicitacoes = solicitacoes.filter(
-            Q(solicitante__nome__icontains=busca) |
-            Q(solicitante__nome_guerra__icontains=busca) |
-            Q(nome_missao__icontains=busca)
-        )
-    
-    if status:
-        solicitacoes = solicitacoes.filter(status=status)
-    
-    # Ordenação
-    ordenar = request.GET.get('ordenar', '-criado_em')
-    direcao = request.GET.get('direcao', 'desc')
-    
-    if direcao == 'desc' and not ordenar.startswith('-'):
-        ordenar = f'-{ordenar}'
-    elif direcao == 'asc' and ordenar.startswith('-'):
-        ordenar = ordenar[1:]
-    
-    solicitacoes = solicitacoes.order_by(ordenar)
-    
-    # Paginação
-    por_pagina = int(request.GET.get('por_pagina', 25))
-    pagina = request.GET.get('pagina', 1)
-    
-    paginator = Paginator(solicitacoes, por_pagina)
-    page_obj = paginator.get_page(pagina)
-    
-    # Query string
-    query_params = request.GET.copy()
-    if 'pagina' in query_params:
-        del query_params['pagina']
-    query_string = query_params.urlencode()
-    
-    context = {
-        'page_obj': page_obj,
-        'filtros': {
-            'busca': busca,
-            'status': status,
-            'por_pagina': str(por_pagina),
-        },
-        'ordenacao': {
-            'campo': ordenar.lstrip('-'),
-            'direcao': direcao,
-        },
-        'query_string': query_string,
-        'status_choices': SolicitacaoDesignacao.STATUS_CHOICES,
-        'user': request.user,
-    }
-    
-    return render(request, 'htmx/solicitacoes_lista.html', context)
+    return render(request, 'htmx/solicitacoes_lista.html', {'solicitacoes': solicitacoes})
 
 
 @login_required
