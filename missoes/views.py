@@ -1448,7 +1448,16 @@ def exportar_excel(request, tipo):
         ws.title = 'Designações'
         ws.append(['ID', 'ID Missão', 'Nome Missão', 'RG Oficial', 'Nome Oficial', 'Função', 'Complexidade', 'Observações'])
         style_header(ws, 8)
-        for d in Designacao.objects.select_related('missao', 'oficial').all():
+        
+        # Se o usuário tem oficial vinculado e não é admin, filtra só as dele
+        if request.user.oficial and not request.user.is_admin:
+            designacoes = Designacao.objects.select_related('missao', 'oficial').filter(
+                oficial=request.user.oficial
+            )
+        else:
+            designacoes = Designacao.objects.select_related('missao', 'oficial').all()
+        
+        for d in designacoes:
             ws.append([d.id, d.missao.id, d.missao.nome, d.oficial.rg, str(d.oficial), 
                       d.funcao_na_missao, d.complexidade, d.observacoes])
     
