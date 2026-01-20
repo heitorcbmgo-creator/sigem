@@ -55,9 +55,9 @@ def redirecionar_por_perfil(request):
     """Redireciona o usuário para a página inicial conforme seu perfil."""
     user = request.user
     
-    if user.role in ['admin', 'comando_geral']:
+    if user.role in ['admin', 'comando_geral', 'bm3']:
         return redirect('dashboard')
-    elif user.role in ['corregedor', 'bm3', 'comandante']:
+    elif user.role in ['corregedor', 'comandante']:
         return redirect('comparar_oficiais')
     else:  # oficial
         return redirect('painel_oficial')
@@ -419,29 +419,84 @@ def htmx_oficial_excluir(request, pk):
 # ============================================================
 @login_required
 def htmx_missoes_lista(request):
-    """Retorna a lista de missões filtrada."""
+    """Retorna a lista de missões com paginação e filtros."""
     
-    missoes = Missao.objects.all().order_by('-data_inicio')
+    missoes = Missao.objects.all()
     
-    # Filtros
+    # ============================================================
+    # FILTROS
+    # ============================================================
+    busca = request.GET.get('busca', '').strip()
     tipo = request.GET.get('tipo', '')
     status = request.GET.get('status', '')
-    local = request.GET.get('local', '')
     data_inicio = request.GET.get('data_inicio', '')
     data_fim = request.GET.get('data_fim', '')
+    
+    if busca:
+        missoes = missoes.filter(
+            Q(nome__icontains=busca) |
+            Q(local__icontains=busca) |
+            Q(documento_referencia__icontains=busca)
+        )
     
     if tipo:
         missoes = missoes.filter(tipo=tipo)
     if status:
         missoes = missoes.filter(status=status)
-    if local:
-        missoes = missoes.filter(local__icontains=local)
     if data_inicio:
         missoes = missoes.filter(data_inicio__gte=data_inicio)
     if data_fim:
         missoes = missoes.filter(data_fim__lte=data_fim)
     
-    return render(request, 'htmx/missoes_lista.html', {'missoes': missoes})
+    # ============================================================
+    # ORDENAÇÃO
+    # ============================================================
+    ordenar = request.GET.get('ordenar', '-data_inicio')
+    direcao = request.GET.get('direcao', 'desc')
+    
+    if direcao == 'desc' and not ordenar.startswith('-'):
+        ordenar = f'-{ordenar}'
+    elif direcao == 'asc' and ordenar.startswith('-'):
+        ordenar = ordenar[1:]
+    
+    missoes = missoes.order_by(ordenar)
+    
+    # ============================================================
+    # PAGINAÇÃO
+    # ============================================================
+    por_pagina = int(request.GET.get('por_pagina', 25))
+    pagina = request.GET.get('pagina', 1)
+    
+    paginator = Paginator(missoes, por_pagina)
+    page_obj = paginator.get_page(pagina)
+    
+    # Query string para paginação
+    query_params = request.GET.copy()
+    if 'pagina' in query_params:
+        del query_params['pagina']
+    query_string = query_params.urlencode()
+    
+    context = {
+        'page_obj': page_obj,
+        'filtros': {
+            'busca': busca,
+            'tipo': tipo,
+            'status': status,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'por_pagina': str(por_pagina),
+        },
+        'ordenacao': {
+            'campo': ordenar.lstrip('-'),
+            'direcao': direcao,
+        },
+        'query_string': query_string,
+        'tipo_choices': Missao.TIPO_CHOICES,
+        'status_choices': Missao.STATUS_CHOICES,
+        'user': request.user,
+    }
+    
+    return render(request, 'htmx/missoes_tabela.html', context)
 
 
 @login_required
@@ -555,11 +610,87 @@ def htmx_missao_excluir(request, pk):
 # ============================================================
 @login_required
 def htmx_designacoes_lista(request):
-    """Retorna a lista de designações."""
+    """Retorna a lista de designações com paginação, filtros e ordenação."""
     
-    designacoes = Designacao.objects.select_related('missao', 'oficial').all().order_by('-criado_em')
+    designacoes = Designacao.objects.select_related('missao', 'oficial').all()
     
-    return render(request, 'htmx/designacoes_tabela.html', {'designacoes': designacoes})
+    # ============================================================
+    # FILTROS
+    # ============================================================
+    busca = request.GET.get('busca', '').strip()
+    missao_id = request.GET.get('missao_id', '')
+    funcao = request.GET.get('funcao', '')
+    complexidade = request.GET.get('complexidade', '')
+    
+    if busca:
+        designacoes = designacoes.filter(
+            Q(oficial__nome__icontains=busca) |
+            Q(oficial__nome_guerra__icontains=busca) |
+            Q(missao__nome__icontains=busca)
+        )
+    
+    if missao_id:
+        designacoes = designacoes.filter(missao_id=missao_id)
+    
+    if funcao:
+        designacoes = designacoes.filter(funcao_na_missao=funcao)
+    
+    if complexidade:
+        designacoes = designacoes.filter(complexidade=complexidade)
+    
+    # ============================================================
+    # ORDENAÇÃO
+    # ============================================================
+    ordenar = request.GET.get('ordenar', '-criado_em')
+    direcao = request.GET.get('direcao', 'desc')
+    
+    if direcao == 'desc' and not ordenar.startswith('-'):
+        ordenar = f'-{ordenar}'
+    elif direcao == 'asc' and ordenar.startswith('-'):
+        ordenar = ordenar[1:]
+    
+    designacoes = designacoes.order_by(ordenar)
+    
+    # ============================================================
+    # PAGINAÇÃO
+    # ============================================================
+    por_pagina = int(request.GET.get('por_pagina', 25))
+    pagina = request.GET.get('pagina', 1)
+    
+    paginator = Paginator(designacoes, por_pagina)
+    page_obj = paginator.get_page(pagina)
+    
+    # ============================================================
+    # DADOS PARA O TEMPLATE
+    # ============================================================
+    # Montar query string para paginação (sem o parâmetro pagina)
+    query_params = request.GET.copy()
+    if 'pagina' in query_params:
+        del query_params['pagina']
+    query_string = query_params.urlencode()
+    
+    context = {
+        'page_obj': page_obj,
+        'filtros': {
+            'busca': busca,
+            'missao_id': missao_id,
+            'funcao': funcao,
+            'complexidade': complexidade,
+            'por_pagina': str(por_pagina),
+        },
+        'ordenacao': {
+            'campo': ordenar.lstrip('-'),
+            'direcao': direcao,
+        },
+        'query_string': query_string,
+        'funcao_choices': Designacao.FUNCAO_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'missoes_disponiveis': Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome'),
+        'oficiais_disponiveis': Oficial.objects.filter(ativo=True).order_by('posto', 'nome'),
+        'user': request.user,
+    }
+    
+    return render(request, 'htmx/designacoes_tabela.html', context)
 
 
 @login_required
@@ -630,6 +761,21 @@ def htmx_designacao_excluir(request, pk):
     
     return htmx_designacoes_lista(request)
 
+
+@login_required
+def htmx_designacao_dados(request, pk):
+    """Retorna dados de uma designação em JSON para edição."""
+    
+    designacao = get_object_or_404(Designacao, pk=pk)
+    
+    return JsonResponse({
+        'id': designacao.id,
+        'missao_id': designacao.missao_id,
+        'oficial_id': designacao.oficial_id,
+        'funcao_na_missao': designacao.funcao_na_missao,
+        'complexidade': designacao.complexidade,
+        'observacoes': designacao.observacoes,
+    })
 
 # ============================================================
 # 🔄 HTMX - UNIDADES
@@ -873,15 +1019,20 @@ def htmx_solicitacao_avaliar(request, pk):
     solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
     
     acao = request.POST.get('acao')  # 'aprovar' ou 'recusar'
+    observacao = request.POST.get('observacao', '')
     
     try:
-        solicitacao.status = 'APROVADA' if acao == 'aprovar' else 'RECUSADA'
-        solicitacao.avaliado_por = request.user
-        solicitacao.data_avaliacao = timezone.now()
-        solicitacao.observacao_avaliador = request.POST.get('observacao', '')
-        solicitacao.save()
-        
-        messages.success(request, f'Solicitação {solicitacao.get_status_display().lower()}!')
+        if acao == 'aprovar':
+            # Usar o método aprovar() que cria a missão e designação automaticamente
+            designacao = solicitacao.aprovar(request.user, observacao)
+            
+            if designacao:
+                messages.success(request, f'Solicitação aprovada! Designação criada para {solicitacao.solicitante}.')
+            else:
+                messages.warning(request, 'Solicitação aprovada, mas não foi possível criar a designação.')
+        else:
+            solicitacao.recusar(request.user, observacao)
+            messages.info(request, 'Solicitação recusada.')
         
     except Exception as e:
         messages.error(request, f'Erro ao avaliar: {str(e)}')
