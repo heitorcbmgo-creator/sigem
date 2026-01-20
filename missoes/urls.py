@@ -13,6 +13,7 @@ urlpatterns = [
     # ============================================================
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('home/', views.redirecionar_por_perfil, name='redirecionar_por_perfil'),
     
     # ============================================================
     # 📊 PÁGINAS PRINCIPAIS
