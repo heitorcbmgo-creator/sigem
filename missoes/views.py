@@ -1591,10 +1591,174 @@ def gerar_modelo_importacao():
 
 @login_required
 def exportar_pdf(request, tipo):
-    """Exporta dados para PDF."""
-    # Implementação futura com reportlab ou weasyprint
-    messages.info(request, 'Exportação PDF em desenvolvimento.')
-    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+    """Exporta dados para PDF - Relatório de designações do oficial."""
+    
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from io import BytesIO
+    from datetime import datetime
+    
+    # Só permite PDF de designações por enquanto
+    if tipo != 'designacoes':
+        messages.info(request, 'Exportação PDF disponível apenas para designações.')
+        return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+    
+    # Verifica se usuário tem oficial vinculado
+    if not request.user.oficial:
+        messages.error(request, 'Usuário não vinculado a um oficial.')
+        return redirect('painel_oficial')
+    
+    oficial = request.user.oficial
+    
+    # Buscar designações do oficial
+    designacoes = Designacao.objects.select_related('missao').filter(
+        oficial=oficial
+    ).order_by('-missao__status', '-criado_em')
+    
+    # Criar PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.5*cm,
+        leftMargin=1.5*cm,
+        topMargin=1.5*cm,
+        bottomMargin=1.5*cm
+    )
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Estilos customizados
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#8B0000'),
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.gray,
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
+    
+    info_style = ParagraphStyle(
+        'InfoStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=4
+    )
+    
+    # Cabeçalho
+    elements.append(Paragraph("CORPO DE BOMBEIROS MILITAR DE GOIÁS", title_style))
+    elements.append(Paragraph("Sistema de Gestão de Missões - SIGEM", subtitle_style))
+    elements.append(Spacer(1, 0.5*cm))
+    
+    # Dados do oficial
+    elements.append(Paragraph(f"<b>RELATÓRIO DE DESIGNAÇÕES</b>", ParagraphStyle('Heading', fontSize=12, alignment=TA_CENTER, spaceAfter=15)))
+    elements.append(Paragraph(f"<b>Oficial:</b> {oficial.posto} {oficial.nome}", info_style))
+    elements.append(Paragraph(f"<b>RG:</b> {oficial.rg} | <b>Quadro:</b> {oficial.quadro}", info_style))
+    elements.append(Paragraph(f"<b>OBM:</b> {oficial.obm or 'Não informado'}", info_style))
+    elements.append(Paragraph(f"<b>Data do Relatório:</b> {datetime.now().strftime('%d/%m/%Y às %H:%M')}", info_style))
+    elements.append(Spacer(1, 0.5*cm))
+    
+    # Resumo
+    total_ativas = designacoes.filter(missao__status='EM_ANDAMENTO').count()
+    total_baixa = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='BAIXA').count()
+    total_media = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='MEDIA').count()
+    total_alta = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='ALTA').count()
+    
+    resumo_data = [
+        ['RESUMO DE MISSÕES EM ANDAMENTO', '', '', ''],
+        ['Total Ativas', 'Baixa Complexidade', 'Média Complexidade', 'Alta Complexidade'],
+        [str(total_ativas), str(total_baixa), str(total_media), str(total_alta)],
+    ]
+    
+    resumo_table = Table(resumo_data, colWidths=[4*cm, 4*cm, 4*cm, 4*cm])
+    resumo_table.setStyle(TableStyle([
+        ('SPAN', (0, 0), (-1, 0)),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B0000')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f3f4f6')),
+        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(resumo_table)
+    elements.append(Spacer(1, 0.7*cm))
+    
+    # Tabela de designações
+    if designacoes.exists():
+        elements.append(Paragraph("<b>DETALHAMENTO DAS DESIGNAÇÕES</b>", ParagraphStyle('Heading', fontSize=11, spaceAfter=10)))
+        
+        table_data = [['Missão', 'Função', 'Complexidade', 'Status', 'Período']]
+        
+        for d in designacoes:
+            periodo = ''
+            if d.missao.data_inicio:
+                periodo = d.missao.data_inicio.strftime('%d/%m/%Y')
+                if d.missao.data_fim:
+                    periodo += f" - {d.missao.data_fim.strftime('%d/%m/%Y')}"
+            
+            table_data.append([
+                d.missao.nome[:40] + '...' if len(d.missao.nome) > 40 else d.missao.nome,
+                d.get_funcao_na_missao_display(),
+                d.get_complexidade_display(),
+                d.missao.get_status_display(),
+                periodo or '-'
+            ])
+        
+        designacoes_table = Table(table_data, colWidths=[6*cm, 3*cm, 2.5*cm, 2.5*cm, 3*cm])
+        designacoes_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B0000')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        elements.append(designacoes_table)
+    else:
+        elements.append(Paragraph("Nenhuma designação encontrada.", info_style))
+    
+    # Rodapé
+    elements.append(Spacer(1, 1*cm))
+    elements.append(Paragraph(
+        f"Documento gerado pelo SIGEM em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+        ParagraphStyle('Footer', fontSize=8, textColor=colors.gray, alignment=TA_CENTER)
+    ))
+    
+    # Gerar PDF
+    doc.build(elements)
+    
+    # Retornar resposta
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=relatorio_designacoes_{oficial.rg}.pdf'
+    
+    return response
 
 
 # ============================================================
