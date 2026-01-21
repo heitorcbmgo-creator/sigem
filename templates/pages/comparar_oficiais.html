@@ -6,104 +6,158 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
-        <i data-lucide="users"></i>
+        <i data-lucide="git-compare"></i>
         Comparar Oficiais
     </h1>
-    <p class="page-subtitle">Selecione oficiais para comparar a carga de trabalho</p>
+    <p class="page-subtitle">Selecione oficiais para comparar a carga de trabalho em missões ativas</p>
 </div>
 
-<!-- Filtros -->
-<div class="filter-bar">
-    <div class="form-group">
-        <label class="form-label">Posto</label>
-        <select class="form-select" id="filtro-posto" 
-                hx-get="{% url 'htmx_oficiais_lista' %}" 
-                hx-target="#lista-oficiais"
-                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
-            <option value="">Todos</option>
-            {% for value, label in postos %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-        </select>
+<div class="comparar-layout">
+    <!-- Coluna Esquerda: Lista de Seleção -->
+    <div class="comparar-lista">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="list-checks"></i>
+                    Selecione os Oficiais
+                </h2>
+                <span class="badge badge-info" id="contador-selecionados">0 selecionados</span>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div id="lista-oficiais" 
+                     hx-get="{% url 'htmx_oficiais_selecao' %}" 
+                     hx-trigger="load">
+                    <p class="text-gray text-center py-4">Carregando oficiais...</p>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <div class="form-group">
-        <label class="form-label">Quadro</label>
-        <select class="form-select" id="filtro-quadro"
-                hx-get="{% url 'htmx_oficiais_lista' %}" 
-                hx-target="#lista-oficiais"
-                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
-            <option value="">Todos</option>
-            {% for value, label in quadros %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label class="form-label">OBM</label>
-        <select class="form-select" id="filtro-obm"
-                hx-get="{% url 'htmx_oficiais_lista' %}" 
-                hx-target="#lista-oficiais"
-                hx-include="#filtro-posto, #filtro-quadro, #filtro-obm">
-            <option value="">Todas</option>
-            {% for obm in obms %}
-            {% if obm %}
-            <option value="{{ obm }}">{{ obm }}</option>
-            {% endif %}
-            {% endfor %}
-        </select>
-    </div>
-</div>
-
-<!-- Lista de Oficiais para Seleção -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="list-checks"></i>
-            Selecione os Oficiais
-        </h2>
-        <button class="btn btn-primary btn-sm" onclick="carregarCards()">
-            <i data-lucide="refresh-cw"></i>
-            Comparar Selecionados
-        </button>
-    </div>
-    <div class="card-body">
-        <div id="lista-oficiais" hx-get="{% url 'htmx_oficiais_lista' %}" hx-trigger="load">
-            <p class="text-gray text-center">Carregando oficiais...</p>
+    <!-- Coluna Direita: Cards de Comparação -->
+    <div class="comparar-cards">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="bar-chart-3"></i>
+                    Comparação de Carga de Trabalho
+                </h2>
+            </div>
+            <div class="card-body">
+                <div id="cards-comparacao">
+                    <div class="text-center text-muted py-4">
+                        <i data-lucide="mouse-pointer-click" style="width:48px;height:48px;opacity:0.3;display:block;margin:0 auto 1rem;"></i>
+                        <p>Selecione oficiais na lista ao lado.</p>
+                        <p class="text-sm">Os cards serão atualizados automaticamente.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Legenda -->
+        <div class="comparar-legenda">
+            <div class="legenda-item">
+                <span class="legenda-cor baixa"></span>
+                <span>Complexidade Baixa (peso 1)</span>
+            </div>
+            <div class="legenda-item">
+                <span class="legenda-cor media"></span>
+                <span>Complexidade Média (peso 2)</span>
+            </div>
+            <div class="legenda-item">
+                <span class="legenda-cor alta"></span>
+                <span>Complexidade Alta (peso 3)</span>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- Cards de Comparação -->
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="git-compare"></i>
-            Comparação de Carga de Trabalho
-        </h2>
-    </div>
-    <div class="card-body">
-        <div id="cards-comparacao" class="flex flex-wrap gap-2 justify-center">
-            <p class="text-gray">Selecione oficiais acima e clique em "Comparar Selecionados"</p>
-        </div>
-    </div>
-</div>
+{% block extra_css %}
+<style>
+.comparar-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
 
+.comparar-lista .card-body {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.comparar-cards {
+    min-height: 400px;
+}
+
+.comparar-legenda {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.legenda-cor {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.legenda-cor.baixa { background: #16a34a; }
+.legenda-cor.media { background: #eab308; }
+.legenda-cor.alta { background: #dc2626; }
+
+@media (max-width: 1024px) {
+    .comparar-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .comparar-lista .card-body {
+        max-height: 350px;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function carregarCards() {
-    const checkboxes = document.querySelectorAll('input[name="oficial"]:checked');
+function atualizarCards() {
+    const checkboxes = document.querySelectorAll('.oficial-checkbox:checked');
     const ids = Array.from(checkboxes).map(cb => cb.value).join(',');
     
+    // Atualizar contador
+    document.getElementById('contador-selecionados').textContent = checkboxes.length + ' selecionados';
+    
+    // Carregar cards
     if (ids) {
         htmx.ajax('GET', '{% url "htmx_oficiais_cards" %}?ids=' + ids, '#cards-comparacao');
     } else {
-        document.getElementById('cards-comparacao').innerHTML = 
-            '<p class="text-gray">Selecione ao menos um oficial para comparar.</p>';
+        document.getElementById('cards-comparacao').innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i data-lucide="mouse-pointer-click" style="width:48px;height:48px;opacity:0.3;display:block;margin:0 auto 1rem;"></i>
+                <p>Selecione oficiais na lista ao lado.</p>
+                <p class="text-sm">Os cards serão atualizados automaticamente.</p>
+            </div>
+        `;
+        lucide.createIcons();
     }
 }
+
+// Recarregar ícones após HTMX swap
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    lucide.createIcons();
+});
 </script>
 {% endblock %}
