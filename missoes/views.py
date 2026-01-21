@@ -1594,14 +1594,16 @@ def exportar_pdf(request, tipo):
     """Exporta dados para PDF - Relatório de designações do oficial."""
     
     from django.http import HttpResponse
+    from django.conf import settings
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from io import BytesIO
     from datetime import datetime
+    import os
     
     # Só permite PDF de designações por enquanto
     if tipo != 'designacoes':
@@ -1638,10 +1640,11 @@ def exportar_pdf(request, tipo):
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=16,
+        fontSize=14,
         textColor=colors.HexColor('#8B0000'),
-        alignment=TA_CENTER,
-        spaceAfter=12
+        alignment=TA_LEFT,
+        spaceAfter=2,
+        leading=16
     )
     
     subtitle_style = ParagraphStyle(
@@ -1649,8 +1652,8 @@ def exportar_pdf(request, tipo):
         parent=styles['Normal'],
         fontSize=10,
         textColor=colors.gray,
-        alignment=TA_CENTER,
-        spaceAfter=20
+        alignment=TA_LEFT,
+        spaceAfter=0
     )
     
     info_style = ParagraphStyle(
@@ -1660,17 +1663,103 @@ def exportar_pdf(request, tipo):
         spaceAfter=4
     )
     
-    # Cabeçalho
-    elements.append(Paragraph("CORPO DE BOMBEIROS MILITAR DE GOIÁS", title_style))
-    elements.append(Paragraph("Sistema de Gestão de Missões - SIGEM", subtitle_style))
+    # ============================================================
+    # CABEÇALHO COM LOGO
+    # ============================================================
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo_cbmgo.png')
+    
+    # Criar elementos do cabeçalho
+    titulo_principal = Paragraph("CORPO DE BOMBEIROS MILITAR<br/>DO ESTADO DE GOIÁS", title_style)
+    subtitulo = Paragraph("Sistema de Gestão de Missões - SIGEM", subtitle_style)
+    
+    # Verificar se a logo existe
+    if os.path.exists(logo_path):
+        logo = Image(logo_path, width=2*cm, height=2*cm)
+        # Tabela: Logo à esquerda, Título à direita
+        header_data = [[logo, [titulo_principal, subtitulo]]]
+        header_table = Table(header_data, colWidths=[2.5*cm, 14.5*cm])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+    else:
+        # Sem logo - apenas título centralizado
+        title_style.alignment = TA_CENTER
+        subtitle_style.alignment = TA_CENTER
+        header_data = [[[titulo_principal, subtitulo]]]
+        header_table = Table(header_data, colWidths=[17*cm])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ]))
+    
+    elements.append(header_table)
     elements.append(Spacer(1, 0.5*cm))
     
-    # Dados do oficial
-    elements.append(Paragraph(f"<b>RELATÓRIO DE DESIGNAÇÕES</b>", ParagraphStyle('Heading', fontSize=12, alignment=TA_CENTER, spaceAfter=15)))
-    elements.append(Paragraph(f"<b>Oficial:</b> {oficial.posto} {oficial.nome}", info_style))
-    elements.append(Paragraph(f"<b>RG:</b> {oficial.rg} | <b>Quadro:</b> {oficial.quadro}", info_style))
-    elements.append(Paragraph(f"<b>OBM:</b> {oficial.obm or 'Não informado'}", info_style))
-    elements.append(Paragraph(f"<b>Data do Relatório:</b> {datetime.now().strftime('%d/%m/%Y às %H:%M')}", info_style))
+    # Linha separadora
+    linha_sep = Table([['']], colWidths=[17*cm], rowHeights=[2])
+    linha_sep.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#8B0000')),
+    ]))
+    elements.append(linha_sep)
+    elements.append(Spacer(1, 0.5*cm))
+    
+    # ============================================================
+    # TÍTULO DO RELATÓRIO
+    # ============================================================
+    elements.append(Paragraph(
+        "<b>RELATÓRIO DE DESIGNAÇÕES</b>", 
+        ParagraphStyle('ReportTitle', fontSize=12, alignment=TA_CENTER, spaceAfter=15, textColor=colors.HexColor('#8B0000'))
+    ))
+    
+    # ============================================================
+    # DADOS DO OFICIAL COM FOTO
+    # ============================================================
+    # Verificar se oficial tem foto
+    foto_path = None
+    if oficial.foto:
+        foto_path = oficial.foto.path if hasattr(oficial.foto, 'path') else None
+    
+    # Se não tem foto, usar avatar padrão
+    if not foto_path or not os.path.exists(foto_path):
+        foto_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'default_avatar.png')
+    
+    # Informações do oficial
+    info_oficial = []
+    info_oficial.append(Paragraph(f"<b>{oficial.posto} {oficial.nome}</b>", 
+                                   ParagraphStyle('OficialNome', fontSize=11, spaceAfter=4)))
+    info_oficial.append(Paragraph(f"<b>RG:</b> {oficial.rg}", info_style))
+    info_oficial.append(Paragraph(f"<b>Quadro:</b> {oficial.quadro}", info_style))
+    info_oficial.append(Paragraph(f"<b>OBM:</b> {oficial.obm or 'Não informado'}", info_style))
+    info_oficial.append(Paragraph(f"<b>Data do Relatório:</b> {datetime.now().strftime('%d/%m/%Y às %H:%M')}", info_style))
+    
+    # Criar tabela com foto e informações
+    if os.path.exists(foto_path):
+        try:
+            foto_oficial = Image(foto_path, width=2.5*cm, height=2.5*cm)
+            oficial_data = [[foto_oficial, info_oficial]]
+            oficial_table = Table(oficial_data, colWidths=[3*cm, 14*cm])
+            oficial_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+            elements.append(oficial_table)
+        except:
+            # Se der erro na foto, mostrar só as informações
+            for info in info_oficial:
+                elements.append(info)
+    else:
+        for info in info_oficial:
+            elements.append(info)
+    
     elements.append(Spacer(1, 0.5*cm))
     
     # Resumo
