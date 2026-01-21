@@ -29,7 +29,7 @@
 <div class="filter-bar">
     <div class="form-group">
         <label class="form-label">Tipo</label>
-        <select class="form-select" id="filtro-tipo">
+        <select class="form-select" id="filtro-tipo" name="tipo">
             <option value="">Todos os tipos</option>
             {% for value, label in tipo_choices %}
             <option value="{{ value }}">{{ label }}</option>
@@ -39,7 +39,7 @@
     
     <div class="form-group">
         <label class="form-label">Status</label>
-        <select class="form-select" id="filtro-status">
+        <select class="form-select" id="filtro-status" name="status">
             <option value="">Todos os status</option>
             {% for value, label in status_choices %}
             <option value="{{ value }}">{{ label }}</option>
@@ -49,25 +49,27 @@
     
     <div class="form-group">
         <label class="form-label">Local</label>
-        <input type="text" class="form-input" id="filtro-local" placeholder="Buscar por local...">
+        <input type="text" class="form-input" id="filtro-local" name="local" placeholder="Buscar por local...">
     </div>
     
     <div class="form-group">
         <label class="form-label">Data Início</label>
-        <input type="date" class="form-input" id="filtro-data-inicio">
+        <input type="date" class="form-input" id="filtro-data-inicio" name="data_inicio">
     </div>
     
     <div class="form-group">
         <label class="form-label">Data Fim</label>
-        <input type="date" class="form-input" id="filtro-data-fim">
+        <input type="date" class="form-input" id="filtro-data-fim" name="data_fim">
     </div>
     
-    <button class="btn btn-primary"
-            hx-get="{% url 'htmx_missoes_lista' %}"
-            hx-target="#lista-missoes"
-            hx-include="#filtro-tipo, #filtro-status, #filtro-local, #filtro-data-inicio, #filtro-data-fim">
+    <button class="btn btn-primary" onclick="filtrarMissoes()">
         <i data-lucide="search"></i>
         Filtrar
+    </button>
+    
+    <button class="btn btn-secondary" onclick="limparFiltros()">
+        <i data-lucide="x"></i>
+        Limpar
     </button>
 </div>
 
@@ -102,4 +104,39 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filtrarMissoes() {
+    const tipo = document.getElementById('filtro-tipo').value;
+    const status = document.getElementById('filtro-status').value;
+    const local = document.getElementById('filtro-local').value;
+    const dataInicio = document.getElementById('filtro-data-inicio').value;
+    const dataFim = document.getElementById('filtro-data-fim').value;
+    
+    let url = '{% url "htmx_missoes_lista" %}?';
+    const params = [];
+    
+    if (tipo) params.push('tipo=' + encodeURIComponent(tipo));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (local) params.push('local=' + encodeURIComponent(local));
+    if (dataInicio) params.push('data_inicio=' + encodeURIComponent(dataInicio));
+    if (dataFim) params.push('data_fim=' + encodeURIComponent(dataFim));
+    
+    url += params.join('&');
+    
+    htmx.ajax('GET', url, '#lista-missoes');
+}
+
+function limparFiltros() {
+    document.getElementById('filtro-tipo').value = '';
+    document.getElementById('filtro-status').value = '';
+    document.getElementById('filtro-local').value = '';
+    document.getElementById('filtro-data-inicio').value = '';
+    document.getElementById('filtro-data-fim').value = '';
+    
+    htmx.ajax('GET', '{% url "htmx_missoes_lista" %}', '#lista-missoes');
+}
+</script>
 {% endblock %}
