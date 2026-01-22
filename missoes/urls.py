@@ -21,7 +21,9 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('comparar/', views.comparar_oficiais, name='comparar_oficiais'),
     path('missoes/', views.missoes_dashboard, name='missoes_dashboard'),
-    path('painel/', views.painel_oficial, name='painel_oficial'),
+    path('oficial/', views.consultar_oficial, name='consultar_oficial'),
+    path('oficial/<int:oficial_id>/', views.consultar_oficial, name='consultar_oficial_id'),
+    path('painel/', views.painel_oficial, name='painel_oficial'),  # Compatibilidade
     
     # ============================================================
     # 🔧 ADMINISTRAÇÃO

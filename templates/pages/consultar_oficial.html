@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="{% if visualizando_proprio %}user-circle{% else %}search{% endif %}"></i>
+        {% if visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}
+    </h1>
+    <p class="page-subtitle">
+        {% if visualizando_proprio %}
+            Suas missões e designações
+        {% else %}
+            Visualizando painel de {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}
+        {% endif %}
+    </p>
+</div>
+
+<!-- Seletor de Oficial (só aparece para quem pode consultar outros) -->
+{% if pode_consultar_outros %}
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{% url 'consultar_oficial' %}" class="flex items-center gap-3">
+            <label class="form-label mb-0" style="white-space: nowrap;">
+                <i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;"></i>
+                Selecionar Oficial:
+            </label>
+            <select name="oficial_select" class="form-select" style="max-width: 400px;" onchange="if(this.value) window.location.href=this.value;">
+                <option value="">-- Selecione um oficial --</option>
+                {% for o in oficiais_disponiveis %}
+                <option value="{% url 'consultar_oficial_id' o.id %}" {% if o.id == oficial.id %}selected{% endif %}>
+                    {{ o.posto }} {{ o.nome_guerra|default:o.nome }} — {{ o.obm|default:"Sem OBM" }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if not visualizando_proprio %}
+            <a href="{% url 'consultar_oficial' %}" class="btn btn-secondary btn-sm">
+                <i data-lucide="home"></i>
+                Meu Painel
+            </a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Card do Perfil -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="flex items-center gap-4">
+            <img src="{{ oficial.foto_url }}" alt="Foto" class="officer-photo" style="margin: 0;">
+            <div>
+                <h2 class="text-red font-bold" style="font-size: 1.5rem;">
+                    {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}
+                </h2>
+                <p class="text-gray">{{ oficial.quadro }} — RG: {{ oficial.rg }}</p>
+                <p class="text-gray">{{ oficial.obm|default:"Sem lotação definida" }}</p>
+                <p class="text-gray" style="font-style: italic;">{{ oficial.funcao|default:"Função não cadastrada" }}</p>
+            </div>
+            <div style="margin-left: auto;" class="text-right">
+                <div class="totalizadores-mini">
+                    <div class="totalizador-item baixa">
+                        <span class="totalizador-valor">{{ oficial.total_baixa }}</span>
+                        <span class="totalizador-label">Baixa</span>
+                    </div>
+                    <div class="totalizador-item media">
+                        <span class="totalizador-valor">{{ oficial.total_media }}</span>
+                        <span class="totalizador-label">Média</span>
+                    </div>
+                    <div class="totalizador-item alta">
+                        <span class="totalizador-valor">{{ oficial.total_alta }}</span>
+                        <span class="totalizador-label">Alta</span>
+                    </div>
+                </div>
+                <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Missões Em Andamento</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.totalizadores-mini {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.totalizador-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    min-width: 60px;
+}
+
+.totalizador-item.baixa { background: #dcfce7; }
+.totalizador-item.media { background: #fef3c7; }
+.totalizador-item.alta { background: #fee2e2; }
+
+.totalizador-valor {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.totalizador-item.baixa .totalizador-valor { color: #166534; }
+.totalizador-item.media .totalizador-valor { color: #92400e; }
+.totalizador-item.alta .totalizador-valor { color: #991b1b; }
+
+.totalizador-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+</style>
+
+<!-- Filtros -->
+<div class="filter-bar">
+    <form method="get" action="" class="flex gap-2 items-end flex-wrap">
+        {% if not visualizando_proprio %}
+        <input type="hidden" name="oficial_id" value="{{ oficial.id }}">
+        {% endif %}
+        
+        <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="tipo" onchange="this.form.submit()">
+                <option value="">Todos os tipos</option>
+                {% for value, label in tipo_choices %}
+                <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status" onchange="this.form.submit()">
+                <option value="">Todos os status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Complexidade</label>
+            <select class="form-select" name="complexidade" onchange="this.form.submit()">
+                <option value="">Todas</option>
+                {% for value, label in complexidade_choices %}
+                <option value="{{ value }}" {% if request.GET.complexidade == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Tabela de Designações -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="briefcase"></i>
+            {% if visualizando_proprio %}Minhas Designações{% else %}Designações de {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}{% endif %}
+        </h2>
+        <div class="flex gap-1">
+            <a href="{% url 'exportar_excel' 'designacoes' %}{% if not visualizando_proprio %}?oficial_id={{ oficial.id }}{% endif %}" class="btn btn-sm btn-success">
+                <i data-lucide="file-spreadsheet"></i>
+                Exportar Excel
+            </a>
+            <a href="{% url 'exportar_pdf' 'designacoes' %}{% if not visualizando_proprio %}?oficial_id={{ oficial.id }}{% endif %}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
+                <i data-lucide="file-text"></i>
+                Gerar PDF
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Missão</th>
+                        <th>Função</th>
+                        <th>Complexidade</th>
+                        <th>Local</th>
+                        <th>Período</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in designacoes %}
+                    <tr>
+                        <td><strong>{{ d.missao.nome }}</strong></td>
+                        <td>{{ d.get_funcao_na_missao_display }}</td>
+                        <td>
+                            <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                                {{ d.get_complexidade_display }}
+                            </span>
+                        </td>
+                        <td>{{ d.missao.local|default:"—" }}</td>
+                        <td>
+                            {% if d.missao.data_inicio %}
+                                {{ d.missao.data_inicio|date:"d/m/Y" }}
+                                {% if d.missao.data_fim %} → {{ d.missao.data_fim|date:"d/m/Y" }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{% if d.missao.status == 'EM_ANDAMENTO' %}success{% elif d.missao.status == 'PLANEJADA' %}info{% elif d.missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+                                {{ d.missao.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-gray">Nenhuma designação encontrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Formulário de Solicitação (só aparece para o próprio oficial) -->
+{% if visualizando_proprio %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="plus-circle"></i>
+            Solicitar Inclusão de Designação
+        </h2>
+    </div>
+    <div class="card-body">
+        <form hx-post="{% url 'htmx_solicitacao_criar' %}" hx-target="#solicitacao-feedback" hx-swap="innerHTML">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Nome da Missão</label>
+                    <input type="text" class="form-input" name="nome_missao" required placeholder="Ex: Operação Verão 2024">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Função na Missão</label>
+                    <input type="text" class="form-input" name="funcao_na_missao" required placeholder="Ex: Coordenador">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Complexidade</label>
+                    <select class="form-select" name="complexidade" required>
+                        <option value="">Selecione...</option>
+                        <option value="BAIXA">Baixa</option>
+                        <option value="MEDIA">Média</option>
+                        <option value="ALTA">Alta</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label">Nº SEI / BG (referência)</label>
+                    <input type="text" class="form-input" name="documento_referencia" placeholder="Ex: SEI 202400012345">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Justificativa (opcional)</label>
+                <textarea class="form-input" name="justificativa" rows="2" placeholder="Descreva o motivo da solicitação..."></textarea>
+            </div>
+            
+            <div id="solicitacao-feedback"></div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="send"></i>
+                Enviar Solicitação
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Solicitações Anteriores -->
+{% if solicitacoes %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="history"></i>
+            Minhas Solicitações Recentes
+        </h2>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Missão</th>
+                        <th>Função</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitacoes %}
+                    <tr>
+                        <td>{{ s.nome_missao }}</td>
+                        <td>{{ s.funcao_na_missao }}</td>
+                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
+                                {{ s.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

@@ -64,9 +64,9 @@
                 {% endif %}
                 
                 {% if user.pode_ver_painel %}
-                <a href="{% url 'painel_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
+                <a href="{% url 'consultar_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'consultar_oficial' or request.resolver_match.url_name == 'consultar_oficial_id' or request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
                     <i data-lucide="user-circle"></i>
-                    <span>Meu Painel</span>
+                    <span>{% if user.role in 'admin,comando_geral,comandante' %}Consultar Oficial{% else %}Meu Painel{% endif %}</span>
                 </a>
                 {% endif %}
                 
@@ -103,9 +103,9 @@
                             </div>
                         </div>
                         <div class="navbar-dropdown-divider"></div>
-                        <a href="{% url 'painel_oficial' %}" class="navbar-dropdown-item">
+                        <a href="{% url 'consultar_oficial' %}" class="navbar-dropdown-item">
                             <i data-lucide="user"></i>
-                            Meu Perfil
+                            Meu Painel
                         </a>
                         <a href="{% url 'logout' %}" class="navbar-dropdown-item navbar-dropdown-logout">
                             <i data-lucide="log-out"></i>

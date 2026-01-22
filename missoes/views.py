@@ -172,18 +172,52 @@ def missoes_dashboard(request):
 
 
 # ============================================================
-# 👤 PAINEL DO OFICIAL
+# 👤 CONSULTAR OFICIAL (antigo Painel do Oficial)
 # ============================================================
 @login_required
-def painel_oficial(request):
-    """Painel pessoal do oficial logado."""
+def consultar_oficial(request, oficial_id=None):
+    """
+    Consulta painel de um oficial.
+    - Oficial: vê apenas seu próprio painel
+    - Comandante: vê oficiais da sua OBM e subordinadas
+    - Admin/Comando-Geral: vê todos os oficiais
+    """
     
     usuario = request.user
-    oficial = usuario.oficial
     
-    if not oficial:
-        messages.warning(request, 'Seu usuário não está vinculado a um oficial.')
-        return redirect('dashboard')
+    # Determinar qual oficial será exibido
+    if oficial_id:
+        # Tentando ver outro oficial
+        oficial = get_object_or_404(Oficial, pk=oficial_id)
+        
+        # Verificar permissão
+        if not usuario.pode_ver_oficial(oficial):
+            messages.error(request, 'Você não tem permissão para visualizar este oficial.')
+            return redirect('consultar_oficial')
+    else:
+        # Ver próprio painel
+        oficial = usuario.oficial
+        if not oficial:
+            messages.warning(request, 'Seu usuário não está vinculado a um oficial.')
+            return redirect('dashboard')
+    
+    # Verificar se pode consultar outros oficiais
+    pode_consultar_outros = usuario.role in ['admin', 'comando_geral', 'comandante']
+    
+    # Lista de oficiais disponíveis para consulta (para o dropdown)
+    oficiais_disponiveis = []
+    if pode_consultar_outros:
+        if usuario.role in ['admin', 'comando_geral']:
+            # Admin e Comando-Geral veem todos
+            oficiais_disponiveis = Oficial.objects.filter(ativo=True).order_by('posto', 'nome')
+        elif usuario.role == 'comandante':
+            # Comandante vê apenas sua OBM e subordinadas
+            obms_permitidas = usuario.get_obm_subordinadas()
+            if obms_permitidas:
+                q_filter = Q()
+                for obm in obms_permitidas:
+                    q_filter |= Q(obm__icontains=obm)
+                oficiais_disponiveis = Oficial.objects.filter(ativo=True).filter(q_filter).order_by('posto', 'nome')
     
     # Designações do oficial
     designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
@@ -200,8 +234,13 @@ def painel_oficial(request):
     if complexidade:
         designacoes = designacoes.filter(complexidade=complexidade)
     
-    # Solicitações pendentes
-    solicitacoes = SolicitacaoDesignacao.objects.filter(solicitante=oficial).order_by('-criado_em')[:5]
+    # Solicitações pendentes (só mostra se for o próprio oficial)
+    solicitacoes = []
+    if usuario.oficial and usuario.oficial.id == oficial.id:
+        solicitacoes = SolicitacaoDesignacao.objects.filter(solicitante=oficial).order_by('-criado_em')[:5]
+    
+    # Verificar se está vendo o próprio painel
+    visualizando_proprio = usuario.oficial and usuario.oficial.id == oficial.id
     
     context = {
         'oficial': oficial,
@@ -210,9 +249,19 @@ def painel_oficial(request):
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
         'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'pode_consultar_outros': pode_consultar_outros,
+        'oficiais_disponiveis': oficiais_disponiveis,
+        'visualizando_proprio': visualizando_proprio,
     }
     
-    return render(request, 'pages/painel_oficial.html', context)
+    return render(request, 'pages/consultar_oficial.html', context)
+
+
+# Alias para manter compatibilidade com URLs antigas
+@login_required
+def painel_oficial(request):
+    """Redireciona para consultar_oficial (compatibilidade)."""
+    return consultar_oficial(request)
 
 
 # ============================================================
@@ -1449,12 +1498,28 @@ def exportar_excel(request, tipo):
         ws.append(['ID', 'ID Missão', 'Nome Missão', 'RG Oficial', 'Nome Oficial', 'Função', 'Complexidade', 'Observações'])
         style_header(ws, 8)
         
-        # Se o usuário tem oficial vinculado e não é admin, filtra só as dele
-        if request.user.oficial and not request.user.is_admin:
+        # Verificar se está consultando outro oficial
+        oficial_id = request.GET.get('oficial_id')
+        
+        if oficial_id:
+            # Consultando outro oficial
+            try:
+                oficial_consulta = Oficial.objects.get(pk=oficial_id)
+                if request.user.pode_ver_oficial(oficial_consulta):
+                    designacoes = Designacao.objects.select_related('missao', 'oficial').filter(
+                        oficial=oficial_consulta
+                    )
+                else:
+                    designacoes = Designacao.objects.none()
+            except Oficial.DoesNotExist:
+                designacoes = Designacao.objects.none()
+        elif request.user.oficial and not request.user.is_admin:
+            # Próprio oficial (não admin)
             designacoes = Designacao.objects.select_related('missao', 'oficial').filter(
                 oficial=request.user.oficial
             )
         else:
+            # Admin vê todos
             designacoes = Designacao.objects.select_related('missao', 'oficial').all()
         
         for d in designacoes:
@@ -1610,12 +1675,23 @@ def exportar_pdf(request, tipo):
         messages.info(request, 'Exportação PDF disponível apenas para designações.')
         return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
     
-    # Verifica se usuário tem oficial vinculado
-    if not request.user.oficial:
-        messages.error(request, 'Usuário não vinculado a um oficial.')
-        return redirect('painel_oficial')
+    # Verificar se está consultando outro oficial
+    oficial_id = request.GET.get('oficial_id')
     
-    oficial = request.user.oficial
+    if oficial_id:
+        # Consultando outro oficial
+        oficial = get_object_or_404(Oficial, pk=oficial_id)
+        
+        # Verificar permissão
+        if not request.user.pode_ver_oficial(oficial):
+            messages.error(request, 'Você não tem permissão para gerar relatório deste oficial.')
+            return redirect('consultar_oficial')
+    else:
+        # Próprio oficial
+        if not request.user.oficial:
+            messages.error(request, 'Usuário não vinculado a um oficial.')
+            return redirect('consultar_oficial')
+        oficial = request.user.oficial
     
     # Buscar designações do oficial
     designacoes = Designacao.objects.select_related('missao').filter(
@@ -1635,65 +1711,6 @@ def exportar_pdf(request, tipo):
     
     elements = []
     styles = getSampleStyleSheet()
-    
-    # ============================================================
-    # FUNÇÃO AUXILIAR: Redimensionar imagem mantendo proporção
-    # ============================================================
-    def get_image_with_aspect_ratio(img_path, max_width, max_height):
-        """Retorna Image do ReportLab mantendo proporção."""
-        from PIL import Image as PILImage
-        from PIL import ExifTags
-        
-        pil_img = PILImage.open(img_path)
-        
-        # Corrigir orientação EXIF
-        try:
-            for orientation in ExifTags.TAGS.keys():
-                if ExifTags.TAGS[orientation] == 'Orientation':
-                    break
-            
-            exif = pil_img._getexif()
-            if exif is not None:
-                orientation_value = exif.get(orientation)
-                
-                if orientation_value == 2:
-                    pil_img = pil_img.transpose(PILImage.FLIP_LEFT_RIGHT)
-                elif orientation_value == 3:
-                    pil_img = pil_img.rotate(180)
-                elif orientation_value == 4:
-                    pil_img = pil_img.rotate(180).transpose(PILImage.FLIP_LEFT_RIGHT)
-                elif orientation_value == 5:
-                    pil_img = pil_img.rotate(-90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
-                elif orientation_value == 6:
-                    pil_img = pil_img.rotate(-90, expand=True)
-                elif orientation_value == 7:
-                    pil_img = pil_img.rotate(90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
-                elif orientation_value == 8:
-                    pil_img = pil_img.rotate(90, expand=True)
-        except (AttributeError, KeyError, IndexError):
-            pass
-        
-        # Obter dimensões originais
-        orig_width, orig_height = pil_img.size
-        
-        # Calcular proporção
-        ratio = min(max_width / orig_width, max_height / orig_height)
-        new_width = orig_width * ratio
-        new_height = orig_height * ratio
-        
-        # Salvar em buffer (mantém PNG para transparência, JPEG para fotos)
-        img_buffer = BytesIO()
-        if pil_img.mode in ('RGBA', 'P', 'LA'):
-            # Manter transparência - salvar como PNG
-            pil_img.save(img_buffer, format='PNG')
-        else:
-            # Sem transparência - salvar como JPEG
-            if pil_img.mode != 'RGB':
-                pil_img = pil_img.convert('RGB')
-            pil_img.save(img_buffer, format='JPEG', quality=85)
-        img_buffer.seek(0)
-        
-        return Image(img_buffer, width=new_width, height=new_height)
     
     # Estilos customizados
     title_style = ParagraphStyle(
@@ -1733,30 +1750,19 @@ def exportar_pdf(request, tipo):
     
     # Verificar se a logo existe
     if os.path.exists(logo_path):
-        try:
-            # Logo com proporção mantida (max 2cm x 2cm)
-            logo = get_image_with_aspect_ratio(logo_path, 2*cm, 2*cm)
-            # Tabela: Logo à esquerda, Título à direita
-            header_data = [[logo, [titulo_principal, subtitulo]]]
-            header_table = Table(header_data, colWidths=[2.5*cm, 14.5*cm])
-            header_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ]))
-        except:
-            # Se der erro, título centralizado
-            title_style.alignment = TA_CENTER
-            subtitle_style.alignment = TA_CENTER
-            header_data = [[[titulo_principal, subtitulo]]]
-            header_table = Table(header_data, colWidths=[17*cm])
-            header_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ]))
+        logo = Image(logo_path, width=2*cm, height=2*cm)
+        # Tabela: Logo à esquerda, Título à direita
+        header_data = [[logo, [titulo_principal, subtitulo]]]
+        header_table = Table(header_data, colWidths=[2.5*cm, 14.5*cm])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
     else:
         # Sem logo - apenas título centralizado
         title_style.alignment = TA_CENTER
@@ -1810,8 +1816,50 @@ def exportar_pdf(request, tipo):
     # Criar tabela com foto e informações
     if os.path.exists(foto_path):
         try:
-            # Foto com proporção mantida (max 2.5cm x 3cm)
-            foto_oficial = get_image_with_aspect_ratio(foto_path, 2.5*cm, 3*cm)
+            # Corrigir orientação EXIF da foto
+            from PIL import Image as PILImage
+            from PIL import ExifTags
+            
+            pil_img = PILImage.open(foto_path)
+            
+            # Tentar corrigir orientação baseado no EXIF
+            try:
+                # Encontrar a tag de orientação
+                for orientation in ExifTags.TAGS.keys():
+                    if ExifTags.TAGS[orientation] == 'Orientation':
+                        break
+                
+                exif = pil_img._getexif()
+                if exif is not None:
+                    orientation_value = exif.get(orientation)
+                    
+                    if orientation_value == 2:
+                        pil_img = pil_img.transpose(PILImage.FLIP_LEFT_RIGHT)
+                    elif orientation_value == 3:
+                        pil_img = pil_img.rotate(180)
+                    elif orientation_value == 4:
+                        pil_img = pil_img.rotate(180).transpose(PILImage.FLIP_LEFT_RIGHT)
+                    elif orientation_value == 5:
+                        pil_img = pil_img.rotate(-90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
+                    elif orientation_value == 6:
+                        pil_img = pil_img.rotate(-90, expand=True)
+                    elif orientation_value == 7:
+                        pil_img = pil_img.rotate(90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
+                    elif orientation_value == 8:
+                        pil_img = pil_img.rotate(90, expand=True)
+            except (AttributeError, KeyError, IndexError):
+                # Imagem não tem EXIF ou não tem orientação
+                pass
+            
+            # Salvar imagem corrigida em buffer temporário
+            img_buffer = BytesIO()
+            # Converter para RGB se necessário (para evitar problemas com RGBA/P)
+            if pil_img.mode in ('RGBA', 'P'):
+                pil_img = pil_img.convert('RGB')
+            pil_img.save(img_buffer, format='JPEG', quality=85)
+            img_buffer.seek(0)
+            
+            foto_oficial = Image(img_buffer, width=2.5*cm, height=2.5*cm)
             oficial_data = [[foto_oficial, info_oficial]]
             oficial_table = Table(oficial_data, colWidths=[3*cm, 14*cm])
             oficial_table.setStyle(TableStyle([
