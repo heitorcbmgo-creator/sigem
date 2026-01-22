@@ -33,69 +33,72 @@
         </a>
         {% endif %}
     </div>
-    <div class="card-body">
+    <div class="card-body" style="padding: 0;">
         <!-- Filtros de Busca -->
-        <form id="form-busca-oficial" 
-              hx-get="{% url 'htmx_buscar_oficiais' %}" 
-              hx-target="#resultado-busca"
-              hx-trigger="submit, change from:select delay:300ms, keyup from:input delay:500ms">
-            
-            <div class="busca-filtros">
-                <div class="busca-filtro-group busca-filtro-rg">
-                    <label>RG</label>
-                    <input type="text" name="rg" class="form-control" placeholder="Ex: 12345">
-                </div>
+        <div class="table-filters" style="margin-bottom: 0; border: none; border-radius: 0;">
+            <form id="form-busca-oficial" 
+                  hx-get="{% url 'htmx_buscar_oficiais' %}" 
+                  hx-target="#resultado-busca"
+                  hx-trigger="submit, change from:select delay:300ms, keyup from:input delay:500ms"
+                  class="filters-form">
                 
-                <div class="busca-filtro-group busca-filtro-nome">
-                    <label>Nome</label>
-                    <input type="text" name="nome" class="form-control" placeholder="Nome ou nome de guerra...">
-                </div>
-                
-                <div class="busca-filtro-group">
-                    <label>OBM</label>
-                    <select name="obm" class="form-control">
-                        <option value="">Todas</option>
-                        {% for obm in obms_disponiveis %}
-                        <option value="{{ obm }}">{{ obm }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="busca-filtro-group">
-                    <label>Posto</label>
-                    <select name="posto" class="form-control">
-                        <option value="">Todos</option>
-                        {% for value, label in posto_choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="busca-filtro-group">
-                    <label>Quadro</label>
-                    <select name="quadro" class="form-control">
-                        <option value="">Todos</option>
-                        {% for value, label in quadro_choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="busca-filtro-group busca-filtro-acoes">
-                    <label>&nbsp;</label>
-                    <div class="flex gap-1">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i data-lucide="search"></i>
-                            Buscar
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="limparBusca()">
-                            <i data-lucide="x"></i>
-                            Limpar
-                        </button>
+                <div class="filters-row">
+                    <div class="filter-group" style="max-width: 120px; min-width: 100px;">
+                        <label>RG</label>
+                        <input type="text" name="rg" class="form-control" placeholder="Ex: 12345">
+                    </div>
+                    
+                    <div class="filter-group filter-group-search">
+                        <label>Nome</label>
+                        <input type="text" name="nome" class="form-control" placeholder="Nome ou nome de guerra...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>OBM</label>
+                        <select name="obm" class="form-control">
+                            <option value="">Todas</option>
+                            {% for obm in obms_disponiveis %}
+                            <option value="{{ obm }}">{{ obm }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Posto</label>
+                        <select name="posto" class="form-control">
+                            <option value="">Todos</option>
+                            {% for value, label in posto_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Quadro</label>
+                        <select name="quadro" class="form-control">
+                            <option value="">Todos</option>
+                            {% for value, label in quadro_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group filter-group-actions">
+                        <label>&nbsp;</label>
+                        <div class="flex gap-1">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i data-lucide="search"></i>
+                                Buscar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="limparBusca()">
+                                <i data-lucide="x"></i>
+                                Limpar
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
         
         <!-- Resultado da Busca -->
         <div id="resultado-busca" class="resultado-busca-container">
@@ -109,42 +112,9 @@
 </div>
 
 <style>
-.busca-filtros {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.busca-filtro-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.busca-filtro-group label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #374151;
-}
-
-.busca-filtro-rg {
-    width: 100px;
-}
-
-.busca-filtro-nome {
-    flex: 1;
-    min-width: 200px;
-}
-
-.busca-filtro-acoes {
-    justify-content: flex-end;
-}
-
 .resultado-busca-container {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #f9fafb;
+    border-top: 1px solid var(--sigem-gray-200);
+    background: var(--sigem-gray-50);
     min-height: 120px;
 }
 
@@ -155,23 +125,12 @@
     justify-content: center;
     padding: 2rem;
     text-align: center;
-    color: #6b7280;
+    color: var(--sigem-gray-500);
 }
 
 .busca-instrucao p {
     margin: 0.5rem 0 0.25rem;
     font-weight: 500;
-}
-
-@media (max-width: 768px) {
-    .busca-filtros {
-        flex-direction: column;
-    }
-    
-    .busca-filtro-rg,
-    .busca-filtro-nome {
-        width: 100%;
-    }
 }
 </style>
 

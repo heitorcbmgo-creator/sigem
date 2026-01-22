@@ -1771,6 +1771,65 @@ def exportar_pdf(request, tipo):
     elements = []
     styles = getSampleStyleSheet()
     
+    # ============================================================
+    # FUNÇÃO AUXILIAR: Redimensionar imagem mantendo proporção
+    # ============================================================
+    def get_image_with_aspect_ratio(img_path, max_width, max_height, preserve_transparency=False):
+        """Retorna Image do ReportLab mantendo proporção."""
+        from PIL import Image as PILImage
+        from PIL import ExifTags
+        
+        pil_img = PILImage.open(img_path)
+        
+        # Corrigir orientação EXIF
+        try:
+            for orientation in ExifTags.TAGS.keys():
+                if ExifTags.TAGS[orientation] == 'Orientation':
+                    break
+            
+            exif = pil_img._getexif()
+            if exif is not None:
+                orientation_value = exif.get(orientation)
+                
+                if orientation_value == 2:
+                    pil_img = pil_img.transpose(PILImage.FLIP_LEFT_RIGHT)
+                elif orientation_value == 3:
+                    pil_img = pil_img.rotate(180)
+                elif orientation_value == 4:
+                    pil_img = pil_img.rotate(180).transpose(PILImage.FLIP_LEFT_RIGHT)
+                elif orientation_value == 5:
+                    pil_img = pil_img.rotate(-90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
+                elif orientation_value == 6:
+                    pil_img = pil_img.rotate(-90, expand=True)
+                elif orientation_value == 7:
+                    pil_img = pil_img.rotate(90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
+                elif orientation_value == 8:
+                    pil_img = pil_img.rotate(90, expand=True)
+        except (AttributeError, KeyError, IndexError):
+            pass
+        
+        # Obter dimensões originais
+        orig_width, orig_height = pil_img.size
+        
+        # Calcular proporção mantendo aspect ratio
+        ratio = min(max_width / orig_width, max_height / orig_height)
+        new_width = orig_width * ratio
+        new_height = orig_height * ratio
+        
+        # Salvar em buffer
+        img_buffer = BytesIO()
+        if preserve_transparency and pil_img.mode in ('RGBA', 'P', 'LA'):
+            # Manter transparência - salvar como PNG
+            pil_img.save(img_buffer, format='PNG')
+        else:
+            # Sem transparência - salvar como JPEG
+            if pil_img.mode in ('RGBA', 'P', 'LA'):
+                pil_img = pil_img.convert('RGB')
+            pil_img.save(img_buffer, format='JPEG', quality=85)
+        img_buffer.seek(0)
+        
+        return Image(img_buffer, width=new_width, height=new_height)
+    
     # Estilos customizados
     title_style = ParagraphStyle(
         'CustomTitle',
@@ -1809,19 +1868,30 @@ def exportar_pdf(request, tipo):
     
     # Verificar se a logo existe
     if os.path.exists(logo_path):
-        logo = Image(logo_path, width=2*cm, height=2*cm)
-        # Tabela: Logo à esquerda, Título à direita
-        header_data = [[logo, [titulo_principal, subtitulo]]]
-        header_table = Table(header_data, colWidths=[2.5*cm, 14.5*cm])
-        header_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'LEFT'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('TOPPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-        ]))
+        try:
+            # Logo com proporção mantida (max 2cm x 2cm) - preserva transparência
+            logo = get_image_with_aspect_ratio(logo_path, 2*cm, 2*cm, preserve_transparency=True)
+            # Tabela: Logo à esquerda, Título à direita
+            header_data = [[logo, [titulo_principal, subtitulo]]]
+            header_table = Table(header_data, colWidths=[2.5*cm, 14.5*cm])
+            header_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+                ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+        except Exception:
+            # Se der erro na logo, título centralizado
+            title_style.alignment = TA_CENTER
+            subtitle_style.alignment = TA_CENTER
+            header_data = [[[titulo_principal, subtitulo]]]
+            header_table = Table(header_data, colWidths=[17*cm])
+            header_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ]))
     else:
         # Sem logo - apenas título centralizado
         title_style.alignment = TA_CENTER
@@ -1875,50 +1945,8 @@ def exportar_pdf(request, tipo):
     # Criar tabela com foto e informações
     if os.path.exists(foto_path):
         try:
-            # Corrigir orientação EXIF da foto
-            from PIL import Image as PILImage
-            from PIL import ExifTags
-            
-            pil_img = PILImage.open(foto_path)
-            
-            # Tentar corrigir orientação baseado no EXIF
-            try:
-                # Encontrar a tag de orientação
-                for orientation in ExifTags.TAGS.keys():
-                    if ExifTags.TAGS[orientation] == 'Orientation':
-                        break
-                
-                exif = pil_img._getexif()
-                if exif is not None:
-                    orientation_value = exif.get(orientation)
-                    
-                    if orientation_value == 2:
-                        pil_img = pil_img.transpose(PILImage.FLIP_LEFT_RIGHT)
-                    elif orientation_value == 3:
-                        pil_img = pil_img.rotate(180)
-                    elif orientation_value == 4:
-                        pil_img = pil_img.rotate(180).transpose(PILImage.FLIP_LEFT_RIGHT)
-                    elif orientation_value == 5:
-                        pil_img = pil_img.rotate(-90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
-                    elif orientation_value == 6:
-                        pil_img = pil_img.rotate(-90, expand=True)
-                    elif orientation_value == 7:
-                        pil_img = pil_img.rotate(90, expand=True).transpose(PILImage.FLIP_LEFT_RIGHT)
-                    elif orientation_value == 8:
-                        pil_img = pil_img.rotate(90, expand=True)
-            except (AttributeError, KeyError, IndexError):
-                # Imagem não tem EXIF ou não tem orientação
-                pass
-            
-            # Salvar imagem corrigida em buffer temporário
-            img_buffer = BytesIO()
-            # Converter para RGB se necessário (para evitar problemas com RGBA/P)
-            if pil_img.mode in ('RGBA', 'P'):
-                pil_img = pil_img.convert('RGB')
-            pil_img.save(img_buffer, format='JPEG', quality=85)
-            img_buffer.seek(0)
-            
-            foto_oficial = Image(img_buffer, width=2.5*cm, height=2.5*cm)
+            # Foto com proporção mantida (max 2.5cm x 3cm)
+            foto_oficial = get_image_with_aspect_ratio(foto_path, 2.5*cm, 3*cm, preserve_transparency=False)
             oficial_data = [[foto_oficial, info_oficial]]
             oficial_table = Table(oficial_data, colWidths=[3*cm, 14*cm])
             oficial_table.setStyle(TableStyle([

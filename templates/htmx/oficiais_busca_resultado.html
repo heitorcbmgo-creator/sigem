@@ -55,7 +55,7 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
     justify-content: center;
     padding: 2rem;
     text-align: center;
-    color: #6b7280;
+    color: var(--sigem-gray-500);
 }
 
 .busca-instrucao p,
@@ -65,36 +65,42 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
 }
 
 .busca-info {
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
     font-size: 0.85rem;
+    background: white;
 }
 
 .busca-aviso {
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     text-align: center;
-    background: #fef3c7;
-    border-top: 1px solid #fcd34d;
+    background: var(--sigem-gold-light);
+    border-top: 1px solid var(--sigem-gold);
 }
 
 .oficiais-busca-lista {
     max-height: 350px;
     overflow-y: auto;
+    background: white;
 }
 
 .oficial-busca-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
     text-decoration: none;
     color: inherit;
-    transition: background 0.2s;
+    transition: var(--transition);
 }
 
 .oficial-busca-item:hover {
-    background: #fef2f2;
+    background: var(--sigem-red-light);
+}
+
+.oficial-busca-item:last-child {
+    border-bottom: none;
 }
 
 .oficial-busca-foto {
@@ -103,6 +109,11 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
+    border: 2px solid var(--sigem-gray-200);
+}
+
+.oficial-busca-item:hover .oficial-busca-foto {
+    border-color: var(--sigem-red);
 }
 
 .oficial-busca-info {
@@ -113,7 +124,7 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
 }
 
 .oficial-busca-info strong {
-    color: #1f2937;
+    color: var(--sigem-gray-800);
     font-size: 0.95rem;
     white-space: nowrap;
     overflow: hidden;
@@ -122,7 +133,7 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
 
 .oficial-busca-info .text-muted {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--sigem-gray-500);
 }
 
 .oficial-busca-stats {
@@ -140,12 +151,14 @@ Lista de oficiais encontrados na busca (página Consultar Oficial)
 .oficial-busca-arrow {
     width: 20px;
     height: 20px;
-    color: #9ca3af;
+    color: var(--sigem-gray-400);
     flex-shrink: 0;
+    transition: var(--transition);
 }
 
 .oficial-busca-item:hover .oficial-busca-arrow {
-    color: #8b0000;
+    color: var(--sigem-red);
+    transform: translateX(3px);
 }
 </style>
 
