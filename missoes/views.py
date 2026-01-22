@@ -339,7 +339,7 @@ def dashboard(request):
     # ============================================================
     
     missoes_recentes = Missao.objects.select_related().annotate(
-        total_designados=Count('designacoes')
+        qtd_designados=Count('designacoes')
     ).order_by('-criado_em')[:5]
     
     # ============================================================
