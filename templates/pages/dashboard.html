@@ -1,139 +1,1243 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Visão Geral{% endblock %}
+{% block title %}Visão Geral - Dashboard{% endblock %}
 
 {% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <div class="page-header">
     <h1 class="page-title">
         <i data-lucide="layout-dashboard"></i>
         Visão Geral
     </h1>
-    <p class="page-subtitle">Acompanhe as métricas e indicadores do CBMGO</p>
+    <p class="page-subtitle">Dashboard Executivo - Comando-Geral CBMGO</p>
 </div>
 
-<!-- Totalizadores Principais -->
-<div class="dashboard-grid">
-    <div class="stat-card">
-        <p class="stat-card-label">Total de Oficiais Ativos</p>
-        <p class="stat-card-value">{{ total_oficiais }}</p>
+<!-- ============================================================
+     KPIs PRINCIPAIS
+     ============================================================ -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-blue">
+            <i data-lucide="users"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ total_oficiais }}</span>
+            <span class="kpi-label">Oficiais Ativos</span>
+        </div>
     </div>
-    <div class="stat-card">
-        <p class="stat-card-label">Missões em Andamento</p>
-        <p class="stat-card-value">{{ total_missoes_ativas }}</p>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-green">
+            <i data-lucide="briefcase"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ total_missoes_ativas }}</span>
+            <span class="kpi-label">Missões Ativas</span>
+        </div>
     </div>
-    <div class="stat-card">
-        <p class="stat-card-label">Total de Missões</p>
-        <p class="stat-card-value">{{ total_missoes }}</p>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon {% if taxa_ocupacao >= 70 and taxa_ocupacao <= 85 %}kpi-icon-green{% elif taxa_ocupacao > 85 or taxa_ocupacao < 50 %}kpi-icon-red{% else %}kpi-icon-yellow{% endif %}">
+            <i data-lucide="activity"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ taxa_ocupacao }}%</span>
+            <span class="kpi-label">Taxa de Ocupação</span>
+        </div>
+        <div class="kpi-meta">Meta: 70-85%</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-purple">
+            <i data-lucide="layers"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ carga_media }}</span>
+            <span class="kpi-label">Carga Média</span>
+        </div>
+        <div class="kpi-meta">Missões/Oficial</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon {% if indice_alta <= 25 %}kpi-icon-green{% elif indice_alta <= 35 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
+            <i data-lucide="flame"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ indice_alta }}%</span>
+            <span class="kpi-label">Alta Complexidade</span>
+        </div>
+        <div class="kpi-meta">Meta: &lt;25%</div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon {% if solicitacoes_pendentes == 0 %}kpi-icon-green{% elif solicitacoes_pendentes <= 5 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
+            <i data-lucide="inbox"></i>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-value">{{ solicitacoes_pendentes }}</span>
+            <span class="kpi-label">Solicitações Pendentes</span>
+        </div>
     </div>
 </div>
 
-<!-- Missões por Tipo -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="pie-chart"></i>
-            Missões em Andamento por Tipo
-        </h2>
-    </div>
-    <div class="card-body">
-        <div class="dashboard-grid">
-            {% for item in missoes_por_tipo %}
-            <div class="stat-card {{ item.tipo|lower }}">
-                <p class="stat-card-label">{{ item.tipo }}</p>
-                <p class="stat-card-value">{{ item.total }}</p>
+<!-- ============================================================
+     NAVEGAÇÃO POR ABAS
+     ============================================================ -->
+<div class="dashboard-tabs">
+    <button class="tab-btn active" data-tab="visao-geral">
+        <i data-lucide="bar-chart-3"></i>
+        Visão Geral
+    </button>
+    <button class="tab-btn" data-tab="por-obm">
+        <i data-lucide="building-2"></i>
+        Por OBM
+    </button>
+    <button class="tab-btn" data-tab="por-posto">
+        <i data-lucide="medal"></i>
+        Por Posto
+    </button>
+    <button class="tab-btn" data-tab="alertas">
+        <i data-lucide="alert-triangle"></i>
+        Alertas
+        {% if alertas %}<span class="tab-badge">{{ alertas|length }}</span>{% endif %}
+    </button>
+</div>
+
+<!-- ============================================================
+     ABA: VISÃO GERAL
+     ============================================================ -->
+<div class="tab-content active" id="tab-visao-geral">
+    <div class="dashboard-grid">
+        <!-- Evolução Mensal -->
+        <div class="card card-chart">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="trending-up"></i>
+                    Evolução de Missões (12 meses)
+                </h2>
             </div>
-            {% empty %}
-            <p class="text-gray">Nenhuma missão em andamento.</p>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-    <!-- Oficiais Mais Escalados -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <i data-lucide="users"></i>
-                Oficiais Mais Escalados
-            </h2>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Oficial</th>
-                            <th>Posto</th>
-                            <th class="text-center">Missões Ativas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for oficial in oficiais_mais_escalados %}
-                        <tr>
-                            <td>
-                                <strong>{{ oficial.nome_guerra|default:oficial.nome }}</strong>
-                            </td>
-                            <td>{{ oficial.posto }}</td>
-                            <td class="text-center">
-                                <span class="badge badge-{% if oficial.total_designacoes > 3 %}danger{% elif oficial.total_designacoes > 1 %}warning{% else %}success{% endif %}">
-                                    {{ oficial.total_designacoes }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center text-gray">Nenhum oficial com missões ativas.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Missões Recentes -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <i data-lucide="clock"></i>
-                Missões Recentes
-            </h2>
-            <a href="{% url 'missoes_dashboard' %}" class="btn btn-sm btn-secondary">
-                Ver todas
-            </a>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Missão</th>
-                            <th>Tipo</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for missao in missoes_recentes %}
-                        <tr>
-                            <td><strong>{{ missao.nome }}</strong></td>
-                            <td>{{ missao.get_tipo_display }}</td>
-                            <td>
-                                <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
-                                    {{ missao.get_status_display }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-center text-gray">Nenhuma missão cadastrada.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="card-body">
+                <canvas id="chartEvolucao" height="280"></canvas>
             </div>
         </div>
+        
+        <!-- Missões por Tipo -->
+        <div class="card card-chart">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="pie-chart"></i>
+                    Missões Ativas por Tipo
+                </h2>
+            </div>
+            <div class="card-body chart-donut-container">
+                <canvas id="chartTipo" height="280"></canvas>
+            </div>
+        </div>
+        
+        <!-- Top 10 Oficiais -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="trophy"></i>
+                    Top 10 Oficiais (Maior Carga)
+                </h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table class="table-ranking">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Oficial</th>
+                                <th>OBM</th>
+                                <th class="text-center">Missões</th>
+                                <th class="text-center">Carga</th>
+                                <th class="text-center">Chefia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for o in oficiais_top %}
+                            <tr>
+                                <td class="ranking-pos">
+                                    {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}
+                                </td>
+                                <td>
+                                    <div class="oficial-cell">
+                                        <img src="{{ o.foto_url }}" alt="" class="oficial-mini-foto">
+                                        <span>{{ o.posto }} {{ o.nome_guerra|default:o.nome }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted">{{ o.obm|default:"-"|truncatechars:12 }}</td>
+                                <td class="text-center">
+                                    <span class="badge badge-info">{{ o.total_missoes }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge {% if o.carga_ponderada > 20 %}badge-danger{% elif o.carga_ponderada > 15 %}badge-warning{% else %}badge-success{% endif %}">
+                                        {{ o.carga_ponderada }}
+                                    </span>
+                                </td>
+                                <td class="text-center">{{ o.qtd_chefia }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Nenhum oficial com missão ativa</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Missões Recentes -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="clock"></i>
+                    Missões Recentes
+                </h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Missão</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Designados</th>
+                                <th>Criada em</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in missoes_recentes %}
+                            <tr>
+                                <td><strong>{{ m.nome|truncatechars:35 }}</strong></td>
+                                <td>{{ m.get_tipo_display }}</td>
+                                <td class="text-center">
+                                    <span class="badge badge-{% if m.status == 'EM_ANDAMENTO' %}success{% elif m.status == 'PLANEJADA' %}info{% elif m.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+                                        {{ m.get_status_display }}
+                                    </span>
+                                </td>
+                                <td class="text-center">{{ m.total_designados }}</td>
+                                <td class="text-muted">{{ m.criado_em|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">Nenhuma missão cadastrada</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- ============================================================
+     ABA: POR OBM
+     ============================================================ -->
+<div class="tab-content" id="tab-por-obm">
+    <div class="dashboard-grid">
+        <!-- Gráfico Carga por OBM -->
+        <div class="card card-chart card-full-width">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="bar-chart-horizontal"></i>
+                    Carga de Trabalho por OBM
+                </h2>
+                <div class="card-legend">
+                    <span class="legend-item"><span class="legend-color" style="background:#22c55e;"></span> Baixa</span>
+                    <span class="legend-item"><span class="legend-color" style="background:#eab308;"></span> Média</span>
+                    <span class="legend-item"><span class="legend-color" style="background:#ef4444;"></span> Alta</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="chartOBM" height="350"></canvas>
+            </div>
+        </div>
+        
+        <!-- Tabela detalhada por OBM -->
+        <div class="card card-full-width">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="table"></i>
+                    Detalhamento por OBM
+                </h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>OBM</th>
+                                <th class="text-center">Efetivo</th>
+                                <th class="text-center">Em Missão</th>
+                                <th class="text-center">Disponível</th>
+                                <th class="text-center">Baixa</th>
+                                <th class="text-center">Média</th>
+                                <th class="text-center">Alta</th>
+                                <th class="text-center">Carga Total</th>
+                                <th class="text-center">Ocupação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for obm in carga_por_obm %}
+                            <tr>
+                                <td><strong>{{ obm.obm }}</strong></td>
+                                <td class="text-center">{{ obm.efetivo }}</td>
+                                <td class="text-center">{{ obm.em_missao }}</td>
+                                <td class="text-center">{{ obm.disponivel }}</td>
+                                <td class="text-center"><span class="badge badge-success">{{ obm.baixa }}</span></td>
+                                <td class="text-center"><span class="badge badge-warning">{{ obm.media }}</span></td>
+                                <td class="text-center"><span class="badge badge-danger">{{ obm.alta }}</span></td>
+                                <td class="text-center"><strong>{{ obm.carga_total }}</strong></td>
+                                <td class="text-center">
+                                    <div class="ocupacao-bar">
+                                        <div class="ocupacao-fill {% if obm.ocupacao > 90 %}ocupacao-critico{% elif obm.ocupacao > 85 %}ocupacao-alto{% elif obm.ocupacao >= 70 %}ocupacao-ideal{% else %}ocupacao-baixo{% endif %}" style="width: {{ obm.ocupacao }}%;"></div>
+                                        <span class="ocupacao-label">{{ obm.ocupacao|floatformat:0 }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">Nenhum dado disponível</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ABA: POR POSTO
+     ============================================================ -->
+<div class="tab-content" id="tab-por-posto">
+    <div class="dashboard-grid">
+        <!-- Gráfico Distribuição por Posto -->
+        <div class="card card-chart">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="bar-chart-2"></i>
+                    Distribuição por Posto
+                </h2>
+            </div>
+            <div class="card-body">
+                <canvas id="chartPosto" height="300"></canvas>
+            </div>
+        </div>
+        
+        <!-- Gráfico Distribuição por Quadro -->
+        <div class="card card-chart">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="pie-chart"></i>
+                    Distribuição por Quadro
+                </h2>
+            </div>
+            <div class="card-body chart-donut-container">
+                <canvas id="chartQuadro" height="300"></canvas>
+            </div>
+        </div>
+        
+        <!-- Tabela detalhada por Posto -->
+        <div class="card card-full-width">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="table"></i>
+                    Detalhamento por Posto
+                </h2>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Posto</th>
+                                <th class="text-center">Efetivo</th>
+                                <th class="text-center">Em Missão</th>
+                                <th class="text-center">Total Designações</th>
+                                <th class="text-center">Carga Média</th>
+                                <th class="text-center">Em Chefia</th>
+                                <th class="text-center">% Chefia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in distribuicao_posto %}
+                            <tr>
+                                <td><strong>{{ p.posto }}</strong></td>
+                                <td class="text-center">{{ p.efetivo }}</td>
+                                <td class="text-center">{{ p.em_missao }}</td>
+                                <td class="text-center">{{ p.total_designacoes }}</td>
+                                <td class="text-center">
+                                    <span class="badge {% if p.carga_media > 4 %}badge-warning{% else %}badge-info{% endif %}">
+                                        {{ p.carga_media }}
+                                    </span>
+                                </td>
+                                <td class="text-center">{{ p.qtd_chefia }}</td>
+                                <td class="text-center">{{ p.perc_chefia|floatformat:0 }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Nenhum dado disponível</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ABA: ALERTAS
+     ============================================================ -->
+<div class="tab-content" id="tab-alertas">
+    <div class="dashboard-grid">
+        <!-- Lista de Alertas -->
+        <div class="card card-full-width">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="bell-ring"></i>
+                    Alertas do Sistema
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if alertas %}
+                <div class="alertas-lista">
+                    {% for alerta in alertas %}
+                    <div class="alerta-item alerta-{{ alerta.nivel }}">
+                        <div class="alerta-icone">
+                            <i data-lucide="{{ alerta.icone }}"></i>
+                        </div>
+                        <div class="alerta-conteudo">
+                            <strong>{{ alerta.mensagem }}</strong>
+                            <span class="text-muted">{{ alerta.descricao }}</span>
+                        </div>
+                        <div class="alerta-badge">
+                            {% if alerta.nivel == 'critico' %}🔴 Crítico
+                            {% elif alerta.nivel == 'alto' %}🟠 Alto
+                            {% elif alerta.nivel == 'medio' %}🟡 Médio
+                            {% else %}⚪ Info{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alertas-vazio">
+                    <i data-lucide="check-circle" style="width:48px;height:48px;color:#22c55e;"></i>
+                    <h3>Tudo certo!</h3>
+                    <p class="text-muted">Não há alertas no momento.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Resumo de Status -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="gauge"></i>
+                    Indicadores de Saúde
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="indicadores-lista">
+                    <div class="indicador-item">
+                        <span class="indicador-label">Taxa de Ocupação</span>
+                        <div class="indicador-bar-container">
+                            <div class="indicador-bar {% if taxa_ocupacao >= 70 and taxa_ocupacao <= 85 %}indicador-ideal{% elif taxa_ocupacao > 85 %}indicador-alto{% else %}indicador-baixo{% endif %}" style="width: {{ taxa_ocupacao }}%;"></div>
+                        </div>
+                        <span class="indicador-valor">{{ taxa_ocupacao }}%</span>
+                    </div>
+                    
+                    <div class="indicador-item">
+                        <span class="indicador-label">Taxa de Conclusão</span>
+                        <div class="indicador-bar-container">
+                            <div class="indicador-bar {% if taxa_conclusao >= 80 %}indicador-ideal{% elif taxa_conclusao >= 60 %}indicador-medio{% else %}indicador-baixo{% endif %}" style="width: {{ taxa_conclusao }}%;"></div>
+                        </div>
+                        <span class="indicador-valor">{{ taxa_conclusao }}%</span>
+                    </div>
+                    
+                    <div class="indicador-item">
+                        <span class="indicador-label">Complexidade Alta</span>
+                        <div class="indicador-bar-container">
+                            <div class="indicador-bar {% if indice_alta <= 25 %}indicador-ideal{% elif indice_alta <= 35 %}indicador-medio{% else %}indicador-alto{% endif %}" style="width: {{ indice_alta }}%;"></div>
+                        </div>
+                        <span class="indicador-valor">{{ indice_alta }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métricas Adicionais -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i data-lucide="info"></i>
+                    Métricas Adicionais
+                </h2>
+            </div>
+            <div class="card-body">
+                <div class="metricas-grid">
+                    <div class="metrica-item">
+                        <span class="metrica-valor">{{ oficiais_com_missao }}</span>
+                        <span class="metrica-label">Oficiais em Missão</span>
+                    </div>
+                    <div class="metrica-item">
+                        <span class="metrica-valor">{{ oficiais_sem_missao }}</span>
+                        <span class="metrica-label">Oficiais Disponíveis</span>
+                    </div>
+                    <div class="metrica-item">
+                        <span class="metrica-valor">{{ total_designacoes_ativas }}</span>
+                        <span class="metrica-label">Designações Ativas</span>
+                    </div>
+                    <div class="metrica-item">
+                        <span class="metrica-valor">{{ missoes_concluidas }}</span>
+                        <span class="metrica-label">Missões Concluídas</span>
+                    </div>
+                </div>
+                
+                <hr style="margin: 1.5rem 0; border-color: var(--sigem-gray-200);">
+                
+                <h4 style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--sigem-gray-600);">
+                    <i data-lucide="layers" style="width:16px;height:16px;vertical-align:middle;"></i>
+                    Designações por Complexidade
+                </h4>
+                <div class="complexidade-bars">
+                    <div class="complexidade-item">
+                        <span class="complexidade-label">Baixa</span>
+                        <div class="complexidade-bar-bg">
+                            <div class="complexidade-bar baixa" style="width: {{ perc_baixa }}%;"></div>
+                        </div>
+                        <span class="complexidade-valor">{{ designacoes_baixa }}</span>
+                    </div>
+                    <div class="complexidade-item">
+                        <span class="complexidade-label">Média</span>
+                        <div class="complexidade-bar-bg">
+                            <div class="complexidade-bar media" style="width: {{ perc_media }}%;"></div>
+                        </div>
+                        <span class="complexidade-valor">{{ designacoes_media }}</span>
+                    </div>
+                    <div class="complexidade-item">
+                        <span class="complexidade-label">Alta</span>
+                        <div class="complexidade-bar-bg">
+                            <div class="complexidade-bar alta" style="width: {{ perc_alta }}%;"></div>
+                        </div>
+                        <span class="complexidade-valor">{{ designacoes_alta }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ESTILOS DO DASHBOARD
+     ============================================================ -->
+<style>
+/* KPI Grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+    background: white;
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--sigem-gray-200);
+    position: relative;
+}
+
+.kpi-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.kpi-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.kpi-icon-blue { background: #dbeafe; color: #2563eb; }
+.kpi-icon-green { background: #dcfce7; color: #16a34a; }
+.kpi-icon-yellow { background: #fef3c7; color: #d97706; }
+.kpi-icon-red { background: #fee2e2; color: #dc2626; }
+.kpi-icon-purple { background: #f3e8ff; color: #9333ea; }
+
+.kpi-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--sigem-gray-800);
+    line-height: 1;
+}
+
+.kpi-label {
+    font-size: 0.8rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.25rem;
+}
+
+.kpi-meta {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.75rem;
+    font-size: 0.65rem;
+    color: var(--sigem-gray-400);
+}
+
+/* Tabs */
+.dashboard-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--sigem-gray-200);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--sigem-gray-500);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: var(--transition);
+}
+
+.tab-btn:hover {
+    color: var(--sigem-red);
+}
+
+.tab-btn.active {
+    color: var(--sigem-red);
+    border-bottom-color: var(--sigem-red);
+}
+
+.tab-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.tab-badge {
+    background: var(--sigem-red);
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.card-full-width {
+    grid-column: 1 / -1;
+}
+
+.card-chart {
+    min-height: 380px;
+}
+
+.chart-donut-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--sigem-gray-600);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+/* Tabelas */
+.table-ranking {
+    width: 100%;
+}
+
+.ranking-pos {
+    width: 40px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.oficial-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oficial-mini-foto {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Ocupação Bar */
+.ocupacao-bar {
+    width: 100px;
+    height: 20px;
+    background: var(--sigem-gray-200);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ocupacao-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.ocupacao-critico { background: #ef4444; }
+.ocupacao-alto { background: #f97316; }
+.ocupacao-ideal { background: #22c55e; }
+.ocupacao-baixo { background: #eab308; }
+
+.ocupacao-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--sigem-gray-800);
+}
+
+/* Alertas */
+.alertas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.alerta-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid;
+}
+
+.alerta-critico {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+}
+
+.alerta-alto {
+    background: #fff7ed;
+    border-left-color: #f97316;
+}
+
+.alerta-medio {
+    background: #fefce8;
+    border-left-color: #eab308;
+}
+
+.alerta-info {
+    background: #f0f9ff;
+    border-left-color: #3b82f6;
+}
+
+.alerta-icone {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.alerta-critico .alerta-icone { background: #fee2e2; color: #dc2626; }
+.alerta-alto .alerta-icone { background: #ffedd5; color: #ea580c; }
+.alerta-medio .alerta-icone { background: #fef9c3; color: #ca8a04; }
+.alerta-info .alerta-icone { background: #dbeafe; color: #2563eb; }
+
+.alerta-icone svg {
+    width: 20px;
+    height: 20px;
+}
+
+.alerta-conteudo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.alerta-conteudo strong {
+    color: var(--sigem-gray-800);
+}
+
+.alerta-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.alertas-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+}
+
+.alertas-vazio h3 {
+    margin: 1rem 0 0.5rem;
+    color: var(--sigem-gray-700);
+}
+
+/* Indicadores */
+.indicadores-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.indicador-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.indicador-label {
+    width: 140px;
+    font-size: 0.85rem;
+    color: var(--sigem-gray-600);
+}
+
+.indicador-bar-container {
+    flex: 1;
+    height: 8px;
+    background: var(--sigem-gray-200);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.indicador-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.indicador-ideal { background: #22c55e; }
+.indicador-medio { background: #eab308; }
+.indicador-alto { background: #f97316; }
+.indicador-baixo { background: #ef4444; }
+
+.indicador-valor {
+    width: 50px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Métricas Grid */
+.metricas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.metrica-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--sigem-gray-50);
+    border-radius: var(--radius-sm);
+}
+
+.metrica-valor {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sigem-red);
+}
+
+.metrica-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.25rem;
+}
+
+/* Complexidade Bars */
+.complexidade-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.complexidade-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.complexidade-label {
+    width: 50px;
+    font-size: 0.8rem;
+    color: var(--sigem-gray-600);
+}
+
+.complexidade-bar-bg {
+    flex: 1;
+    height: 16px;
+    background: var(--sigem-gray-100);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.complexidade-bar {
+    height: 100%;
+    border-radius: 8px;
+}
+
+.complexidade-bar.baixa { background: #22c55e; }
+.complexidade-bar.media { background: #eab308; }
+.complexidade-bar.alta { background: #ef4444; }
+
+.complexidade-valor {
+    width: 40px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Responsivo */
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .dashboard-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .metricas-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+
+<!-- ============================================================
+     SCRIPTS DOS GRÁFICOS
+     ============================================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ============================================================
+    // NAVEGAÇÃO DAS ABAS
+    // ============================================================
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.tab;
+            
+            // Remover active de todos
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            // Adicionar active no selecionado
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        });
+    });
+    
+    // ============================================================
+    // GRÁFICO: EVOLUÇÃO MENSAL
+    // ============================================================
+    const ctxEvolucao = document.getElementById('chartEvolucao');
+    if (ctxEvolucao) {
+        new Chart(ctxEvolucao, {
+            type: 'line',
+            data: {
+                labels: {{ evolucao_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Criadas',
+                        data: {{ evolucao_criadas|safe }},
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Em Andamento',
+                        data: {{ evolucao_andamento|safe }},
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Concluídas',
+                        data: {{ evolucao_concluidas|safe }},
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // ============================================================
+    // GRÁFICO: MISSÕES POR TIPO (DONUT)
+    // ============================================================
+    const ctxTipo = document.getElementById('chartTipo');
+    if (ctxTipo) {
+        new Chart(ctxTipo, {
+            type: 'doughnut',
+            data: {
+                labels: {{ tipo_labels|safe }},
+                datasets: [{
+                    data: {{ tipo_valores|safe }},
+                    backgroundColor: [
+                        '#ef4444',
+                        '#f97316',
+                        '#eab308',
+                        '#22c55e',
+                        '#3b82f6',
+                        '#8b5cf6'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+    
+    // ============================================================
+    // GRÁFICO: CARGA POR OBM (BARRAS HORIZONTAIS EMPILHADAS)
+    // ============================================================
+    const ctxOBM = document.getElementById('chartOBM');
+    if (ctxOBM) {
+        new Chart(ctxOBM, {
+            type: 'bar',
+            data: {
+                labels: {{ obm_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Baixa',
+                        data: {{ obm_baixa|safe }},
+                        backgroundColor: '#22c55e'
+                    },
+                    {
+                        label: 'Média',
+                        data: {{ obm_media|safe }},
+                        backgroundColor: '#eab308'
+                    },
+                    {
+                        label: 'Alta',
+                        data: {{ obm_alta|safe }},
+                        backgroundColor: '#ef4444'
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        beginAtZero: true
+                    },
+                    y: {
+                        stacked: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // ============================================================
+    // GRÁFICO: DISTRIBUIÇÃO POR POSTO
+    // ============================================================
+    const ctxPosto = document.getElementById('chartPosto');
+    if (ctxPosto) {
+        new Chart(ctxPosto, {
+            type: 'bar',
+            data: {
+                labels: {{ posto_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Efetivo',
+                        data: {{ posto_efetivo|safe }},
+                        backgroundColor: '#3b82f6'
+                    },
+                    {
+                        label: 'Em Missão',
+                        data: {{ posto_em_missao|safe }},
+                        backgroundColor: '#8b0000'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // ============================================================
+    // GRÁFICO: DISTRIBUIÇÃO POR QUADRO (DONUT)
+    // ============================================================
+    const ctxQuadro = document.getElementById('chartQuadro');
+    if (ctxQuadro) {
+        new Chart(ctxQuadro, {
+            type: 'doughnut',
+            data: {
+                labels: {{ quadro_labels|safe }},
+                datasets: [{
+                    data: {{ quadro_valores|safe }},
+                    backgroundColor: [
+                        '#8b0000',
+                        '#dc2626',
+                        '#f97316',
+                        '#eab308',
+                        '#22c55e'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+    
+    // Reinicializar ícones Lucide
+    lucide.createIcons();
+});
+</script>
+
 {% endblock %}
