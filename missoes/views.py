@@ -204,20 +204,22 @@ def consultar_oficial(request, oficial_id=None):
     # Verificar se pode consultar outros oficiais
     pode_consultar_outros = usuario.role in ['admin', 'comando_geral', 'comandante']
     
-    # Lista de oficiais disponíveis para consulta (para o dropdown)
-    oficiais_disponiveis = []
+    # Lista de OBMs disponíveis para o filtro
+    obms_disponiveis = []
     if pode_consultar_outros:
         if usuario.role in ['admin', 'comando_geral']:
-            # Admin e Comando-Geral veem todos
-            oficiais_disponiveis = Oficial.objects.filter(ativo=True).order_by('posto', 'nome')
+            # Admin e Comando-Geral veem todas as OBMs
+            obms_disponiveis = list(
+                Oficial.objects.filter(ativo=True)
+                .exclude(obm__isnull=True)
+                .exclude(obm='')
+                .values_list('obm', flat=True)
+                .distinct()
+                .order_by('obm')
+            )
         elif usuario.role == 'comandante':
             # Comandante vê apenas sua OBM e subordinadas
-            obms_permitidas = usuario.get_obm_subordinadas()
-            if obms_permitidas:
-                q_filter = Q()
-                for obm in obms_permitidas:
-                    q_filter |= Q(obm__icontains=obm)
-                oficiais_disponiveis = Oficial.objects.filter(ativo=True).filter(q_filter).order_by('posto', 'nome')
+            obms_disponiveis = usuario.get_obm_subordinadas()
     
     # Designações do oficial
     designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
@@ -250,11 +252,68 @@ def consultar_oficial(request, oficial_id=None):
         'status_choices': Missao.STATUS_CHOICES,
         'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
         'pode_consultar_outros': pode_consultar_outros,
-        'oficiais_disponiveis': oficiais_disponiveis,
+        'obms_disponiveis': obms_disponiveis,
+        'posto_choices': Oficial.POSTO_CHOICES,
+        'quadro_choices': Oficial.QUADRO_CHOICES,
         'visualizando_proprio': visualizando_proprio,
     }
     
     return render(request, 'pages/consultar_oficial.html', context)
+
+
+@login_required
+def htmx_buscar_oficiais(request):
+    """Busca oficiais para o painel de consulta (HTMX)."""
+    
+    usuario = request.user
+    
+    # Verificar permissão
+    if usuario.role not in ['admin', 'comando_geral', 'comandante']:
+        return HttpResponse('<p class="text-danger">Sem permissão.</p>')
+    
+    # Base query
+    oficiais = Oficial.objects.filter(ativo=True)
+    
+    # Filtrar por permissão do comandante
+    if usuario.role == 'comandante':
+        obms_permitidas = usuario.get_obm_subordinadas()
+        if obms_permitidas:
+            q_filter = Q()
+            for obm in obms_permitidas:
+                q_filter |= Q(obm__icontains=obm)
+            oficiais = oficiais.filter(q_filter)
+    
+    # Aplicar filtros da busca
+    rg = request.GET.get('rg', '').strip()
+    nome = request.GET.get('nome', '').strip()
+    obm = request.GET.get('obm', '').strip()
+    posto = request.GET.get('posto', '').strip()
+    quadro = request.GET.get('quadro', '').strip()
+    
+    if rg:
+        oficiais = oficiais.filter(rg__icontains=rg)
+    if nome:
+        oficiais = oficiais.filter(
+            Q(nome__icontains=nome) | Q(nome_guerra__icontains=nome)
+        )
+    if obm:
+        oficiais = oficiais.filter(obm__icontains=obm)
+    if posto:
+        oficiais = oficiais.filter(posto=posto)
+    if quadro:
+        oficiais = oficiais.filter(quadro=quadro)
+    
+    # Limitar resultados
+    oficiais = oficiais.order_by('posto', 'nome')[:20]
+    
+    # Verificar se há filtros ativos
+    tem_filtros = any([rg, nome, obm, posto, quadro])
+    
+    return render(request, 'htmx/oficiais_busca_resultado.html', {
+        'oficiais': oficiais,
+        'tem_filtros': tem_filtros,
+        'total': oficiais.count(),
+    })
 
 
 # Alias para manter compatibilidade com URLs antigas

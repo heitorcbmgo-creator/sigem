@@ -18,32 +18,177 @@
     </p>
 </div>
 
-<!-- Seletor de Oficial (só aparece para quem pode consultar outros) -->
+<!-- Busca de Oficial (só aparece para quem pode consultar outros) -->
 {% if pode_consultar_outros %}
 <div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="search"></i>
+            Buscar Oficial
+        </h2>
+        {% if not visualizando_proprio %}
+        <a href="{% url 'consultar_oficial' %}" class="btn btn-secondary btn-sm">
+            <i data-lucide="home"></i>
+            Voltar ao Meu Painel
+        </a>
+        {% endif %}
+    </div>
     <div class="card-body">
-        <form method="get" action="{% url 'consultar_oficial' %}" class="flex items-center gap-3">
-            <label class="form-label mb-0" style="white-space: nowrap;">
-                <i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;"></i>
-                Selecionar Oficial:
-            </label>
-            <select name="oficial_select" class="form-select" style="max-width: 400px;" onchange="if(this.value) window.location.href=this.value;">
-                <option value="">-- Selecione um oficial --</option>
-                {% for o in oficiais_disponiveis %}
-                <option value="{% url 'consultar_oficial_id' o.id %}" {% if o.id == oficial.id %}selected{% endif %}>
-                    {{ o.posto }} {{ o.nome_guerra|default:o.nome }} — {{ o.obm|default:"Sem OBM" }}
-                </option>
-                {% endfor %}
-            </select>
-            {% if not visualizando_proprio %}
-            <a href="{% url 'consultar_oficial' %}" class="btn btn-secondary btn-sm">
-                <i data-lucide="home"></i>
-                Meu Painel
-            </a>
-            {% endif %}
+        <!-- Filtros de Busca -->
+        <form id="form-busca-oficial" 
+              hx-get="{% url 'htmx_buscar_oficiais' %}" 
+              hx-target="#resultado-busca"
+              hx-trigger="submit, change from:select delay:300ms, keyup from:input delay:500ms">
+            
+            <div class="busca-filtros">
+                <div class="busca-filtro-group busca-filtro-rg">
+                    <label>RG</label>
+                    <input type="text" name="rg" class="form-control" placeholder="Ex: 12345">
+                </div>
+                
+                <div class="busca-filtro-group busca-filtro-nome">
+                    <label>Nome</label>
+                    <input type="text" name="nome" class="form-control" placeholder="Nome ou nome de guerra...">
+                </div>
+                
+                <div class="busca-filtro-group">
+                    <label>OBM</label>
+                    <select name="obm" class="form-control">
+                        <option value="">Todas</option>
+                        {% for obm in obms_disponiveis %}
+                        <option value="{{ obm }}">{{ obm }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="busca-filtro-group">
+                    <label>Posto</label>
+                    <select name="posto" class="form-control">
+                        <option value="">Todos</option>
+                        {% for value, label in posto_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="busca-filtro-group">
+                    <label>Quadro</label>
+                    <select name="quadro" class="form-control">
+                        <option value="">Todos</option>
+                        {% for value, label in quadro_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="busca-filtro-group busca-filtro-acoes">
+                    <label>&nbsp;</label>
+                    <div class="flex gap-1">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i data-lucide="search"></i>
+                            Buscar
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="limparBusca()">
+                            <i data-lucide="x"></i>
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </form>
+        
+        <!-- Resultado da Busca -->
+        <div id="resultado-busca" class="resultado-busca-container">
+            <div class="busca-instrucao">
+                <i data-lucide="search" style="width:32px;height:32px;opacity:0.4;"></i>
+                <p>Use os filtros acima para buscar um oficial.</p>
+                <small class="text-muted">Você pode filtrar por RG, nome, OBM, posto ou quadro.</small>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+.busca-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.busca-filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.busca-filtro-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.busca-filtro-rg {
+    width: 100px;
+}
+
+.busca-filtro-nome {
+    flex: 1;
+    min-width: 200px;
+}
+
+.busca-filtro-acoes {
+    justify-content: flex-end;
+}
+
+.resultado-busca-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    min-height: 120px;
+}
+
+.busca-instrucao {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.busca-instrucao p {
+    margin: 0.5rem 0 0.25rem;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .busca-filtros {
+        flex-direction: column;
+    }
+    
+    .busca-filtro-rg,
+    .busca-filtro-nome {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+function limparBusca() {
+    const form = document.getElementById('form-busca-oficial');
+    form.reset();
+    document.getElementById('resultado-busca').innerHTML = `
+        <div class="busca-instrucao">
+            <i data-lucide="search" style="width:32px;height:32px;opacity:0.4;"></i>
+            <p>Use os filtros acima para buscar um oficial.</p>
+            <small class="text-muted">Você pode filtrar por RG, nome, OBM, posto ou quadro.</small>
+        </div>
+    `;
+    lucide.createIcons();
+}
+</script>
 {% endif %}
 
 <!-- Card do Perfil -->
@@ -115,13 +260,9 @@
 }
 </style>
 
-<!-- Filtros -->
+<!-- Filtros de Designações -->
 <div class="filter-bar">
     <form method="get" action="" class="flex gap-2 items-end flex-wrap">
-        {% if not visualizando_proprio %}
-        <input type="hidden" name="oficial_id" value="{{ oficial.id }}">
-        {% endif %}
-        
         <div class="form-group">
             <label class="form-label">Tipo</label>
             <select class="form-select" name="tipo" onchange="this.form.submit()">

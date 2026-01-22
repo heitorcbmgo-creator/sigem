@@ -35,6 +35,7 @@ urlpatterns = [
     # ============================================================
     path('htmx/oficiais/lista/', views.htmx_oficiais_lista, name='htmx_oficiais_lista'),
     path('htmx/oficiais/selecao/', views.htmx_oficiais_selecao, name='htmx_oficiais_selecao'),
+    path('htmx/oficiais/buscar/', views.htmx_buscar_oficiais, name='htmx_buscar_oficiais'),
     path('htmx/oficiais/cards/', views.htmx_oficiais_cards, name='htmx_oficiais_cards'),
     path('htmx/oficial/<int:pk>/card/', views.htmx_oficial_card, name='htmx_oficial_card'),
     path('htmx/oficial/<int:pk>/dados/', views.htmx_oficial_dados, name='htmx_oficial_dados'),

@@ -1,0 +1,154 @@
+<!-- 
+============================================================
+Template: htmx/oficiais_busca_resultado.html
+Lista de oficiais encontrados na busca (página Consultar Oficial)
+============================================================
+-->
+
+{% if not tem_filtros %}
+<div class="busca-instrucao">
+    <i data-lucide="search" style="width:32px;height:32px;opacity:0.4;"></i>
+    <p>Use os filtros acima para buscar um oficial.</p>
+    <small class="text-muted">Você pode filtrar por RG, nome, OBM, posto ou quadro.</small>
+</div>
+{% elif oficiais %}
+<div class="busca-info">
+    <span class="text-muted">{{ total }} oficial(is) encontrado(s)</span>
+</div>
+<div class="oficiais-busca-lista">
+    {% for o in oficiais %}
+    <a href="{% url 'consultar_oficial_id' o.id %}" class="oficial-busca-item">
+        <img src="{{ o.foto_url }}" alt="" class="oficial-busca-foto">
+        <div class="oficial-busca-info">
+            <strong>{{ o.posto }} {{ o.nome_guerra|default:o.nome }}</strong>
+            <span class="text-muted">RG: {{ o.rg }} • {{ o.quadro }}</span>
+            <span class="text-muted">{{ o.obm|default:"Sem OBM" }}</span>
+        </div>
+        <div class="oficial-busca-stats">
+            <span class="badge badge-success" title="Baixa">{{ o.total_baixa }}</span>
+            <span class="badge badge-warning" title="Média">{{ o.total_media }}</span>
+            <span class="badge badge-danger" title="Alta">{{ o.total_alta }}</span>
+        </div>
+        <i data-lucide="chevron-right" class="oficial-busca-arrow"></i>
+    </a>
+    {% endfor %}
+</div>
+{% if total >= 20 %}
+<div class="busca-aviso">
+    <small class="text-muted">Mostrando os primeiros 20 resultados. Refine sua busca para encontrar outros oficiais.</small>
+</div>
+{% endif %}
+{% else %}
+<div class="busca-vazio">
+    <i data-lucide="user-x" style="width:32px;height:32px;opacity:0.4;"></i>
+    <p>Nenhum oficial encontrado.</p>
+    <small class="text-muted">Tente ajustar os filtros de busca.</small>
+</div>
+{% endif %}
+
+<style>
+.busca-instrucao,
+.busca-vazio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.busca-instrucao p,
+.busca-vazio p {
+    margin: 0.5rem 0 0.25rem;
+    font-weight: 500;
+}
+
+.busca-info {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.85rem;
+}
+
+.busca-aviso {
+    padding: 0.75rem;
+    text-align: center;
+    background: #fef3c7;
+    border-top: 1px solid #fcd34d;
+}
+
+.oficiais-busca-lista {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.oficial-busca-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s;
+}
+
+.oficial-busca-item:hover {
+    background: #fef2f2;
+}
+
+.oficial-busca-foto {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.oficial-busca-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.oficial-busca-info strong {
+    color: #1f2937;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.oficial-busca-info .text-muted {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.oficial-busca-stats {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.oficial-busca-stats .badge {
+    min-width: 24px;
+    text-align: center;
+    font-size: 0.75rem;
+}
+
+.oficial-busca-arrow {
+    width: 20px;
+    height: 20px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.oficial-busca-item:hover .oficial-busca-arrow {
+    color: #8b0000;
+}
+</style>
+
+<script>
+lucide.createIcons();
+</script>
