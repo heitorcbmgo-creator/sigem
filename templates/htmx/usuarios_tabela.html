@@ -128,19 +128,26 @@ Tabela de usuários com paginação e filtros para Admin
                 <td class="text-center">
                     <div class="btn-group">
                         <button class="btn btn-sm btn-ghost" 
+                                onclick="editarUsuario({{ u.id }}, '{{ u.role }}', {{ u.is_active|yesno:'true,false' }})"
+                                title="Editar">
+                            <i data-lucide="edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost" 
                                 hx-post="{% url 'htmx_usuario_reset_senha' u.id %}"
                                 hx-target="#tab-content"
                                 hx-confirm="Resetar senha de {{ u.cpf }} para 123456?"
                                 title="Resetar Senha">
                             <i data-lucide="key"></i>
                         </button>
+                        {% if u.id != user.id %}
                         <button class="btn btn-sm btn-ghost text-danger" 
                                 hx-post="{% url 'htmx_usuario_excluir' u.id %}"
                                 hx-target="#tab-content"
-                                hx-confirm="Excluir usuário {{ u.cpf }}?"
+                                hx-confirm="Excluir usuário {{ u.cpf }}? {% if u.oficial %}Isso NÃO excluirá o oficial vinculado.{% endif %}"
                                 title="Excluir">
                             <i data-lucide="trash-2"></i>
                         </button>
+                        {% endif %}
                     </div>
                 </td>
                 {% endif %}
@@ -205,26 +212,27 @@ Tabela de usuários com paginação e filtros para Admin
 <div id="form-usuario" class="mt-4" style="display: none;">
     <div class="card card-form">
         <div class="card-header">
-            <h4>Novo Usuário</h4>
+            <h4 id="form-usuario-titulo">Novo Usuário</h4>
         </div>
         <div class="card-body">
             <form id="usuario-form" hx-post="{% url 'htmx_usuario_criar' %}" hx-target="#tab-content">
                 {% csrf_token %}
+                <input type="hidden" name="usuario_id" id="usuario_id" value="">
                 
                 <div class="form-row">
                     <div class="form-group col-md-4">
                         <label>CPF *</label>
-                        <input type="text" name="cpf" class="form-control" required maxlength="11" placeholder="Apenas números">
+                        <input type="text" name="cpf" id="usuario_cpf" class="form-control" required maxlength="11" placeholder="Apenas números">
                     </div>
                     <div class="form-group col-md-4">
                         <label>Perfil *</label>
-                        <select name="role" class="form-control" required>
+                        <select name="role" id="usuario_role" class="form-control" required>
                             {% for value, label in role_choices %}
                             <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-4" id="grupo-oficial">
                         <label>Vincular a Oficial</label>
                         <select name="oficial_id" class="form-control">
                             <option value="">Não vincular</option>
@@ -235,14 +243,23 @@ Tabela de usuários com paginação e filtros para Admin
                     </div>
                 </div>
                 
-                <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.5rem;">
+                <div class="form-row" id="grupo-ativo" style="display: none;">
+                    <div class="form-group col-md-4">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="is_active" id="usuario_ativo" checked>
+                            <span>Usuário Ativo</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.5rem;" id="info-senha">
                     <i data-lucide="info" style="width:14px;height:14px;"></i>
                     A senha padrão será <strong>123456</strong>. O usuário deve alterá-la no primeiro acesso.
                 </p>
                 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="fecharFormUsuario()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Criar Usuário</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-usuario">Criar Usuário</button>
                 </div>
             </form>
         </div>
@@ -253,9 +270,37 @@ Tabela de usuários com paginação e filtros para Admin
 <script>
 function novoUsuario() {
     document.getElementById('usuario-form').reset();
+    document.getElementById('usuario_id').value = '';
+    document.getElementById('form-usuario-titulo').textContent = 'Novo Usuário';
+    document.getElementById('btn-submit-usuario').textContent = 'Criar Usuário';
+    document.getElementById('usuario_cpf').readOnly = false;
+    document.getElementById('grupo-oficial').style.display = 'block';
+    document.getElementById('grupo-ativo').style.display = 'none';
+    document.getElementById('info-senha').style.display = 'block';
+    document.getElementById('usuario-form').setAttribute('hx-post', '{% url "htmx_usuario_criar" %}');
     document.getElementById('form-usuario').style.display = 'block';
     document.getElementById('form-usuario').scrollIntoView({behavior: 'smooth'});
     htmx.process(document.getElementById('usuario-form'));
+    lucide.createIcons();
+}
+
+function editarUsuario(id, role, ativo) {
+    document.getElementById('usuario-form').reset();
+    document.getElementById('usuario_id').value = id;
+    document.getElementById('form-usuario-titulo').textContent = 'Editar Usuário';
+    document.getElementById('btn-submit-usuario').textContent = 'Salvar Alterações';
+    document.getElementById('usuario_cpf').readOnly = true;
+    document.getElementById('usuario_cpf').value = '***********';
+    document.getElementById('usuario_role').value = role;
+    document.getElementById('usuario_ativo').checked = ativo;
+    document.getElementById('grupo-oficial').style.display = 'none';
+    document.getElementById('grupo-ativo').style.display = 'block';
+    document.getElementById('info-senha').style.display = 'none';
+    document.getElementById('usuario-form').setAttribute('hx-post', '/htmx/usuario/' + id + '/editar/');
+    document.getElementById('form-usuario').style.display = 'block';
+    document.getElementById('form-usuario').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('usuario-form'));
+    lucide.createIcons();
 }
 
 function fecharFormUsuario() {

@@ -1709,6 +1709,8 @@ def htmx_usuario_criar(request):
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def htmx_usuario_editar(request, pk):
     """Edita um usuário via HTMX."""
     
