@@ -40,8 +40,13 @@
                 </div>
             </a>
             
+            <!-- Botão Menu Mobile -->
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Abrir menu">
+                <span class="navbar-toggle-icon"></span>
+            </button>
+            
             <!-- Menu Principal -->
-            <div class="navbar-menu">
+            <div class="navbar-menu" id="navbarMenu">
                 {% if user.pode_ver_dashboard %}
                 <a href="{% url 'dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     <i data-lucide="layout-dashboard"></i>
@@ -76,9 +81,24 @@
                     <span>Administração</span>
                 </a>
                 {% endif %}
+                
+                <!-- Links mobile only -->
+                <div class="navbar-mobile-extra">
+                    <div class="navbar-mobile-user">
+                        <img src="{{ user.foto_url }}" alt="Foto" class="navbar-mobile-avatar">
+                        <div>
+                            <strong>{% if user.oficial %}{{ user.oficial.posto }} {{ user.oficial.nome_guerra|default:user.oficial.nome }}{% else %}{{ user.cpf }}{% endif %}</strong>
+                            <small>{{ user.get_role_display }}</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'logout' %}" class="navbar-link navbar-link-logout">
+                        <i data-lucide="log-out"></i>
+                        <span>Sair</span>
+                    </a>
+                </div>
             </div>
             
-            <!-- Perfil do Usuário -->
+            <!-- Perfil do Usuário (Desktop) -->
             <div class="navbar-user">
                 <div class="navbar-user-info">
                     <span class="navbar-user-name">
@@ -150,7 +170,35 @@
         // Inicializar ícones Lucide
         lucide.createIcons();
         
-        // Dropdown do usuário
+        // Menu Mobile Toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarMenu = document.getElementById('navbarMenu');
+        
+        if (navbarToggle && navbarMenu) {
+            navbarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navbarToggle.classList.toggle('active');
+                navbarMenu.classList.toggle('show');
+            });
+            
+            // Fechar menu ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!navbarMenu.contains(e.target) && !navbarToggle.contains(e.target)) {
+                    navbarToggle.classList.remove('active');
+                    navbarMenu.classList.remove('show');
+                }
+            });
+            
+            // Fechar menu ao clicar em um link
+            navbarMenu.querySelectorAll('.navbar-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    navbarToggle.classList.remove('active');
+                    navbarMenu.classList.remove('show');
+                });
+            });
+        }
+        
+        // Dropdown do usuário (Desktop)
         const avatar = document.getElementById('userAvatar');
         const dropdown = document.getElementById('userDropdown');
         
