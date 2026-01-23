@@ -12,4 +12,7 @@ python manage.py collectstatic --no-input
 echo "🗃️ Aplicando migrações do banco de dados..."
 python manage.py migrate
 
+echo "👤 Criando usuário administrador..."
+python manage.py criar_admin
+
 echo "✅ Build concluído!"
