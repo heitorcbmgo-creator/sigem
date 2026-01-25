@@ -26,6 +26,14 @@
      ============================================================ -->
 <div class="kpi-grid">
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Oficiais Ativos</strong><br>
+            Total de oficiais cadastrados com status ativo no sistema.
+            {% if is_comandante %}Filtrado para sua OBM e subordinadas.{% endif %}
+        </div>
         <div class="kpi-icon kpi-icon-blue">
             <i data-lucide="users"></i>
         </div>
@@ -36,6 +44,14 @@
     </div>
     
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Missões Ativas</strong><br>
+            Quantidade de missões com status "Em Andamento".
+            {% if is_comandante %}Considera apenas missões onde há oficiais da sua OBM designados.{% endif %}
+        </div>
         <div class="kpi-icon kpi-icon-green">
             <i data-lucide="briefcase"></i>
         </div>
@@ -46,6 +62,17 @@
     </div>
     
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Taxa de Ocupação</strong><br>
+            Percentual de oficiais que possuem pelo menos uma missão ativa.<br>
+            <span style="font-family:monospace;font-size:0.75rem;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;">
+                (Oficiais com missão ÷ Total) × 100
+            </span><br>
+            <span style="font-size:0.7rem;color:#9ca3af;">Meta ideal: 70% a 85%</span>
+        </div>
         <div class="kpi-icon {% if taxa_ocupacao >= 70 and taxa_ocupacao <= 85 %}kpi-icon-green{% elif taxa_ocupacao > 85 or taxa_ocupacao < 50 %}kpi-icon-red{% else %}kpi-icon-yellow{% endif %}">
             <i data-lucide="activity"></i>
         </div>
@@ -57,6 +84,16 @@
     </div>
     
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Carga Média</strong><br>
+            Média de missões por oficial (considerando apenas os que têm missão ativa).<br>
+            <span style="font-family:monospace;font-size:0.75rem;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;">
+                Total designações ÷ Oficiais com missão
+            </span>
+        </div>
         <div class="kpi-icon kpi-icon-purple">
             <i data-lucide="layers"></i>
         </div>
@@ -68,6 +105,17 @@
     </div>
     
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Alta Complexidade</strong><br>
+            Percentual de designações ativas classificadas como alta complexidade.<br>
+            <span style="font-family:monospace;font-size:0.75rem;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;">
+                (Designações alta ÷ Total designações) × 100
+            </span><br>
+            <span style="font-size:0.7rem;color:#9ca3af;">Meta: manter abaixo de 25%</span>
+        </div>
         <div class="kpi-icon {% if indice_alta <= 25 %}kpi-icon-green{% elif indice_alta <= 35 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
             <i data-lucide="flame"></i>
         </div>
@@ -80,6 +128,13 @@
     
     {% if not is_comandante %}
     <div class="kpi-card">
+        <button class="kpi-info-btn" type="button">
+            <i data-lucide="info"></i>
+        </button>
+        <div class="kpi-tooltip">
+            <strong>Solicitações Pendentes</strong><br>
+            Quantidade de solicitações de designação aguardando análise pela BM/3.
+        </div>
         <div class="kpi-icon {% if solicitacoes_pendentes == 0 %}kpi-icon-green{% elif solicitacoes_pendentes <= 5 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
             <i data-lucide="inbox"></i>
         </div>
@@ -126,6 +181,20 @@
                     <i data-lucide="trending-up"></i>
                     Evolução de Missões (12 meses)
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📈 Evolução de Missões</div>
+                        <div class="info-tooltip-text">
+                            Mostra a quantidade de missões criadas, em andamento e concluídas mês a mês nos últimos 12 meses.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Identificar tendências e sazonalidade na criação e conclusão de missões.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="chartEvolucao" height="280"></canvas>
@@ -139,6 +208,20 @@
                     <i data-lucide="pie-chart"></i>
                     Missões Ativas por Tipo
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">🥧 Missões por Tipo</div>
+                        <div class="info-tooltip-text">
+                            Distribuição das missões ativas por categoria: Operacional, Administrativa, Ensino, Correicional, Comissão e Ação Social.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Visualizar onde estão concentrados os esforços da corporação.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body chart-donut-container">
                 <canvas id="chartTipo" height="280"></canvas>
@@ -152,6 +235,23 @@
                     <i data-lucide="trophy"></i>
                     Top 10 Oficiais (Maior Carga)
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">🏆 Top 10 Oficiais</div>
+                        <div class="info-tooltip-text">
+                            Ranking dos oficiais com maior carga de trabalho ponderada em missões ativas.
+                        </div>
+                        <div class="info-tooltip-calc">
+                            Carga = (Baixa×1) + (Média×2) + (Alta×3)
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Chefia:</strong> Funções de comando (Cmt, SubCmt, Coord, Presidente, Encarregado).
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="table-container">
@@ -207,6 +307,20 @@
                     <i data-lucide="clock"></i>
                     Missões Recentes
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">🕐 Missões Recentes</div>
+                        <div class="info-tooltip-text">
+                            Últimas 5 missões cadastradas no sistema, ordenadas pela data de criação (mais recentes primeiro).
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Acompanhar as novas demandas que estão chegando.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="table-container">
@@ -258,6 +372,23 @@
                     <i data-lucide="bar-chart-horizontal"></i>
                     Carga de Trabalho por OBM
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📊 Carga por OBM</div>
+                        <div class="info-tooltip-text">
+                            Gráfico de barras empilhadas mostrando a distribuição de designações por complexidade em cada OBM.
+                        </div>
+                        <div class="info-tooltip-calc">
+                            🟢 Baixa (peso 1) | 🟡 Média (peso 2) | 🔴 Alta (peso 3)
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Comparar a carga entre unidades e identificar desequilíbrios.
+                        </div>
+                    </div>
+                </div>
                 <div class="card-legend">
                     <span class="legend-item"><span class="legend-color" style="background:#22c55e;"></span> Baixa</span>
                     <span class="legend-item"><span class="legend-color" style="background:#eab308;"></span> Média</span>
@@ -276,6 +407,24 @@
                     <i data-lucide="table"></i>
                     Detalhamento por OBM
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📋 Detalhamento por OBM</div>
+                        <div class="info-tooltip-text">
+                            Tabela com métricas detalhadas de cada OBM: efetivo, oficiais em missão, disponíveis e carga por complexidade.
+                        </div>
+                        <div class="info-tooltip-calc">
+                            Carga Total = (Baixa×1) + (Média×2) + (Alta×3)<br>
+                            Ocupação = (Em Missão ÷ Efetivo) × 100
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Cores da ocupação:</strong> 🟢 70-85% ideal | 🟡 &lt;70% baixo | 🔴 &gt;90% crítico
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="table-container">
@@ -336,6 +485,20 @@
                     <i data-lucide="bar-chart-2"></i>
                     Distribuição por Posto
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">👔 Distribuição por Posto</div>
+                        <div class="info-tooltip-text">
+                            Compara o efetivo total de oficiais com a quantidade em missão, agrupado por posto (Cel, TC, Maj, Cap, etc.).
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Verificar se a carga está proporcional entre os postos.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="chartPosto" height="300"></canvas>
@@ -349,6 +512,20 @@
                     <i data-lucide="pie-chart"></i>
                     Distribuição por Quadro
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📊 Distribuição por Quadro</div>
+                        <div class="info-tooltip-text">
+                            Composição do efetivo por quadro: QOC, QOA/Adm, QOA/Mús, QOM/Médico, QOM/Dentista.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Objetivo:</strong> Visualizar a composição do corpo de oficiais por formação/especialidade.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body chart-donut-container">
                 <canvas id="chartQuadro" height="300"></canvas>
@@ -362,6 +539,24 @@
                     <i data-lucide="table"></i>
                     Detalhamento por Posto
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📋 Detalhamento por Posto</div>
+                        <div class="info-tooltip-text">
+                            Métricas detalhadas por posto: efetivo, em missão, total de designações, carga média e funções de chefia.
+                        </div>
+                        <div class="info-tooltip-calc">
+                            Carga Média = Total designações ÷ Oficiais em missão<br>
+                            % Chefia = Funções chefia ÷ Total designações
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Chefia:</strong> Cmt, SubCmt, Coord, Presidente, Encarregado.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body" style="padding: 0;">
                 <div class="table-container">
@@ -417,6 +612,23 @@
                     <i data-lucide="bell-ring"></i>
                     Alertas do Sistema
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">🔔 Alertas do Sistema</div>
+                        <div class="info-tooltip-text">
+                            Notificações automáticas sobre situações que requerem atenção: sobrecarga, prazos, pendências.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Níveis:</strong><br>
+                            🔴 Crítico - Ação imediata<br>
+                            🟠 Alto - Ação necessária<br>
+                            🟡 Médio - Acompanhar
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 {% if alertas %}
@@ -456,6 +668,23 @@
                     <i data-lucide="gauge"></i>
                     Indicadores de Saúde
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📈 Indicadores de Saúde</div>
+                        <div class="info-tooltip-text">
+                            Indicadores visuais do "estado de saúde" da gestão de missões.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            <strong>Cores:</strong><br>
+                            🟢 Ideal - Dentro da meta<br>
+                            🟡 Atenção - Próximo do limite<br>
+                            🔴 Crítico - Fora da meta
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="indicadores-lista">
@@ -493,6 +722,20 @@
                     <i data-lucide="info"></i>
                     Métricas Adicionais
                 </h2>
+                <div class="info-container">
+                    <button class="info-btn" type="button">
+                        <i data-lucide="info"></i>
+                    </button>
+                    <div class="info-tooltip">
+                        <div class="info-tooltip-title">📊 Métricas Adicionais</div>
+                        <div class="info-tooltip-text">
+                            Números complementares para uma visão mais completa da situação atual.
+                        </div>
+                        <div class="info-tooltip-meta">
+                            Oficiais com e sem missão, missões concluídas, designações por complexidade.
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="metricas-grid">
@@ -1245,6 +1488,246 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reinicializar ícones Lucide
     lucide.createIcons();
+});
+</script>
+
+<!-- CSS para Tooltips de Informação -->
+<style>
+/* Botão de Informação */
+.info-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.info-btn:hover {
+    background: #d1d5db;
+}
+
+.info-btn i {
+    width: 14px;
+    height: 14px;
+    color: #6b7280;
+}
+
+.info-btn.active {
+    background: #8b0000;
+}
+
+.info-btn.active i {
+    color: white;
+}
+
+/* Container do Card Header com Info */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header .card-title {
+    flex: 1;
+}
+
+/* Tooltip/Balão de Informação */
+.info-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    width: 300px;
+    background: #1f2937;
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.info-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 12px;
+    width: 12px;
+    height: 12px;
+    background: #1f2937;
+    transform: rotate(45deg);
+}
+
+.info-tooltip.show {
+    display: block;
+    animation: fadeInTooltip 0.2s ease;
+}
+
+@keyframes fadeInTooltip {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.info-tooltip-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #f3f4f6;
+    font-size: 0.9rem;
+}
+
+.info-tooltip-text {
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+.info-tooltip-calc {
+    background: rgba(255,255,255,0.1);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.info-tooltip-meta {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Container relativo para posicionamento */
+.info-container {
+    position: relative;
+    display: inline-flex;
+}
+
+/* KPI Info Button */
+.kpi-card {
+    position: relative;
+}
+
+.kpi-info-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.05);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0.5;
+}
+
+.kpi-card:hover .kpi-info-btn {
+    opacity: 1;
+}
+
+.kpi-info-btn:hover {
+    background: rgba(0,0,0,0.1);
+}
+
+.kpi-info-btn i {
+    width: 12px;
+    height: 12px;
+    color: #6b7280;
+}
+
+.kpi-info-btn.active {
+    background: #8b0000;
+    opacity: 1;
+}
+
+.kpi-info-btn.active i {
+    color: white;
+}
+
+.kpi-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    width: 260px;
+    background: #1f2937;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: none;
+}
+
+.kpi-tooltip.show {
+    display: block;
+    animation: fadeInTooltip 0.2s ease;
+}
+
+.kpi-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    background: #1f2937;
+    transform: rotate(45deg);
+}
+</style>
+
+<!-- JavaScript para Tooltips -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fechar todos os tooltips ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.info-btn') && !e.target.closest('.info-tooltip') &&
+            !e.target.closest('.kpi-info-btn') && !e.target.closest('.kpi-tooltip')) {
+            document.querySelectorAll('.info-tooltip.show, .kpi-tooltip.show').forEach(t => t.classList.remove('show'));
+            document.querySelectorAll('.info-btn.active, .kpi-info-btn.active').forEach(b => b.classList.remove('active'));
+        }
+    });
+    
+    // Toggle tooltip ao clicar no botão
+    document.querySelectorAll('.info-btn, .kpi-info-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            const tooltip = this.nextElementSibling;
+            const isActive = this.classList.contains('active');
+            
+            // Fechar todos os outros
+            document.querySelectorAll('.info-tooltip.show, .kpi-tooltip.show').forEach(t => t.classList.remove('show'));
+            document.querySelectorAll('.info-btn.active, .kpi-info-btn.active').forEach(b => b.classList.remove('active'));
+            
+            // Toggle atual
+            if (!isActive) {
+                this.classList.add('active');
+                tooltip.classList.add('show');
+            }
+        });
+    });
 });
 </script>
 
