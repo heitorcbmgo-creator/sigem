@@ -44,7 +44,7 @@ class Oficial(models.Model):
     
     POSTO_CHOICES = [
         ('Cel', 'Coronel'),
-        ('Ten Cel', 'Tenente-Coronel'),
+        ('TC', 'Tenente-Coronel'),
         ('Maj', 'Major'),
         ('Cap', 'Capitão'),
         ('1º Ten', 'Primeiro-Tenente'),
@@ -476,9 +476,10 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         """Busca recursiva de unidades subordinadas."""
         subordinadas = []
         for sub in unidade.subordinadas.all():
+            # Prioriza sigla, se não tiver usa o nome
             if sub.sigla:
                 subordinadas.append(sub.sigla)
-            if sub.nome:
+            elif sub.nome:
                 subordinadas.append(sub.nome)
             subordinadas.extend(self._get_subordinadas_recursivo(sub))
         return subordinadas
