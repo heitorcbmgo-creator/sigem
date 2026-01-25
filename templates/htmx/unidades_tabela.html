@@ -88,7 +88,7 @@ Tabela de unidades com paginação e filtros para Admin
                 <td class="text-center">
                     <div class="btn-group">
                         <button class="btn btn-sm btn-ghost" 
-                                onclick="editarUnidade({{ u.id }})"
+                                onclick="editarUnidade({{ u.id }}, '{{ u.nome|escapejs }}', '{{ u.sigla|escapejs }}', '{{ u.tipo }}', '{{ u.comando_superior_id|default:"" }}')"
                                 title="Editar">
                             <i data-lucide="edit-2"></i>
                         </button>
@@ -220,8 +220,17 @@ function novaUnidade() {
     htmx.process(document.getElementById('unidade-form'));
 }
 
-function editarUnidade(id) {
-    alert('Funcionalidade de edição em desenvolvimento.');
+function editarUnidade(id, nome, sigla, tipo, comandoSuperiorId) {
+    document.getElementById('form-unidade-titulo').textContent = 'Editar Unidade';
+    document.getElementById('unidade-form').reset();
+    document.querySelector('#unidade-form input[name="nome"]').value = nome;
+    document.querySelector('#unidade-form input[name="sigla"]').value = sigla;
+    document.querySelector('#unidade-form select[name="tipo"]').value = tipo;
+    document.querySelector('#unidade-form select[name="comando_superior_id"]').value = comandoSuperiorId;
+    document.getElementById('unidade-form').setAttribute('hx-post', '/htmx/unidade/' + id + '/editar/');
+    document.getElementById('form-unidade').style.display = 'block';
+    document.getElementById('form-unidade').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('unidade-form'));
 }
 
 function fecharFormUnidade() {
