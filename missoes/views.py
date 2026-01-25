@@ -359,7 +359,7 @@ def dashboard(request):
             ))
         ).order_by('posto')
         
-        posto_ordem = ['Cel', 'Ten Cel', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp']
+        posto_ordem = ['Cel', 'TC', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp Of']
         posto_dict = {p['posto']: p for p in distribuicao_posto}
         distribuicao_posto_ordenada = []
         
@@ -2054,7 +2054,7 @@ def gerar_modelo_importacao():
         [15, 15, 35, 20, 12, 15, 25, 25, 30, 18],
         ['12345678901', 'RG123456', 'JOÃO DA SILVA', 'SILVA', 'Cap', 'QOC', '1º BBM', 'Cmt Cia', 'joao@email.com', '62999999999'],
         12,
-        {'POSTOS:': ['Cel', 'Ten Cel', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp'],
+        {'POSTOS:': ['Cel', 'TC', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp Of'],
          'QUADROS:': ['QOC', 'QOA/Adm', 'QOA/Mús', 'QOM/Médico', 'QOM/Dentista']}
     )
     

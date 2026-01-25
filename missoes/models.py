@@ -44,12 +44,12 @@ class Oficial(models.Model):
     
     POSTO_CHOICES = [
         ('Cel', 'Coronel'),
-        ('Ten Cel', 'Tenente-Coronel'),
+        ('TC', 'Tenente-Coronel'),
         ('Maj', 'Major'),
         ('Cap', 'Capitão'),
         ('1º Ten', 'Primeiro-Tenente'),
         ('2º Ten', 'Segundo-Tenente'),
-        ('Asp', 'Aspirante'),
+        ('Asp Of', 'Aspirante a Oficial'),
     ]
     
     QUADRO_CHOICES = [
