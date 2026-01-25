@@ -44,12 +44,12 @@ class Oficial(models.Model):
     
     POSTO_CHOICES = [
         ('Cel', 'Coronel'),
-        ('TC', 'Tenente-Coronel'),
+        ('Ten Cel', 'Tenente-Coronel'),
         ('Maj', 'Major'),
         ('Cap', 'Capitão'),
         ('1º Ten', 'Primeiro-Tenente'),
         ('2º Ten', 'Segundo-Tenente'),
-        ('Asp Of', 'Aspirante a Oficial'),
+        ('Asp', 'Aspirante'),
     ]
     
     QUADRO_CHOICES = [
@@ -168,12 +168,6 @@ class Missao(models.Model):
         verbose_name = 'Missão'
         verbose_name_plural = 'Missões'
         ordering = ['-data_inicio', 'nome']
-        indexes = [
-            models.Index(fields=['tipo']),
-            models.Index(fields=['status']),
-            models.Index(fields=['data_inicio']),
-            models.Index(fields=['criado_em']),
-        ]
     
     def __str__(self):
         return f"{self.nome} ({self.get_tipo_display()})"
@@ -258,14 +252,7 @@ class Designacao(models.Model):
         verbose_name = 'Designação'
         verbose_name_plural = 'Designações'
         ordering = ['-criado_em']
-        unique_together = ['missao', 'oficial']
-        indexes = [
-            models.Index(fields=['missao', 'oficial']),
-            models.Index(fields=['criado_em']),
-            models.Index(fields=['complexidade']),
-            models.Index(fields=['funcao_na_missao']),
-            models.Index(fields=['status']),
-        ]
+        unique_together = ['missao', 'oficial']  # Um oficial só pode ter uma designação por missão
     
     def __str__(self):
         return f"{self.oficial} → {self.missao.nome} ({self.get_funcao_na_missao_display()})"
@@ -398,7 +385,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @property
     def pode_ver_dashboard(self):
         """Quem pode ver a página Visão Geral"""
-        return self.role in ['admin', 'comando_geral', 'bm3']
+        return self.role in ['admin', 'comando_geral', 'comandante']
     
     @property
     def pode_ver_comparar(self):
@@ -533,61 +520,20 @@ class SolicitacaoDesignacao(models.Model):
         ('RECUSADA', 'Recusada'),
     ]
     
-    FUNCAO_CHOICES = Designacao.FUNCAO_CHOICES
-    COMPLEXIDADE_CHOICES = Designacao.COMPLEXIDADE_CHOICES
-    
-    # Dados do solicitante
     solicitante = models.ForeignKey(
         Oficial,
         on_delete=models.CASCADE,
         related_name='solicitacoes',
         verbose_name='Solicitante'
     )
-    
-    # Dados da missão (pode ser existente ou nova)
-    missao_existente = models.ForeignKey(
-        Missao,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='solicitacoes',
-        verbose_name='Missão Existente',
-        help_text='Se a missão já existe, selecione aqui'
-    )
-    
-    # Campos para nova missão (quando missao_existente é None)
-    nome_missao = models.CharField('Nome da Missão', max_length=200, blank=True)
-    tipo_missao = models.CharField(
-        'Tipo da Missão', 
-        max_length=20, 
-        choices=Missao.TIPO_CHOICES,
-        blank=True
-    )
-    descricao_missao = models.TextField('Descrição da Missão', blank=True)
-    local_missao = models.CharField('Local', max_length=200, blank=True)
-    data_inicio_missao = models.DateField('Data de Início', null=True, blank=True)
-    data_fim_missao = models.DateField('Data de Término', null=True, blank=True)
-    
-    # Dados da designação
-    funcao_na_missao = models.CharField(
-        'Função na Missão', 
-        max_length=20,
-        choices=FUNCAO_CHOICES,
-        default='MEMBRO'
-    )
-    complexidade = models.CharField(
-        'Complexidade', 
-        max_length=20,
-        choices=COMPLEXIDADE_CHOICES,
-        default='MEDIA'
-    )
+    nome_missao = models.CharField('Nome da Missão', max_length=200)
+    funcao_na_missao = models.CharField('Função na Missão', max_length=100)
+    complexidade = models.CharField('Complexidade', max_length=20)
     documento_referencia = models.CharField('Nº SEI / BG', max_length=100, blank=True)
     justificativa = models.TextField('Justificativa', blank=True)
-    
-    # Status e avaliação
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
     avaliado_por = models.ForeignKey(
-        'Usuario',
+        Usuario,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -596,93 +542,12 @@ class SolicitacaoDesignacao(models.Model):
     )
     data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
     observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
-    
-    # Referência à designação criada (quando aprovada)
-    designacao_criada = models.OneToOneField(
-        Designacao,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='solicitacao_origem',
-        verbose_name='Designação Criada'
-    )
-    
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
-    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
     
     class Meta:
         verbose_name = 'Solicitação de Designação'
         verbose_name_plural = 'Solicitações de Designação'
         ordering = ['-criado_em']
-        indexes = [
-            models.Index(fields=['status']),
-            models.Index(fields=['criado_em']),
-            models.Index(fields=['solicitante']),
-        ]
     
     def __str__(self):
-        missao_nome = self.missao_existente.nome if self.missao_existente else self.nome_missao
-        return f"{self.solicitante} - {missao_nome} ({self.get_status_display()})"
-    
-    def aprovar(self, usuario_aprovador, observacao=''):
-        """
-        Aprova a solicitação e cria a missão/designação automaticamente.
-        """
-        from django.utils import timezone
-        
-        # Se não tem missão existente, criar nova
-        if not self.missao_existente and self.nome_missao:
-            missao = Missao.objects.create(
-                tipo=self.tipo_missao or 'ADMINISTRATIVA',
-                nome=self.nome_missao,
-                descricao=self.descricao_missao,
-                local=self.local_missao,
-                data_inicio=self.data_inicio_missao,
-                data_fim=self.data_fim_missao,
-                status='EM_ANDAMENTO',
-                documento_referencia=self.documento_referencia,
-            )
-        else:
-            missao = self.missao_existente
-        
-        if missao:
-            # Criar a designação
-            designacao, created = Designacao.objects.get_or_create(
-                missao=missao,
-                oficial=self.solicitante,
-                defaults={
-                    'funcao_na_missao': self.funcao_na_missao,
-                    'complexidade': self.complexidade,
-                    'observacoes': self.justificativa,
-                    'status': 'APROVADA',
-                }
-            )
-            
-            if not created:
-                # Atualizar designação existente
-                designacao.funcao_na_missao = self.funcao_na_missao
-                designacao.complexidade = self.complexidade
-                designacao.save()
-            
-            self.designacao_criada = designacao
-        
-        # Atualizar status da solicitação
-        self.status = 'APROVADA'
-        self.avaliado_por = usuario_aprovador
-        self.data_avaliacao = timezone.now()
-        self.observacao_avaliador = observacao
-        self.save()
-        
-        return self.designacao_criada
-    
-    def recusar(self, usuario_aprovador, observacao=''):
-        """
-        Recusa a solicitação.
-        """
-        from django.utils import timezone
-        
-        self.status = 'RECUSADA'
-        self.avaliado_por = usuario_aprovador
-        self.data_avaliacao = timezone.now()
-        self.observacao_avaliador = observacao
-        self.save()
+        return f"{self.solicitante} - {self.nome_missao} ({self.get_status_display()})"

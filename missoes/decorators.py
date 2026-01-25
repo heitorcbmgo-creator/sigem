@@ -11,7 +11,7 @@ from django.http import HttpResponseForbidden
 
 
 def acesso_dashboard(view_func):
-    """Permite acesso apenas a: admin, comando_geral"""
+    """Permite acesso apenas a: admin, comando_geral, comandante"""
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:

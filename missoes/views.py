@@ -77,7 +77,7 @@ def logout_view(request):
 @login_required
 @acesso_dashboard
 def dashboard(request):
-    """Dashboard executivo - Visão Geral para Comando-Geral."""
+    """Dashboard executivo - Visão Geral para Comando-Geral e Comandantes."""
     
     from django.db.models import Sum, Case, When, IntegerField, F, Value
     from django.db.models.functions import TruncMonth, Coalesce
@@ -89,46 +89,74 @@ def dashboard(request):
     # Em caso de erro, mostrar página de erro amigável
     try:
         hoje = timezone.now().date()
+        user = request.user
+        
+        # ============================================================
+        # 🔒 FILTRO POR OBM (COMANDANTE)
+        # ============================================================
+        is_comandante = user.is_comandante
+        obms_permitidas = []
+        obm_sigla = None
+        
+        if is_comandante:
+            obms_permitidas = user.get_obm_subordinadas()
+            if user.oficial and user.oficial.obm:
+                obm_sigla = user.oficial.obm
+            
+            # QuerySets base filtrados por OBM
+            oficiais_base = Oficial.objects.filter(ativo=True, obm__in=obms_permitidas)
+            designacoes_base = Designacao.objects.filter(oficial__obm__in=obms_permitidas)
+            
+            # Missões onde há oficiais da OBM designados
+            missoes_ids_com_oficiais_obm = designacoes_base.values_list('missao_id', flat=True).distinct()
+            missoes_base = Missao.objects.filter(id__in=missoes_ids_com_oficiais_obm)
+        else:
+            # Visão total (admin, comando_geral)
+            oficiais_base = Oficial.objects.filter(ativo=True)
+            designacoes_base = Designacao.objects.all()
+            missoes_base = Missao.objects.all()
         
         # ============================================================
         # 📌 KPIs PRINCIPAIS
         # ============================================================
         
         # Total de oficiais ativos
-        total_oficiais = Oficial.objects.filter(ativo=True).count() or 0
+        total_oficiais = oficiais_base.count() or 0
         
         # Oficiais com pelo menos uma missão em andamento
-        oficiais_com_missao = Oficial.objects.filter(
-            ativo=True,
+        oficiais_com_missao = oficiais_base.filter(
             designacoes__missao__status='EM_ANDAMENTO'
         ).distinct().count() or 0
         
         # Taxa de ocupação
         taxa_ocupacao = round((oficiais_com_missao / total_oficiais * 100), 1) if total_oficiais > 0 else 0
         
-        # Total de missões ativas
-        total_missoes_ativas = Missao.objects.filter(status='EM_ANDAMENTO').count() or 0
+        # Total de missões ativas (com oficiais da OBM para comandante)
+        total_missoes_ativas = missoes_base.filter(status='EM_ANDAMENTO').count() or 0
         
         # Total de designações ativas
-        total_designacoes_ativas = Designacao.objects.filter(missao__status='EM_ANDAMENTO').count() or 0
+        total_designacoes_ativas = designacoes_base.filter(missao__status='EM_ANDAMENTO').count() or 0
         
         # Carga média por oficial (apenas os que têm missão)
         carga_media = round(total_designacoes_ativas / oficiais_com_missao, 1) if oficiais_com_missao > 0 else 0
         
         # Designações por complexidade (ativas)
-        designacoes_baixa = Designacao.objects.filter(missao__status='EM_ANDAMENTO', complexidade='BAIXA').count() or 0
-        designacoes_media = Designacao.objects.filter(missao__status='EM_ANDAMENTO', complexidade='MEDIA').count() or 0
-        designacoes_alta = Designacao.objects.filter(missao__status='EM_ANDAMENTO', complexidade='ALTA').count() or 0
+        designacoes_baixa = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='BAIXA').count() or 0
+        designacoes_media = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='MEDIA').count() or 0
+        designacoes_alta = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='ALTA').count() or 0
         
         # Índice de complexidade alta
         indice_alta = round((designacoes_alta / total_designacoes_ativas * 100), 1) if total_designacoes_ativas > 0 else 0
         
-        # Solicitações pendentes
-        solicitacoes_pendentes = SolicitacaoDesignacao.objects.filter(status='PENDENTE').count() or 0
+        # Solicitações pendentes (apenas para não-comandantes)
+        if not is_comandante:
+            solicitacoes_pendentes = SolicitacaoDesignacao.objects.filter(status='PENDENTE').count() or 0
+        else:
+            solicitacoes_pendentes = 0
         
         # Taxa de conclusão (missões concluídas / total não canceladas)
-        total_missoes_nao_canceladas = Missao.objects.exclude(status='CANCELADA').count() or 0
-        missoes_concluidas = Missao.objects.filter(status='CONCLUIDA').count() or 0
+        total_missoes_nao_canceladas = missoes_base.exclude(status='CANCELADA').count() or 0
+        missoes_concluidas = missoes_base.filter(status='CONCLUIDA').count() or 0
         taxa_conclusao = round((missoes_concluidas / total_missoes_nao_canceladas * 100), 1) if total_missoes_nao_canceladas > 0 else 0
         
         # ============================================================
@@ -137,7 +165,7 @@ def dashboard(request):
         
         doze_meses_atras = hoje - timedelta(days=365)
         
-        evolucao_mensal = Missao.objects.filter(
+        evolucao_mensal = missoes_base.filter(
             criado_em__date__gte=doze_meses_atras
         ).annotate(
             mes=TruncMonth('criado_em')
@@ -165,7 +193,7 @@ def dashboard(request):
         # 🥧 MISSÕES POR TIPO
         # ============================================================
         
-        missoes_por_tipo = Missao.objects.filter(
+        missoes_por_tipo = missoes_base.filter(
             status='EM_ANDAMENTO'
         ).values('tipo').annotate(
             total=Count('id')
@@ -183,13 +211,21 @@ def dashboard(request):
         # 📊 CARGA POR OBM
         # ============================================================
         
-        # Agregar dados por OBM
-        oficiais_por_obm = Oficial.objects.filter(ativo=True).exclude(
-            Q(obm__isnull=True) | Q(obm='')
-        ).values('obm').annotate(
-            efetivo=Count('id'),
-            em_missao=Count('id', filter=Q(designacoes__missao__status='EM_ANDAMENTO'), distinct=True),
-        ).order_by('-efetivo')[:10]
+        # Agregar dados por OBM (filtrado para comandante)
+        if is_comandante:
+            oficiais_por_obm = oficiais_base.exclude(
+                Q(obm__isnull=True) | Q(obm='')
+            ).values('obm').annotate(
+                efetivo=Count('id'),
+                em_missao=Count('id', filter=Q(designacoes__missao__status='EM_ANDAMENTO'), distinct=True),
+            ).order_by('-efetivo')
+        else:
+            oficiais_por_obm = Oficial.objects.filter(ativo=True).exclude(
+                Q(obm__isnull=True) | Q(obm='')
+            ).values('obm').annotate(
+                efetivo=Count('id'),
+                em_missao=Count('id', filter=Q(designacoes__missao__status='EM_ANDAMENTO'), distinct=True),
+            ).order_by('-efetivo')[:10]
         
         # Calcular carga por complexidade para cada OBM
         carga_por_obm = []
@@ -237,7 +273,7 @@ def dashboard(request):
         # 🏆 TOP 10 OFICIAIS COM MAIOR CARGA
         # ============================================================
         
-        oficiais_top = Oficial.objects.filter(ativo=True).annotate(
+        oficiais_top = oficiais_base.annotate(
             total_missoes=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO')),
             qtd_baixa=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='BAIXA')),
             qtd_media=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='MEDIA')),
@@ -257,7 +293,7 @@ def dashboard(request):
         alertas = []
         
         # 🔴 Oficiais com sobrecarga (carga > 20)
-        oficiais_sobrecarga = Oficial.objects.filter(ativo=True).annotate(
+        oficiais_sobrecarga = oficiais_base.annotate(
             carga=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='BAIXA')) +
                   Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='MEDIA')) * 2 +
                   Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='ALTA')) * 3
@@ -281,35 +317,36 @@ def dashboard(request):
                 'descricao': ', '.join([o['obm'] for o in obms_sobrecarga[:3]])
             })
         
-        # 🟠 Missões sem designação
-        missoes_sem_designacao = Missao.objects.filter(
-            status='EM_ANDAMENTO'
-        ).annotate(
-            total_designados=Count('designacoes')
-        ).filter(total_designados=0).count()
-        
-        if missoes_sem_designacao > 0:
-            alertas.append({
-                'nivel': 'alto',
-                'icone': 'users',
-                'mensagem': f'{missoes_sem_designacao} missão(ões) sem oficiais designados',
-                'descricao': 'Missões em andamento sem nenhum responsável'
-            })
-        
-        # 🟠 Solicitações pendentes há mais de 7 dias
-        sete_dias_atras = timezone.now() - timedelta(days=7)
-        solicitacoes_atrasadas = SolicitacaoDesignacao.objects.filter(
-            status='PENDENTE',
-            criado_em__lt=sete_dias_atras
-        ).count()
-        
-        if solicitacoes_atrasadas > 0:
-            alertas.append({
-                'nivel': 'alto',
-                'icone': 'clock',
-                'mensagem': f'{solicitacoes_atrasadas} solicitação(ões) pendente(s) há mais de 7 dias',
-                'descricao': 'Necessitam avaliação urgente'
-            })
+        # 🟠 Missões sem designação (apenas para não-comandantes)
+        if not is_comandante:
+            missoes_sem_designacao = Missao.objects.filter(
+                status='EM_ANDAMENTO'
+            ).annotate(
+                total_designados=Count('designacoes')
+            ).filter(total_designados=0).count()
+            
+            if missoes_sem_designacao > 0:
+                alertas.append({
+                    'nivel': 'alto',
+                    'icone': 'users',
+                    'mensagem': f'{missoes_sem_designacao} missão(ões) sem oficiais designados',
+                    'descricao': 'Missões em andamento sem nenhum responsável'
+                })
+            
+            # 🟠 Solicitações pendentes há mais de 7 dias
+            sete_dias_atras = timezone.now() - timedelta(days=7)
+            solicitacoes_atrasadas = SolicitacaoDesignacao.objects.filter(
+                status='PENDENTE',
+                criado_em__lt=sete_dias_atras
+            ).count()
+            
+            if solicitacoes_atrasadas > 0:
+                alertas.append({
+                    'nivel': 'alto',
+                    'icone': 'clock',
+                    'mensagem': f'{solicitacoes_atrasadas} solicitação(ões) pendente(s) há mais de 7 dias',
+                    'descricao': 'Necessitam avaliação urgente'
+                })
         
         # 🟡 Oficiais sem missão
         oficiais_sem_missao = total_oficiais - oficiais_com_missao
@@ -323,7 +360,7 @@ def dashboard(request):
         
         # 🟡 Missões próximas do prazo (7 dias)
         proxima_semana = hoje + timedelta(days=7)
-        missoes_prazo = Missao.objects.filter(
+        missoes_prazo = missoes_base.filter(
             status='EM_ANDAMENTO',
             data_fim__lte=proxima_semana,
             data_fim__gte=hoje
@@ -341,7 +378,7 @@ def dashboard(request):
         # 📋 MISSÕES RECENTES
         # ============================================================
         
-        missoes_recentes = Missao.objects.select_related().annotate(
+        missoes_recentes = missoes_base.select_related().annotate(
             qtd_designados=Count('designacoes')
         ).order_by('-criado_em')[:5]
         
@@ -349,7 +386,7 @@ def dashboard(request):
         # 👔 DISTRIBUIÇÃO POR POSTO
         # ============================================================
         
-        distribuicao_posto = Oficial.objects.filter(ativo=True).values('posto').annotate(
+        distribuicao_posto = oficiais_base.values('posto').annotate(
             efetivo=Count('id'),
             em_missao=Count('id', filter=Q(designacoes__missao__status='EM_ANDAMENTO'), distinct=True),
             total_designacoes=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO')),
@@ -359,7 +396,7 @@ def dashboard(request):
             ))
         ).order_by('posto')
         
-        posto_ordem = ['Cel', 'TC', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp Of']
+        posto_ordem = ['Cel', 'TC', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp']
         posto_dict = {p['posto']: p for p in distribuicao_posto}
         distribuicao_posto_ordenada = []
         
@@ -378,7 +415,7 @@ def dashboard(request):
         # 📊 DISTRIBUIÇÃO POR QUADRO
         # ============================================================
         
-        distribuicao_quadro = Oficial.objects.filter(ativo=True).values('quadro').annotate(
+        distribuicao_quadro = oficiais_base.values('quadro').annotate(
             efetivo=Count('id'),
             em_missao=Count('id', filter=Q(designacoes__missao__status='EM_ANDAMENTO'), distinct=True)
         ).order_by('-efetivo')
@@ -393,7 +430,7 @@ def dashboard(request):
         # Duração média por tipo de missão (apenas concluídas)
         duracao_por_tipo = []
         for tipo_code, tipo_nome in Missao.TIPO_CHOICES:
-            missoes_tipo = Missao.objects.filter(
+            missoes_tipo = missoes_base.filter(
                 tipo=tipo_code,
                 status='CONCLUIDA',
                 data_inicio__isnull=False,
@@ -424,6 +461,10 @@ def dashboard(request):
         perc_alta = round((designacoes_alta / total_designacoes_ativas * 100), 0) if total_designacoes_ativas > 0 else 0
         
         context = {
+            # Identificação do perfil
+            'is_comandante': is_comandante,
+            'obm_sigla': obm_sigla,
+            
             # KPIs
             'total_oficiais': total_oficiais,
             'oficiais_com_missao': oficiais_com_missao,
@@ -2054,7 +2095,7 @@ def gerar_modelo_importacao():
         [15, 15, 35, 20, 12, 15, 25, 25, 30, 18],
         ['12345678901', 'RG123456', 'JOÃO DA SILVA', 'SILVA', 'Cap', 'QOC', '1º BBM', 'Cmt Cia', 'joao@email.com', '62999999999'],
         12,
-        {'POSTOS:': ['Cel', 'TC', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp Of'],
+        {'POSTOS:': ['Cel', 'Ten Cel', 'Maj', 'Cap', '1º Ten', '2º Ten', 'Asp'],
          'QUADROS:': ['QOC', 'QOA/Adm', 'QOA/Mús', 'QOM/Médico', 'QOM/Dentista']}
     )
     
@@ -2590,13 +2631,11 @@ def importar_excel(request, tipo):
                 if row[0]:  # Se tem nome
                     try:
                         comando_superior = None
-                        if len(row) > 3 and row[3]:
+                        if row[3]:
                             try:
-                                sigla_superior = str(row[3]).strip()
-                                comando_superior = Unidade.objects.get(sigla=sigla_superior)
+                                comando_superior = Unidade.objects.get(id=int(row[3]))
                             except Unidade.DoesNotExist:
-                                errors.append(f'Linha {row_num}: Unidade "{sigla_superior}" não encontrada')
-                                continue
+                                pass
                         
                         Unidade.objects.update_or_create(
                             nome=str(row[0]).strip(),

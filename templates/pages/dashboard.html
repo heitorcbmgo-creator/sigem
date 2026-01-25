@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Visão Geral - Dashboard{% endblock %}
+{% block title %}Visão Geral{% if is_comandante %} - {{ obm_sigla }}{% endif %}{% endblock %}
 
 {% block content %}
 <!-- Chart.js CDN -->
@@ -10,9 +10,15 @@
 <div class="page-header">
     <h1 class="page-title">
         <i data-lucide="layout-dashboard"></i>
-        Visão Geral
+        Visão Geral{% if is_comandante %} - {{ obm_sigla }}{% endif %}
     </h1>
-    <p class="page-subtitle">Dashboard Executivo - Comando-Geral CBMGO</p>
+    <p class="page-subtitle">
+        {% if is_comandante %}
+        Dashboard Executivo - {{ obm_sigla }} e Unidades Subordinadas
+        {% else %}
+        Dashboard Executivo - Comando-Geral CBMGO
+        {% endif %}
+    </p>
 </div>
 
 <!-- ============================================================
@@ -72,6 +78,7 @@
         <div class="kpi-meta">Meta: &lt;25%</div>
     </div>
     
+    {% if not is_comandante %}
     <div class="kpi-card">
         <div class="kpi-icon {% if solicitacoes_pendentes == 0 %}kpi-icon-green{% elif solicitacoes_pendentes <= 5 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
             <i data-lucide="inbox"></i>
@@ -81,6 +88,7 @@
             <span class="kpi-label">Solicitações Pendentes</span>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- ============================================================
