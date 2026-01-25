@@ -228,49 +228,53 @@
             </div>
         </div>
         
-        <!-- Top 10 Oficiais -->
+        <!-- Oficiais sob Maior Demanda -->
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">
-                    <i data-lucide="trophy"></i>
-                    Top 10 Oficiais (Maior Carga)
+                    <i data-lucide="alert-circle"></i>
+                    Oficiais sob Maior Demanda
                 </h2>
                 <div class="info-container">
                     <button class="info-btn" type="button">
                         <i data-lucide="info"></i>
                     </button>
                     <div class="info-tooltip">
-                        <div class="info-tooltip-title">🏆 Top 10 Oficiais</div>
+                        <div class="info-tooltip-title">⚠️ Monitoramento de Carga</div>
                         <div class="info-tooltip-text">
-                            Ranking dos oficiais com maior carga de trabalho ponderada em missões ativas.
+                            Acompanhamento dos oficiais com maior carga de trabalho ponderada em missões ativas.
                         </div>
                         <div class="info-tooltip-calc">
                             Carga = (Baixa×1) + (Média×2) + (Alta×3)
                         </div>
                         <div class="info-tooltip-meta">
-                            <strong>Chefia:</strong> Funções de comando (Cmt, SubCmt, Coord, Presidente, Encarregado).
+                            <strong>Status:</strong><br>
+                            🔴 Crítico: carga &gt; 20<br>
+                            🟠 Alto: carga 15-20<br>
+                            🟡 Moderado: carga 10-14<br>
+                            🟢 Normal: carga &lt; 10
                         </div>
                     </div>
                 </div>
             </div>
             <div class="card-body" style="padding: 0;">
-                <div class="table-container">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                     <table class="table-ranking">
-                        <thead>
+                        <thead style="position: sticky; top: 0; background: white; z-index: 1;">
                             <tr>
-                                <th>#</th>
+                                <th style="width: 30px;"></th>
                                 <th>Oficial</th>
                                 <th>OBM</th>
                                 <th class="text-center">Missões</th>
                                 <th class="text-center">Carga</th>
-                                <th class="text-center">Chefia</th>
+                                <th class="text-center">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for o in oficiais_top %}
                             <tr>
-                                <td class="ranking-pos">
-                                    {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}
+                                <td class="text-center text-muted" style="font-size: 0.75rem;">
+                                    {% if o.carga_ponderada > 20 %}🔴{% elif o.carga_ponderada > 14 %}🟠{% elif o.carga_ponderada > 9 %}🟡{% else %}🟢{% endif %}
                                 </td>
                                 <td>
                                     <div class="oficial-cell">
@@ -283,11 +287,16 @@
                                     <span class="badge badge-info">{{ o.total_missoes }}</span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge {% if o.carga_ponderada > 20 %}badge-danger{% elif o.carga_ponderada > 15 %}badge-warning{% else %}badge-success{% endif %}">
+                                    <span class="badge {% if o.carga_ponderada > 20 %}badge-danger{% elif o.carga_ponderada > 14 %}badge-warning{% elif o.carga_ponderada > 9 %}badge-yellow{% else %}badge-success{% endif %}">
                                         {{ o.carga_ponderada }}
                                     </span>
                                 </td>
-                                <td class="text-center">{{ o.qtd_chefia }}</td>
+                                <td class="text-center" style="font-size: 0.75rem;">
+                                    {% if o.carga_ponderada > 20 %}<span class="text-danger">Crítico</span>
+                                    {% elif o.carga_ponderada > 14 %}<span class="text-warning">Alto</span>
+                                    {% elif o.carga_ponderada > 9 %}<span style="color: #ca8a04;">Moderado</span>
+                                    {% else %}<span class="text-success">Normal</span>{% endif %}
+                                </td>
                             </tr>
                             {% empty %}
                             <tr>

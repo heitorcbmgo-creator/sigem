@@ -284,7 +284,7 @@ def dashboard(request):
             ))
         ).annotate(
             carga_ponderada=F('qtd_baixa') + (F('qtd_media') * 2) + (F('qtd_alta') * 3)
-        ).filter(total_missoes__gt=0).order_by('-carga_ponderada')[:10]
+        ).filter(total_missoes__gt=0).order_by('-carga_ponderada')[:50]
         
         # ============================================================
         # ⚠️ ALERTAS DO SISTEMA
