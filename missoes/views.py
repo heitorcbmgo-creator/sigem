@@ -2588,13 +2588,15 @@ def importar_excel(request, tipo):
         elif tipo == 'unidades':
             for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row[0]:  # Se tem nome
-                    try:
-                        comando_superior = None
-                        if row[3]:
-                            try:
-                                comando_superior = Unidade.objects.get(id=int(row[3]))
-                            except Unidade.DoesNotExist:
-                                pass
+                   try:
+                       comando_superior = None
+                       if len(row) > 3 and row[3]:
+                           try:
+                               sigla_superior = str(row[3]).strip()
+                               comando_superior = Unidade.objects.get(sigla=sigla_superior)
+                           except Unidade.DoesNotExist:
+                               errors.append(f'Linha {row_num}: Unidade "{sigla_superior}" não encontrada')
+                               continue
                         
                         Unidade.objects.update_or_create(
                             nome=str(row[0]).strip(),
