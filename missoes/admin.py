@@ -59,11 +59,20 @@ class UsuarioAdmin(UserAdmin):
     )
 
 
+@admin.register(SolicitacaoMissao)
+class SolicitacaoMissaoAdmin(admin.ModelAdmin):
+    list_display = ['solicitante', 'nome_missao', 'tipo_missao', 'status', 'criado_em']
+    list_filter = ['status', 'tipo_missao']
+    search_fields = ['nome_missao', 'solicitante__nome']
+    readonly_fields = ['criado_em', 'atualizado_em']
+
+
 @admin.register(SolicitacaoDesignacao)
 class SolicitacaoDesignacaoAdmin(admin.ModelAdmin):
-    list_display = ['solicitante', 'nome_missao', 'funcao_na_missao', 'status', 'criado_em']
-    list_filter = ['status']
-    search_fields = ['nome_missao', 'solicitante__nome']
+    list_display = ['solicitante', 'missao', 'funcao_na_missao', 'status', 'criado_em']
+    list_filter = ['status', 'complexidade']
+    search_fields = ['missao__nome', 'solicitante__nome']
+    readonly_fields = ['criado_em', 'atualizado_em']
 
 
 # Customização do Admin
