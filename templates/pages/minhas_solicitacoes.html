@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Minhas Solicitações{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="file-clock"></i>
+        Minhas Solicitações
+    </h1>
+    <p class="page-subtitle">Histórico e acompanhamento das suas solicitações</p>
+</div>
+
+<!-- Resumo -->
+<div class="kpi-grid-mini mb-4">
+    <div class="kpi-card-mini">
+        <div class="kpi-icon-mini kpi-icon-blue">
+            <i data-lucide="folder-plus"></i>
+        </div>
+        <div class="kpi-content-mini">
+            <span class="kpi-value-mini">{{ total_missao }}</span>
+            <span class="kpi-label-mini">Missões Solicitadas</span>
+        </div>
+    </div>
+    
+    <div class="kpi-card-mini">
+        <div class="kpi-icon-mini kpi-icon-green">
+            <i data-lucide="user-plus"></i>
+        </div>
+        <div class="kpi-content-mini">
+            <span class="kpi-value-mini">{{ total_designacao }}</span>
+            <span class="kpi-label-mini">Designações Solicitadas</span>
+        </div>
+    </div>
+    
+    <div class="kpi-card-mini">
+        <div class="kpi-icon-mini kpi-icon-yellow">
+            <i data-lucide="clock"></i>
+        </div>
+        <div class="kpi-content-mini">
+            <span class="kpi-value-mini">{{ pendentes }}</span>
+            <span class="kpi-label-mini">Pendentes</span>
+        </div>
+    </div>
+</div>
+
+<style>
+.kpi-grid-mini {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.kpi-card-mini {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.kpi-icon-mini {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kpi-icon-mini i {
+    width: 24px;
+    height: 24px;
+}
+
+.kpi-icon-blue { background: #dbeafe; color: #1e40af; }
+.kpi-icon-green { background: #dcfce7; color: #166534; }
+.kpi-icon-yellow { background: #fef3c7; color: #92400e; }
+
+.kpi-content-mini {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-value-mini {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.kpi-label-mini {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+</style>
+
+<!-- Filtros -->
+<div class="filter-bar mb-4">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-select" onchange="this.form.submit()">
+                <option value="todas" {% if filtros.tipo == 'todas' %}selected{% endif %}>Todas</option>
+                <option value="missao" {% if filtros.tipo == 'missao' %}selected{% endif %}>Missões</option>
+                <option value="designacao" {% if filtros.tipo == 'designacao' %}selected{% endif %}>Designações</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Solicitações de Missão -->
+{% if solicitacoes_missao %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="folder-plus"></i>
+            Solicitações de Missão
+        </h2>
+        <span class="badge badge-info">{{ solicitacoes_missao|length }}</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Missão</th>
+                        <th>Tipo</th>
+                        <th>Local</th>
+                        <th>Data Solicitação</th>
+                        <th>Status</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitacoes_missao %}
+                    <tr>
+                        <td>
+                            <strong>{{ s.nome_missao }}</strong>
+                            <br><small class="text-muted">SEI: {{ s.documento_sei }}</small>
+                        </td>
+                        <td>{{ s.get_tipo_missao_display }}</td>
+                        <td>{{ s.get_local_display }}</td>
+                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
+                                {{ s.get_status_display }}
+                            </span>
+                            {% if s.status == 'APROVADA' and s.missao_criada %}
+                            <br><small class="text-success">Missão #{{ s.missao_criada.id }} criada</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.observacao_avaliador %}
+                            <span class="tooltip-container">
+                                <i data-lucide="message-circle" style="width:16px;height:16px;color:#6b7280;"></i>
+                                <span class="tooltip-text">{{ s.observacao_avaliador }}</span>
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Solicitações de Designação -->
+{% if solicitacoes_designacao %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="user-plus"></i>
+            Solicitações de Designação
+        </h2>
+        <span class="badge badge-info">{{ solicitacoes_designacao|length }}</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Missão</th>
+                        <th>Função</th>
+                        <th>Data Solicitação</th>
+                        <th>Status</th>
+                        <th>Complexidade</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitacoes_designacao %}
+                    <tr>
+                        <td>
+                            <strong>{{ s.missao.nome|truncatechars:40 }}</strong>
+                            <br><small class="text-muted">SEI: {{ s.documento_sei }}</small>
+                        </td>
+                        <td>{{ s.funcao_na_missao }}</td>
+                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
+                                {{ s.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if s.complexidade %}
+                            <span class="badge badge-{% if s.complexidade == 'ALTA' %}danger{% elif s.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                                {{ s.complexidade }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.observacao_avaliador %}
+                            <span class="tooltip-container">
+                                <i data-lucide="message-circle" style="width:16px;height:16px;color:#6b7280;"></i>
+                                <span class="tooltip-text">{{ s.observacao_avaliador }}</span>
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if not solicitacoes_missao and not solicitacoes_designacao %}
+<div class="card">
+    <div class="card-body text-center py-8">
+        <i data-lucide="inbox" style="width:64px;height:64px;color:#d1d5db;margin-bottom:1rem;"></i>
+        <h3 class="text-gray">Nenhuma solicitação encontrada</h3>
+        <p class="text-muted">Você ainda não fez nenhuma solicitação{% if filtros.status %} com este status{% endif %}.</p>
+        <a href="{% url 'painel_oficial' %}" class="btn btn-primary mt-4">
+            <i data-lucide="plus"></i>
+            Fazer Nova Solicitação
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.filter-bar {
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-form .form-group {
+    min-width: 150px;
+}
+
+.py-8 {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.mt-4 {
+    margin-top: 1rem;
+}
+
+/* Tooltip para observações */
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    z-index: 100;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    max-width: 300px;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip-text {
+    visibility: visible;
+}
+</style>
+{% endblock %}

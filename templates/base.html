@@ -75,6 +75,13 @@
                 </a>
                 {% endif %}
                 
+                {% if user.oficial and user.role == 'oficial' %}
+                <a href="{% url 'minhas_solicitacoes' %}" class="navbar-link {% if request.resolver_match.url_name == 'minhas_solicitacoes' %}active{% endif %}">
+                    <i data-lucide="file-clock"></i>
+                    <span>Minhas Solicitações</span>
+                </a>
+                {% endif %}
+                
                 {% if user.pode_ver_admin %}
                 <a href="{% url 'admin_painel' %}" class="navbar-link {% if request.resolver_match.url_name == 'admin_painel' %}active{% endif %}">
                     <i data-lucide="settings"></i>
@@ -127,6 +134,12 @@
                             <i data-lucide="user"></i>
                             Meu Painel
                         </a>
+                        {% if user.oficial and user.role == 'oficial' %}
+                        <a href="{% url 'minhas_solicitacoes' %}" class="navbar-dropdown-item">
+                            <i data-lucide="file-clock"></i>
+                            Minhas Solicitações
+                        </a>
+                        {% endif %}
                         <a href="{% url 'logout' %}" class="navbar-dropdown-item navbar-dropdown-logout">
                             <i data-lucide="log-out"></i>
                             Sair
@@ -161,7 +174,7 @@
     <!-- ========== FOOTER ========== -->
     {% if user.is_authenticated %}
     <footer class="footer">
-        <p>&copy; 2026 SIGEM - CBMGO - Criado por Heitor Braga de Paula - <i>AI assisted</i></p>
+        <p>&copy; 2024 SIGEM - Corpo de Bombeiros Militar do Estado de Goiás</p>
     </footer>
     {% endif %}
     

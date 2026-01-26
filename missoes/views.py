@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 from django.core.paginator import Paginator
 
-from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao
+from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao, SolicitacaoMissao
 from .decorators import (
     acesso_dashboard, acesso_comparar, acesso_admin_painel,
     permissao_gerenciar_oficiais, permissao_gerenciar_missoes,
@@ -150,7 +150,10 @@ def dashboard(request):
         
         # Solicitações pendentes (apenas para não-comandantes)
         if not is_comandante:
-            solicitacoes_pendentes = SolicitacaoDesignacao.objects.filter(status='PENDENTE').count() or 0
+            solicitacoes_pendentes = (
+                SolicitacaoDesignacao.objects.filter(status='PENDENTE').count() +
+                SolicitacaoMissao.objects.filter(status='PENDENTE').count()
+            ) or 0
         else:
             solicitacoes_pendentes = 0
         
@@ -335,10 +338,16 @@ def dashboard(request):
             
             # 🟠 Solicitações pendentes há mais de 7 dias
             sete_dias_atras = timezone.now() - timedelta(days=7)
-            solicitacoes_atrasadas = SolicitacaoDesignacao.objects.filter(
-                status='PENDENTE',
-                criado_em__lt=sete_dias_atras
-            ).count()
+            solicitacoes_atrasadas = (
+                SolicitacaoDesignacao.objects.filter(
+                    status='PENDENTE',
+                    criado_em__lt=sete_dias_atras
+                ).count() +
+                SolicitacaoMissao.objects.filter(
+                    status='PENDENTE',
+                    criado_em__lt=sete_dias_atras
+                ).count()
+            )
             
             if solicitacoes_atrasadas > 0:
                 alertas.append({
@@ -753,8 +762,53 @@ def htmx_buscar_oficiais(request):
 # Alias para manter compatibilidade com URLs antigas
 @login_required
 def painel_oficial(request):
-    """Redireciona para consultar_oficial (compatibilidade)."""
-    return consultar_oficial(request)
+    """Painel do oficial logado com suas designações e formulários de solicitação."""
+    
+    usuario = request.user
+    
+    if not usuario.oficial:
+        messages.error(request, 'Você não possui um oficial vinculado ao seu usuário.')
+        return redirect('missoes_dashboard')
+    
+    oficial = usuario.oficial
+    
+    # Designações do oficial
+    designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
+    
+    # Filtros
+    tipo = request.GET.get('tipo', '')
+    status_filtro = request.GET.get('status', '')
+    complexidade = request.GET.get('complexidade', '')
+    
+    if tipo:
+        designacoes = designacoes.filter(missao__tipo=tipo)
+    if status_filtro:
+        designacoes = designacoes.filter(missao__status=status_filtro)
+    if complexidade:
+        designacoes = designacoes.filter(complexidade=complexidade)
+    
+    # Missões disponíveis para solicitar designação (Planejada ou Em Andamento)
+    missoes_disponiveis = Missao.objects.filter(
+        status__in=['PLANEJADA', 'EM_ANDAMENTO']
+    ).order_by('nome')
+    
+    # Solicitações recentes (últimas 5 de cada tipo)
+    solicitacoes_missao = SolicitacaoMissao.objects.filter(solicitante=oficial).order_by('-criado_em')[:5]
+    solicitacoes_designacao = SolicitacaoDesignacao.objects.filter(solicitante=oficial).order_by('-criado_em')[:5]
+    
+    context = {
+        'oficial': oficial,
+        'designacoes': designacoes,
+        'missoes_disponiveis': missoes_disponiveis,
+        'solicitacoes_missao': solicitacoes_missao,
+        'solicitacoes_designacao': solicitacoes_designacao,
+        'tipo_choices': Missao.TIPO_CHOICES,
+        'status_choices': Missao.STATUS_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'local_choices': SolicitacaoMissao.LOCAL_CHOICES,
+    }
+    
+    return render(request, 'pages/painel_oficial.html', context)
 
 
 # ============================================================
@@ -1820,90 +1874,141 @@ def htmx_usuario_reset_senha(request, pk):
 # ============================================================
 @login_required
 @require_POST
-def htmx_solicitacao_criar(request):
-    """Cria uma solicitação de designação."""
+def htmx_solicitacao_missao_criar(request):
+    """Cria uma solicitação de inclusão de missão."""
     
     if not request.user.oficial:
         messages.error(request, 'Usuário não vinculado a um oficial.')
-        return HttpResponse(status=400)
+        return HttpResponse('<div class="alert alert-danger">Usuário não vinculado a um oficial.</div>')
     
     try:
-        SolicitacaoDesignacao.objects.create(
+        # Processar datas
+        data_inicio = request.POST.get('data_inicio')
+        data_fim = request.POST.get('data_fim') or None
+        status_missao = request.POST.get('status_missao', 'EM_ANDAMENTO')
+        
+        # Se status for CONCLUIDA, data_fim é obrigatória
+        if status_missao == 'CONCLUIDA' and not data_fim:
+            return HttpResponse('<div class="alert alert-danger">Data de término é obrigatória para missões concluídas.</div>')
+        
+        SolicitacaoMissao.objects.create(
             solicitante=request.user.oficial,
             nome_missao=request.POST.get('nome_missao', ''),
-            funcao_na_missao=request.POST.get('funcao_na_missao', ''),
-            complexidade=request.POST.get('complexidade', ''),
-            documento_referencia=request.POST.get('documento_referencia', ''),
-            justificativa=request.POST.get('justificativa', ''),
+            tipo_missao=request.POST.get('tipo_missao', ''),
+            status_missao=status_missao,
+            local=request.POST.get('local', ''),
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            documento_sei=request.POST.get('documento_sei', ''),
         )
-        messages.success(request, 'Solicitação enviada com sucesso!')
+        
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de missão enviada com sucesso! Aguarde avaliação.</div><script>lucide.createIcons();</script>')
         
     except Exception as e:
-        messages.error(request, f'Erro ao criar solicitação: {str(e)}')
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao criar solicitação: {str(e)}</div>')
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_designacao_criar(request):
+    """Cria uma solicitação de inclusão de designação."""
     
-    return render(request, 'htmx/solicitacao_sucesso.html')
+    if not request.user.oficial:
+        messages.error(request, 'Usuário não vinculado a um oficial.')
+        return HttpResponse('<div class="alert alert-danger">Usuário não vinculado a um oficial.</div>')
+    
+    try:
+        missao_id = request.POST.get('missao_id')
+        if not missao_id:
+            return HttpResponse('<div class="alert alert-danger">Selecione uma missão.</div>')
+        
+        missao = Missao.objects.get(id=missao_id)
+        
+        # Verificar se já existe designação para este oficial nesta missão
+        if Designacao.objects.filter(oficial=request.user.oficial, missao=missao).exists():
+            return HttpResponse('<div class="alert alert-warning">Você já está designado para esta missão.</div>')
+        
+        # Verificar se já existe solicitação pendente
+        if SolicitacaoDesignacao.objects.filter(
+            solicitante=request.user.oficial, 
+            missao=missao, 
+            status='PENDENTE'
+        ).exists():
+            return HttpResponse('<div class="alert alert-warning">Já existe uma solicitação pendente para esta missão.</div>')
+        
+        SolicitacaoDesignacao.objects.create(
+            solicitante=request.user.oficial,
+            missao=missao,
+            funcao_na_missao=request.POST.get('funcao_na_missao', ''),
+            documento_sei=request.POST.get('documento_sei', ''),
+        )
+        
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de designação enviada com sucesso! Aguarde avaliação.</div><script>lucide.createIcons();</script>')
+        
+    except Missao.DoesNotExist:
+        return HttpResponse('<div class="alert alert-danger">Missão não encontrada.</div>')
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao criar solicitação: {str(e)}</div>')
 
 
 @login_required
 def htmx_solicitacoes_lista(request):
-    """Lista solicitações com paginação e filtros."""
+    """Lista solicitações de missão e designação com paginação e filtros."""
     
     if not request.user.pode_gerenciar_solicitacoes:
         return HttpResponse('Sem permissão', status=403)
     
-    solicitacoes = SolicitacaoDesignacao.objects.select_related('solicitante', 'avaliado_por').all()
+    # Buscar solicitações de ambos os tipos
+    tipo_solicitacao = request.GET.get('tipo_solicitacao', 'todas')
     
-    # Filtros
+    # Filtros comuns
     busca = request.GET.get('busca', '').strip()
     status = request.GET.get('status', '')
     
-    if busca:
-        solicitacoes = solicitacoes.filter(
-            Q(solicitante__nome__icontains=busca) |
-            Q(solicitante__nome_guerra__icontains=busca) |
-            Q(nome_missao__icontains=busca)
-        )
+    # Listas separadas
+    solicitacoes_missao = []
+    solicitacoes_designacao = []
     
-    if status:
-        solicitacoes = solicitacoes.filter(status=status)
+    if tipo_solicitacao in ['todas', 'missao']:
+        qs_missao = SolicitacaoMissao.objects.select_related('solicitante', 'avaliado_por').all()
+        if busca:
+            qs_missao = qs_missao.filter(
+                Q(solicitante__nome__icontains=busca) |
+                Q(solicitante__nome_guerra__icontains=busca) |
+                Q(nome_missao__icontains=busca)
+            )
+        if status:
+            qs_missao = qs_missao.filter(status=status)
+        solicitacoes_missao = list(qs_missao.order_by('-criado_em'))
     
-    # Ordenação
-    ordenar = request.GET.get('ordenar', '-criado_em')
-    direcao = request.GET.get('direcao', 'desc')
+    if tipo_solicitacao in ['todas', 'designacao']:
+        qs_designacao = SolicitacaoDesignacao.objects.select_related('solicitante', 'avaliado_por', 'missao').all()
+        if busca:
+            qs_designacao = qs_designacao.filter(
+                Q(solicitante__nome__icontains=busca) |
+                Q(solicitante__nome_guerra__icontains=busca) |
+                Q(missao__nome__icontains=busca)
+            )
+        if status:
+            qs_designacao = qs_designacao.filter(status=status)
+        solicitacoes_designacao = list(qs_designacao.order_by('-criado_em'))
     
-    if direcao == 'desc' and not ordenar.startswith('-'):
-        ordenar = f'-{ordenar}'
-    elif direcao == 'asc' and ordenar.startswith('-'):
-        ordenar = ordenar[1:]
-    
-    solicitacoes = solicitacoes.order_by(ordenar)
-    
-    # Paginação
-    por_pagina = int(request.GET.get('por_pagina', 25))
-    pagina = request.GET.get('pagina', 1)
-    
-    paginator = Paginator(solicitacoes, por_pagina)
-    page_obj = paginator.get_page(pagina)
-    
-    # Query string
-    query_params = request.GET.copy()
-    if 'pagina' in query_params:
-        del query_params['pagina']
-    query_string = query_params.urlencode()
+    # Contadores
+    pendentes_missao = SolicitacaoMissao.objects.filter(status='PENDENTE').count()
+    pendentes_designacao = SolicitacaoDesignacao.objects.filter(status='PENDENTE').count()
     
     context = {
-        'page_obj': page_obj,
+        'solicitacoes_missao': solicitacoes_missao,
+        'solicitacoes_designacao': solicitacoes_designacao,
+        'pendentes_missao': pendentes_missao,
+        'pendentes_designacao': pendentes_designacao,
         'filtros': {
             'busca': busca,
             'status': status,
-            'por_pagina': str(por_pagina),
+            'tipo_solicitacao': tipo_solicitacao,
         },
-        'ordenacao': {
-            'campo': ordenar.lstrip('-'),
-            'direcao': direcao,
-        },
-        'query_string': query_string,
         'status_choices': SolicitacaoDesignacao.STATUS_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
         'user': request.user,
     }
     
@@ -1912,29 +2017,138 @@ def htmx_solicitacoes_lista(request):
 
 @login_required
 @require_POST
-def htmx_solicitacao_avaliar(request, pk):
-    """Avalia uma solicitação (aprovar/recusar)."""
+def htmx_solicitacao_missao_avaliar(request, pk):
+    """Avalia uma solicitação de missão (aprovar/recusar)."""
     
     if not request.user.pode_gerenciar_solicitacoes:
         return HttpResponse('Sem permissão', status=403)
     
-    solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
-    
+    solicitacao = get_object_or_404(SolicitacaoMissao, pk=pk)
     acao = request.POST.get('acao')  # 'aprovar' ou 'recusar'
     
     try:
-        solicitacao.status = 'APROVADA' if acao == 'aprovar' else 'RECUSADA'
         solicitacao.avaliado_por = request.user
         solicitacao.data_avaliacao = timezone.now()
         solicitacao.observacao_avaliador = request.POST.get('observacao', '')
-        solicitacao.save()
         
-        messages.success(request, f'Solicitação {solicitacao.get_status_display().lower()}!')
+        if acao == 'aprovar':
+            # Criar a missão automaticamente
+            missao = Missao.objects.create(
+                nome=solicitacao.nome_missao,
+                tipo=solicitacao.tipo_missao,
+                status=solicitacao.status_missao,
+                local=dict(SolicitacaoMissao.LOCAL_CHOICES).get(solicitacao.local, solicitacao.local),
+                data_inicio=solicitacao.data_inicio,
+                data_fim=solicitacao.data_fim,
+                documento_referencia=solicitacao.documento_sei,
+            )
+            solicitacao.status = 'APROVADA'
+            solicitacao.missao_criada = missao
+            messages.success(request, f'Solicitação aprovada! Missão "{missao.nome}" criada com sucesso.')
+        else:
+            solicitacao.status = 'RECUSADA'
+            messages.info(request, 'Solicitação recusada.')
+        
+        solicitacao.save()
         
     except Exception as e:
         messages.error(request, f'Erro ao avaliar: {str(e)}')
     
     return htmx_solicitacoes_lista(request)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_designacao_avaliar(request, pk):
+    """Avalia uma solicitação de designação (aprovar/recusar)."""
+    
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+    
+    solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
+    acao = request.POST.get('acao')  # 'aprovar' ou 'recusar'
+    
+    try:
+        solicitacao.avaliado_por = request.user
+        solicitacao.data_avaliacao = timezone.now()
+        solicitacao.observacao_avaliador = request.POST.get('observacao', '')
+        
+        if acao == 'aprovar':
+            # Complexidade é definida pelo BM/3 na aprovação
+            complexidade = request.POST.get('complexidade', 'MEDIA')
+            solicitacao.complexidade = complexidade
+            
+            # Criar a designação automaticamente
+            designacao = Designacao.objects.create(
+                oficial=solicitacao.solicitante,
+                missao=solicitacao.missao,
+                funcao_na_missao=solicitacao.funcao_na_missao,
+                complexidade=complexidade,
+                observacoes=f'Criado via solicitação. SEI: {solicitacao.documento_sei}',
+            )
+            solicitacao.status = 'APROVADA'
+            solicitacao.designacao_criada = designacao
+            messages.success(request, f'Solicitação aprovada! {solicitacao.solicitante} designado para "{solicitacao.missao.nome}".')
+        else:
+            solicitacao.status = 'RECUSADA'
+            messages.info(request, 'Solicitação recusada.')
+        
+        solicitacao.save()
+        
+    except Exception as e:
+        messages.error(request, f'Erro ao avaliar: {str(e)}')
+    
+    return htmx_solicitacoes_lista(request)
+
+
+@login_required
+def minhas_solicitacoes(request):
+    """Página com histórico de solicitações do oficial logado."""
+    
+    if not request.user.oficial:
+        messages.error(request, 'Você não possui um oficial vinculado ao seu usuário.')
+        return redirect('missoes_dashboard')
+    
+    oficial = request.user.oficial
+    
+    # Filtros
+    tipo = request.GET.get('tipo', 'todas')
+    status = request.GET.get('status', '')
+    
+    # Buscar solicitações
+    solicitacoes_missao = SolicitacaoMissao.objects.filter(solicitante=oficial)
+    solicitacoes_designacao = SolicitacaoDesignacao.objects.filter(solicitante=oficial).select_related('missao')
+    
+    if status:
+        solicitacoes_missao = solicitacoes_missao.filter(status=status)
+        solicitacoes_designacao = solicitacoes_designacao.filter(status=status)
+    
+    solicitacoes_missao = solicitacoes_missao.order_by('-criado_em')
+    solicitacoes_designacao = solicitacoes_designacao.order_by('-criado_em')
+    
+    # Contadores
+    total_missao = SolicitacaoMissao.objects.filter(solicitante=oficial).count()
+    total_designacao = SolicitacaoDesignacao.objects.filter(solicitante=oficial).count()
+    pendentes = (
+        SolicitacaoMissao.objects.filter(solicitante=oficial, status='PENDENTE').count() +
+        SolicitacaoDesignacao.objects.filter(solicitante=oficial, status='PENDENTE').count()
+    )
+    
+    context = {
+        'oficial': oficial,
+        'solicitacoes_missao': solicitacoes_missao if tipo in ['todas', 'missao'] else [],
+        'solicitacoes_designacao': solicitacoes_designacao if tipo in ['todas', 'designacao'] else [],
+        'total_missao': total_missao,
+        'total_designacao': total_designacao,
+        'pendentes': pendentes,
+        'filtros': {
+            'tipo': tipo,
+            'status': status,
+        },
+        'status_choices': SolicitacaoDesignacao.STATUS_CHOICES,
+    }
+    
+    return render(request, 'pages/minhas_solicitacoes.html', context)
 
 
 # ============================================================

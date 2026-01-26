@@ -1,51 +1,451 @@
-<!-- Lista de solicitações pendentes -->
-<div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Solicitante</th>
-                <th>Missão</th>
-                <th>Função</th>
-                <th>Documento</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for s in solicitacoes %}
-            <tr>
-                <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                <td><strong>{{ s.solicitante }}</strong></td>
-                <td>{{ s.nome_missao }}</td>
-                <td>{{ s.funcao_na_missao }}</td>
-                <td>{{ s.documento_referencia|default:"—" }}</td>
-                <td>
-                    <div class="flex gap-1">
-                        <button class="btn btn-sm btn-success"
-                                hx-post="{% url 'htmx_solicitacao_avaliar' s.id %}"
-                                hx-vals='{"acao": "aprovar"}'
-                                hx-target="closest tr"
-                                hx-swap="outerHTML"
-                                hx-confirm="Aprovar esta solicitação?">
-                            <i data-lucide="check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger"
-                                hx-post="{% url 'htmx_solicitacao_avaliar' s.id %}"
-                                hx-vals='{"acao": "recusar"}'
-                                hx-target="closest tr"
-                                hx-swap="outerHTML"
-                                hx-confirm="Recusar esta solicitação?">
-                            <i data-lucide="x"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="text-center text-gray">Nenhuma solicitação pendente.</td>
-            </tr>
+<!-- 
+============================================================
+Template: htmx/solicitacoes_lista.html
+Lista de solicitações para avaliação (Admin/BM3)
+============================================================
+-->
+
+<!-- Cabeçalho com contadores -->
+<div class="solicitacoes-header">
+    <div class="solicitacoes-tabs">
+        <button class="sol-tab {% if filtros.tipo_solicitacao == 'todas' %}active{% endif %}" 
+                hx-get="{% url 'htmx_solicitacoes_lista' %}?tipo_solicitacao=todas&status={{ filtros.status }}&busca={{ filtros.busca }}"
+                hx-target="#solicitacoes-container">
+            Todas
+            <span class="badge">{{ pendentes_missao|add:pendentes_designacao }}</span>
+        </button>
+        <button class="sol-tab {% if filtros.tipo_solicitacao == 'missao' %}active{% endif %}"
+                hx-get="{% url 'htmx_solicitacoes_lista' %}?tipo_solicitacao=missao&status={{ filtros.status }}&busca={{ filtros.busca }}"
+                hx-target="#solicitacoes-container">
+            <i data-lucide="folder-plus" style="width:14px;height:14px;"></i>
+            Missões
+            <span class="badge badge-{% if pendentes_missao > 0 %}warning{% else %}info{% endif %}">{{ pendentes_missao }}</span>
+        </button>
+        <button class="sol-tab {% if filtros.tipo_solicitacao == 'designacao' %}active{% endif %}"
+                hx-get="{% url 'htmx_solicitacoes_lista' %}?tipo_solicitacao=designacao&status={{ filtros.status }}&busca={{ filtros.busca }}"
+                hx-target="#solicitacoes-container">
+            <i data-lucide="user-plus" style="width:14px;height:14px;"></i>
+            Designações
+            <span class="badge badge-{% if pendentes_designacao > 0 %}warning{% else %}info{% endif %}">{{ pendentes_designacao }}</span>
+        </button>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="solicitacoes-filtros">
+        <input type="text" 
+               class="form-input" 
+               placeholder="Buscar..." 
+               value="{{ filtros.busca }}"
+               hx-get="{% url 'htmx_solicitacoes_lista' %}?tipo_solicitacao={{ filtros.tipo_solicitacao }}&status={{ filtros.status }}"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#solicitacoes-container"
+               name="busca"
+               style="max-width: 200px;">
+        
+        <select class="form-select" 
+                hx-get="{% url 'htmx_solicitacoes_lista' %}?tipo_solicitacao={{ filtros.tipo_solicitacao }}&busca={{ filtros.busca }}"
+                hx-trigger="change"
+                hx-target="#solicitacoes-container"
+                name="status"
+                style="max-width: 150px;">
+            <option value="">Todos os status</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
-        </tbody>
-    </table>
+        </select>
+    </div>
 </div>
-<script>lucide.createIcons();</script>
+
+<style>
+.solicitacoes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.solicitacoes-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sol-tab {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.sol-tab:hover {
+    background: #f9fafb;
+}
+
+.sol-tab.active {
+    background: #8b0000;
+    color: white;
+    border-color: #8b0000;
+}
+
+.sol-tab.active .badge {
+    background: white;
+    color: #8b0000;
+}
+
+.sol-tab .badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+}
+
+.solicitacoes-filtros {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .solicitacoes-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .solicitacoes-tabs {
+        overflow-x: auto;
+    }
+    .solicitacoes-filtros {
+        flex-direction: column;
+    }
+    .solicitacoes-filtros input,
+    .solicitacoes-filtros select {
+        max-width: 100% !important;
+    }
+}
+</style>
+
+<!-- Solicitações de Missão -->
+{% if solicitacoes_missao %}
+<div class="card mb-3">
+    <div class="card-header" style="background: #fef2f2;">
+        <h3 class="card-title" style="font-size: 0.95rem;">
+            <i data-lucide="folder-plus"></i>
+            Solicitações de Missão
+        </h3>
+        <span class="badge badge-warning">{{ solicitacoes_missao|length }} pendente(s)</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Solicitante</th>
+                    <th>Missão</th>
+                    <th>Tipo/Local</th>
+                    <th>Período</th>
+                    <th>Data Solicitação</th>
+                    <th>Status</th>
+                    <th style="width: 150px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in solicitacoes_missao %}
+                <tr id="sol-missao-{{ s.id }}">
+                    <td>
+                        <div class="oficial-cell">
+                            <img src="{{ s.solicitante.foto_url }}" alt="" class="oficial-mini-foto">
+                            <div>
+                                <strong>{{ s.solicitante.posto }} {{ s.solicitante.nome_guerra }}</strong>
+                                <br><small class="text-muted">{{ s.solicitante.obm }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ s.nome_missao }}</strong>
+                        <br><small class="text-muted">SEI: {{ s.documento_sei }}</small>
+                    </td>
+                    <td>
+                        {{ s.get_tipo_missao_display }}
+                        <br><small class="text-muted">{{ s.get_local_display }}</small>
+                    </td>
+                    <td>
+                        {{ s.data_inicio|date:"d/m/Y" }}
+                        {% if s.data_fim %}<br>→ {{ s.data_fim|date:"d/m/Y" }}{% endif %}
+                    </td>
+                    <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
+                            {{ s.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if s.status == 'PENDENTE' %}
+                        <div class="btn-group-vertical">
+                            <button class="btn btn-sm btn-success" 
+                                    onclick="avaliarSolicitacaoMissao({{ s.id }}, 'aprovar')"
+                                    title="Aprovar">
+                                <i data-lucide="check"></i> Aprovar
+                            </button>
+                            <button class="btn btn-sm btn-danger" 
+                                    onclick="avaliarSolicitacaoMissao({{ s.id }}, 'recusar')"
+                                    title="Recusar">
+                                <i data-lucide="x"></i> Recusar
+                            </button>
+                        </div>
+                        {% else %}
+                        <small class="text-muted">
+                            {{ s.avaliado_por.oficial.nome_guerra|default:s.avaliado_por.cpf }}
+                            <br>{{ s.data_avaliacao|date:"d/m/Y H:i" }}
+                        </small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Solicitações de Designação -->
+{% if solicitacoes_designacao %}
+<div class="card mb-3">
+    <div class="card-header" style="background: #f0fdf4;">
+        <h3 class="card-title" style="font-size: 0.95rem;">
+            <i data-lucide="user-plus"></i>
+            Solicitações de Designação
+        </h3>
+        <span class="badge badge-warning">{{ solicitacoes_designacao|length }} pendente(s)</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Solicitante</th>
+                    <th>Missão</th>
+                    <th>Função</th>
+                    <th>SEI/BG</th>
+                    <th>Data Solicitação</th>
+                    <th>Status</th>
+                    <th style="width: 180px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in solicitacoes_designacao %}
+                <tr id="sol-desig-{{ s.id }}">
+                    <td>
+                        <div class="oficial-cell">
+                            <img src="{{ s.solicitante.foto_url }}" alt="" class="oficial-mini-foto">
+                            <div>
+                                <strong>{{ s.solicitante.posto }} {{ s.solicitante.nome_guerra }}</strong>
+                                <br><small class="text-muted">{{ s.solicitante.obm }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ s.missao.nome|truncatechars:30 }}</strong>
+                        <br><small class="text-muted">{{ s.missao.get_tipo_display }}</small>
+                    </td>
+                    <td>{{ s.funcao_na_missao }}</td>
+                    <td>{{ s.documento_sei }}</td>
+                    <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
+                            {{ s.get_status_display }}
+                        </span>
+                        {% if s.complexidade %}
+                        <br><small>{{ s.complexidade }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.status == 'PENDENTE' %}
+                        <div class="avaliar-designacao-form">
+                            <select class="form-select form-select-sm" id="complexidade-{{ s.id }}" style="margin-bottom: 0.25rem;">
+                                <option value="BAIXA">Baixa</option>
+                                <option value="MEDIA" selected>Média</option>
+                                <option value="ALTA">Alta</option>
+                            </select>
+                            <div class="btn-group-horizontal">
+                                <button class="btn btn-sm btn-success" 
+                                        onclick="avaliarSolicitacaoDesignacao({{ s.id }}, 'aprovar')"
+                                        title="Aprovar">
+                                    <i data-lucide="check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="avaliarSolicitacaoDesignacao({{ s.id }}, 'recusar')"
+                                        title="Recusar">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <small class="text-muted">
+                            {{ s.avaliado_por.oficial.nome_guerra|default:s.avaliado_por.cpf }}
+                            <br>{{ s.data_avaliacao|date:"d/m/Y H:i" }}
+                        </small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if not solicitacoes_missao and not solicitacoes_designacao %}
+<div class="empty-state">
+    <i data-lucide="inbox" style="width:64px;height:64px;color:#d1d5db;"></i>
+    <h3>Nenhuma solicitação encontrada</h3>
+    <p class="text-muted">Não há solicitações com os filtros selecionados.</p>
+</div>
+{% endif %}
+
+<style>
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.btn-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.btn-group-horizontal {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.avaliar-designacao-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.form-select-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+}
+
+.empty-state h3 {
+    margin-top: 1rem;
+    color: #374151;
+}
+
+.oficial-mini-foto {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.oficial-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+
+<!-- Modal de Observação -->
+<div id="modal-observacao" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 id="modal-titulo">Avaliar Solicitação</h3>
+            <button onclick="fecharModal()" class="btn btn-ghost">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="form-avaliar">
+                <input type="hidden" id="modal-tipo" value="">
+                <input type="hidden" id="modal-id" value="">
+                <input type="hidden" id="modal-acao" value="">
+                <input type="hidden" id="modal-complexidade" value="">
+                
+                <div class="form-group">
+                    <label class="form-label">Observação (opcional)</label>
+                    <textarea class="form-input" id="modal-observacao-text" rows="3" 
+                              placeholder="Justificativa ou comentário..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" onclick="fecharModal()" class="btn btn-outline">Cancelar</button>
+                    <button type="button" onclick="confirmarAvaliacao()" class="btn btn-primary" id="btn-confirmar">
+                        Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function avaliarSolicitacaoMissao(id, acao) {
+    document.getElementById('modal-tipo').value = 'missao';
+    document.getElementById('modal-id').value = id;
+    document.getElementById('modal-acao').value = acao;
+    document.getElementById('modal-titulo').textContent = acao === 'aprovar' ? 'Aprovar Solicitação de Missão' : 'Recusar Solicitação de Missão';
+    document.getElementById('btn-confirmar').className = acao === 'aprovar' ? 'btn btn-success' : 'btn btn-danger';
+    document.getElementById('btn-confirmar').textContent = acao === 'aprovar' ? 'Aprovar' : 'Recusar';
+    document.getElementById('modal-observacao').style.display = 'flex';
+}
+
+function avaliarSolicitacaoDesignacao(id, acao) {
+    const complexidade = document.getElementById('complexidade-' + id).value;
+    document.getElementById('modal-tipo').value = 'designacao';
+    document.getElementById('modal-id').value = id;
+    document.getElementById('modal-acao').value = acao;
+    document.getElementById('modal-complexidade').value = complexidade;
+    document.getElementById('modal-titulo').textContent = acao === 'aprovar' ? 'Aprovar Solicitação de Designação' : 'Recusar Solicitação de Designação';
+    document.getElementById('btn-confirmar').className = acao === 'aprovar' ? 'btn btn-success' : 'btn btn-danger';
+    document.getElementById('btn-confirmar').textContent = acao === 'aprovar' ? 'Aprovar' : 'Recusar';
+    document.getElementById('modal-observacao').style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('modal-observacao').style.display = 'none';
+    document.getElementById('modal-observacao-text').value = '';
+}
+
+function confirmarAvaliacao() {
+    const tipo = document.getElementById('modal-tipo').value;
+    const id = document.getElementById('modal-id').value;
+    const acao = document.getElementById('modal-acao').value;
+    const observacao = document.getElementById('modal-observacao-text').value;
+    const complexidade = document.getElementById('modal-complexidade').value;
+    
+    const url = tipo === 'missao' 
+        ? '/htmx/solicitacao/missao/' + id + '/avaliar/'
+        : '/htmx/solicitacao/designacao/' + id + '/avaliar/';
+    
+    const formData = new FormData();
+    formData.append('acao', acao);
+    formData.append('observacao', observacao);
+    if (tipo === 'designacao') {
+        formData.append('complexidade', complexidade);
+    }
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    }).then(response => response.text())
+    .then(html => {
+        document.getElementById('solicitacoes-container').innerHTML = html;
+        fecharModal();
+        lucide.createIcons();
+    });
+}
+
+// Inicializar ícones
+lucide.createIcons();
+</script>

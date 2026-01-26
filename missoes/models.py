@@ -512,6 +512,75 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 # ============================================================
 # 📝 MODELO: SOLICITAÇÃO DE DESIGNAÇÃO
 # ============================================================
+class SolicitacaoMissao(models.Model):
+    """Solicitação de inclusão de missão feita pelo oficial."""
+    
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('APROVADA', 'Aprovada'),
+        ('RECUSADA', 'Recusada'),
+    ]
+    
+    LOCAL_CHOICES = [
+        ('ESTADUAL', 'Estadual'),
+        ('CAPITAL', 'Capital'),
+        ('1_CRBM', '1º CRBM'),
+        ('2_CRBM', '2º CRBM'),
+        ('3_CRBM', '3º CRBM'),
+        ('4_CRBM', '4º CRBM'),
+        ('5_CRBM', '5º CRBM'),
+        ('6_CRBM', '6º CRBM'),
+        ('7_CRBM', '7º CRBM'),
+        ('8_CRBM', '8º CRBM'),
+        ('9_CRBM', '9º CRBM'),
+    ]
+    
+    solicitante = models.ForeignKey(
+        Oficial,
+        on_delete=models.CASCADE,
+        related_name='solicitacoes_missao',
+        verbose_name='Solicitante'
+    )
+    nome_missao = models.CharField('Nome da Missão', max_length=200)
+    tipo_missao = models.CharField('Tipo', max_length=20, choices=Missao.TIPO_CHOICES)
+    status_missao = models.CharField('Status da Missão', max_length=20, choices=Missao.STATUS_CHOICES, default='EM_ANDAMENTO')
+    local = models.CharField('Local', max_length=20, choices=LOCAL_CHOICES)
+    data_inicio = models.DateField('Data de Início')
+    data_fim = models.DateField('Data de Término', null=True, blank=True)
+    documento_sei = models.CharField('Nº SEI', max_length=100)
+    
+    # Controle da solicitação
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    avaliado_por = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_missao_avaliadas',
+        verbose_name='Avaliado por'
+    )
+    data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
+    observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
+    missao_criada = models.ForeignKey(
+        Missao,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacao_origem',
+        verbose_name='Missão Criada'
+    )
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Solicitação de Missão'
+        verbose_name_plural = 'Solicitações de Missão'
+        ordering = ['-criado_em']
+    
+    def __str__(self):
+        return f"{self.solicitante} - {self.nome_missao} ({self.get_status_display()})"
+
+
 class SolicitacaoDesignacao(models.Model):
     """Solicitação de inclusão de designação feita pelo oficial."""
     
@@ -524,25 +593,39 @@ class SolicitacaoDesignacao(models.Model):
     solicitante = models.ForeignKey(
         Oficial,
         on_delete=models.CASCADE,
-        related_name='solicitacoes',
+        related_name='solicitacoes_designacao',
         verbose_name='Solicitante'
     )
-    nome_missao = models.CharField('Nome da Missão', max_length=200)
+    missao = models.ForeignKey(
+        Missao,
+        on_delete=models.CASCADE,
+        related_name='solicitacoes_designacao',
+        verbose_name='Missão'
+    )
     funcao_na_missao = models.CharField('Função na Missão', max_length=100)
-    complexidade = models.CharField('Complexidade', max_length=20)
-    documento_referencia = models.CharField('Nº SEI / BG', max_length=100, blank=True)
-    justificativa = models.TextField('Justificativa', blank=True)
+    documento_sei = models.CharField('Nº SEI / BG', max_length=100)
+    
+    # Controle da solicitação
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    complexidade = models.CharField('Complexidade', max_length=20, blank=True)  # Preenchido pelo BM/3 na aprovação
     avaliado_por = models.ForeignKey(
         Usuario,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='solicitacoes_avaliadas',
+        related_name='solicitacoes_designacao_avaliadas',
         verbose_name='Avaliado por'
     )
     data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
     observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
+    designacao_criada = models.ForeignKey(
+        Designacao,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacao_origem',
+        verbose_name='Designação Criada'
+    )
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
     
@@ -552,4 +635,4 @@ class SolicitacaoDesignacao(models.Model):
         ordering = ['-criado_em']
     
     def __str__(self):
-        return f"{self.solicitante} - {self.nome_missao} ({self.get_status_display()})"
+        return f"{self.solicitante} - {self.missao.nome} ({self.get_status_display()})"

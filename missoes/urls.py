@@ -83,9 +83,12 @@ urlpatterns = [
     # ============================================================
     # 🔄 ENDPOINTS HTMX - SOLICITAÇÕES
     # ============================================================
-    path('htmx/solicitacao/criar/', views.htmx_solicitacao_criar, name='htmx_solicitacao_criar'),
+    path('htmx/solicitacao/missao/criar/', views.htmx_solicitacao_missao_criar, name='htmx_solicitacao_missao_criar'),
+    path('htmx/solicitacao/designacao/criar/', views.htmx_solicitacao_designacao_criar, name='htmx_solicitacao_designacao_criar'),
     path('htmx/solicitacoes/lista/', views.htmx_solicitacoes_lista, name='htmx_solicitacoes_lista'),
-    path('htmx/solicitacao/<int:pk>/avaliar/', views.htmx_solicitacao_avaliar, name='htmx_solicitacao_avaliar'),
+    path('htmx/solicitacao/missao/<int:pk>/avaliar/', views.htmx_solicitacao_missao_avaliar, name='htmx_solicitacao_missao_avaliar'),
+    path('htmx/solicitacao/designacao/<int:pk>/avaliar/', views.htmx_solicitacao_designacao_avaliar, name='htmx_solicitacao_designacao_avaliar'),
+    path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
     
     # ============================================================
     # 📥 EXPORTAÇÃO

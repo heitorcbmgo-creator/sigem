@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Consultar Oficial{% endblock %}
+{% block title %}Meu Painel{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
         <i data-lucide="user-circle"></i>
-        Painel do Oficial
+        Meu Painel
     </h1>
-    <p class="page-subtitle">Suas missões e designações</p>
+    <p class="page-subtitle">Suas missões, designações e solicitações</p>
 </div>
 
 <!-- Card do Perfil -->
 <div class="card mb-4">
     <div class="card-body">
-        <div class="flex items-center gap-4">
+        <div class="perfil-container">
             <img src="{{ oficial.foto_url }}" alt="Foto" class="officer-photo" style="margin: 0;">
-            <div>
+            <div class="perfil-info">
                 <h2 class="text-red font-bold" style="font-size: 1.5rem;">
                     {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}
                 </h2>
@@ -25,7 +25,7 @@
                 <p class="text-gray">{{ oficial.obm|default:"Sem lotação definida" }}</p>
                 <p class="text-gray" style="font-style: italic;">{{ oficial.funcao|default:"Função não cadastrada" }}</p>
             </div>
-            <div style="margin-left: auto;" class="text-right">
+            <div class="perfil-stats">
                 <div class="totalizadores-mini">
                     <div class="totalizador-item baixa">
                         <span class="totalizador-valor">{{ oficial.total_baixa }}</span>
@@ -40,13 +40,29 @@
                         <span class="totalizador-label">Alta</span>
                     </div>
                 </div>
-                <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Missões Em Andamento</p>
+                <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem; text-align: center;">Missões Em Andamento</p>
             </div>
         </div>
     </div>
 </div>
 
 <style>
+.perfil-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.perfil-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.perfil-stats {
+    text-align: right;
+}
+
 .totalizadores-mini {
     display: flex;
     gap: 0.75rem;
@@ -79,60 +95,34 @@
     text-transform: uppercase;
     color: #6b7280;
 }
+
+@media (max-width: 768px) {
+    .perfil-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    .perfil-stats {
+        text-align: center;
+    }
+    .totalizadores-mini {
+        justify-content: center;
+    }
+}
 </style>
 
-<!-- Filtros -->
-<div class="filter-bar">
-    <div class="form-group">
-        <label class="form-label">Tipo</label>
-        <select class="form-select" name="tipo" onchange="this.form.submit()">
-            <option value="">Todos os tipos</option>
-            {% for value, label in tipo_choices %}
-            <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" name="status" onchange="this.form.submit()">
-            <option value="">Todos os status</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label class="form-label">Complexidade</label>
-        <select class="form-select" name="complexidade" onchange="this.form.submit()">
-            <option value="">Todas</option>
-            {% for value, label in complexidade_choices %}
-            <option value="{{ value }}" {% if request.GET.complexidade == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</div>
-
-<!-- Tabela de Designações -->
+<!-- Minhas Designações -->
 <div class="card mb-4">
     <div class="card-header">
         <h2 class="card-title">
             <i data-lucide="briefcase"></i>
             Minhas Designações
         </h2>
-        <div class="flex gap-1">
-            <a href="{% url 'exportar_excel' 'designacoes' %}" class="btn btn-sm btn-success">
-                <i data-lucide="file-spreadsheet"></i>
-                Exportar Excel
-            </a>
-            <a href="{% url 'exportar_pdf' 'designacoes' %}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
-                <i data-lucide="file-text"></i>
-                Gerar PDF
-            </a>
-        </div>
+        <a href="{% url 'minhas_solicitacoes' %}" class="btn btn-sm btn-outline">
+            <i data-lucide="history"></i>
+            Ver Histórico de Solicitações
+        </a>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="padding: 0;">
         <div class="table-container">
             <table>
                 <thead>
@@ -148,8 +138,8 @@
                 <tbody>
                     {% for d in designacoes %}
                     <tr>
-                        <td><strong>{{ d.missao.nome }}</strong></td>
-                        <td>{{ d.get_funcao_na_missao_display }}</td>
+                        <td><strong>{{ d.missao.nome|truncatechars:40 }}</strong></td>
+                        <td>{{ d.funcao_na_missao }}</td>
                         <td>
                             <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
                                 {{ d.get_complexidade_display }}
@@ -172,7 +162,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-gray">Nenhuma designação encontrada.</td>
+                        <td colspan="6" class="text-center text-gray py-4">Você não possui designações no momento.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -181,98 +171,257 @@
     </div>
 </div>
 
-<!-- Formulário de Solicitação -->
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="plus-circle"></i>
-            Solicitar Inclusão de Designação
-        </h2>
-    </div>
-    <div class="card-body">
-        <form hx-post="{% url 'htmx_solicitacao_criar' %}" hx-target="#solicitacao-feedback" hx-swap="innerHTML">
-            {% csrf_token %}
-            <div class="form-row">
+<!-- Grid de Formulários -->
+<div class="solicitacoes-grid">
+    <!-- Formulário: Solicitar Inclusão de Missão -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="folder-plus"></i>
+                Solicitar Inclusão de Missão
+            </h2>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3" style="font-size: 0.85rem;">
+                Solicite a criação de uma nova missão no sistema. A BM/3 irá avaliar e aprovar.
+            </p>
+            <form hx-post="{% url 'htmx_solicitacao_missao_criar' %}" 
+                  hx-target="#feedback-missao" 
+                  hx-swap="innerHTML"
+                  id="form-solicitar-missao">
+                {% csrf_token %}
+                
                 <div class="form-group">
-                    <label class="form-label">Nome da Missão</label>
-                    <input type="text" class="form-input" name="nome_missao" required placeholder="Ex: Operação Verão 2024">
+                    <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                    <input type="text" class="form-input" name="nome_missao" required 
+                           placeholder="Ex: Operação Carnaval 2025">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                        <select class="form-select" name="tipo_missao" required>
+                            <option value="">Selecione...</option>
+                            {% for value, label in tipo_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" name="status_missao" required id="status-missao-select" 
+                                onchange="toggleDataFim()">
+                            <option value="">Selecione...</option>
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label">Função na Missão</label>
-                    <input type="text" class="form-input" name="funcao_na_missao" required placeholder="Ex: Coordenador">
+                    <label class="form-label">Local <span class="text-danger">*</span></label>
+                    <select class="form-select" name="local" required>
+                        <option value="">Selecione...</option>
+                        {% for value, label in local_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                        <input type="date" class="form-input" name="data_inicio" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Data de Término <span id="label-data-fim-obrig"></span></label>
+                        <input type="date" class="form-input" name="data_fim" id="data-fim-input">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Nº SEI <span class="text-danger">*</span></label>
+                    <input type="text" class="form-input" name="documento_sei" required 
+                           placeholder="Ex: 202500012345">
+                </div>
+                
+                <div id="feedback-missao"></div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação de Missão
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Formulário: Solicitar Inclusão de Designação -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="user-plus"></i>
+                Solicitar Inclusão de Designação
+            </h2>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3" style="font-size: 0.85rem;">
+                Solicite sua designação em uma missão existente. A BM/3 definirá a complexidade.
+            </p>
+            <form hx-post="{% url 'htmx_solicitacao_designacao_criar' %}" 
+                  hx-target="#feedback-designacao" 
+                  hx-swap="innerHTML"
+                  id="form-solicitar-designacao">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label">Missão <span class="text-danger">*</span></label>
+                    <select class="form-select" name="missao_id" required>
+                        <option value="">Selecione uma missão...</option>
+                        {% for m in missoes_disponiveis %}
+                        <option value="{{ m.id }}">{{ m.nome }} ({{ m.get_status_display }})</option>
+                        {% endfor %}
+                    </select>
+                    {% if not missoes_disponiveis %}
+                    <small class="text-muted">Nenhuma missão disponível para designação.</small>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                    <input type="text" class="form-input" name="funcao_na_missao" required 
+                           placeholder="Ex: Coordenador, Membro, Fiscal">
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label">Complexidade</label>
-                    <select class="form-select" name="complexidade" required>
-                        <option value="">Selecione...</option>
-                        <option value="BAIXA">Baixa</option>
-                        <option value="MEDIA">Média</option>
-                        <option value="ALTA">Alta</option>
-                    </select>
+                    <input type="text" class="form-input" value="Definida pela BM/3" disabled 
+                           style="background: #f3f4f6; color: #6b7280;">
+                    <small class="text-muted">A complexidade será atribuída pelo avaliador na aprovação.</small>
                 </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;">
-                    <label class="form-label">Nº SEI / BG (referência)</label>
-                    <input type="text" class="form-input" name="documento_referencia" placeholder="Ex: SEI 202400012345">
+                
+                <div class="form-group">
+                    <label class="form-label">Nº SEI / BG <span class="text-danger">*</span></label>
+                    <input type="text" class="form-input" name="documento_sei" required 
+                           placeholder="Ex: SEI 202500012345 ou BG 001/2025">
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Justificativa (opcional)</label>
-                <textarea class="form-input" name="justificativa" rows="2" placeholder="Descreva o motivo da solicitação..."></textarea>
-            </div>
-            
-            <div id="solicitacao-feedback"></div>
-            
-            <button type="submit" class="btn btn-primary">
-                <i data-lucide="send"></i>
-                Enviar Solicitação
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- Solicitações Anteriores -->
-{% if solicitacoes %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="history"></i>
-            Minhas Solicitações Recentes
-        </h2>
-    </div>
-    <div class="card-body">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Função</th>
-                        <th>Data</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in solicitacoes %}
-                    <tr>
-                        <td>{{ s.nome_missao }}</td>
-                        <td>{{ s.funcao_na_missao }}</td>
-                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
-                                {{ s.get_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                
+                <div id="feedback-designacao"></div>
+                
+                <button type="submit" class="btn btn-primary btn-block" {% if not missoes_disponiveis %}disabled{% endif %}>
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação de Designação
+                </button>
+            </form>
         </div>
     </div>
 </div>
-{% endif %}
+
+<style>
+.solicitacoes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 860px) {
+    .solicitacoes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 500px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.alert i {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+</style>
+
+<script>
+function toggleDataFim() {
+    const statusSelect = document.getElementById('status-missao-select');
+    const dataFimInput = document.getElementById('data-fim-input');
+    const labelObrig = document.getElementById('label-data-fim-obrig');
+    
+    if (statusSelect.value === 'CONCLUIDA') {
+        dataFimInput.disabled = false;
+        dataFimInput.required = true;
+        labelObrig.innerHTML = '<span class="text-danger">*</span>';
+    } else if (statusSelect.value === 'EM_ANDAMENTO') {
+        dataFimInput.disabled = true;
+        dataFimInput.required = false;
+        dataFimInput.value = '';
+        labelObrig.innerHTML = '';
+    } else {
+        dataFimInput.disabled = false;
+        dataFimInput.required = false;
+        labelObrig.innerHTML = '';
+    }
+}
+
+// Limpar formulário após sucesso
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'feedback-missao' && evt.detail.xhr.response.includes('alert-success')) {
+        document.getElementById('form-solicitar-missao').reset();
+    }
+    if (evt.detail.target.id === 'feedback-designacao' && evt.detail.xhr.response.includes('alert-success')) {
+        document.getElementById('form-solicitar-designacao').reset();
+    }
+    lucide.createIcons();
+});
+</script>
 {% endblock %}
