@@ -9,6 +9,9 @@ pip install -r requirements.txt
 echo "📁 Coletando arquivos estáticos..."
 python manage.py collectstatic --no-input
 
+echo "🗃️ Criando migrações..."
+python manage.py makemigrations --no-input
+
 echo "🗃️ Aplicando migrações do banco de dados..."
 python manage.py migrate
 
