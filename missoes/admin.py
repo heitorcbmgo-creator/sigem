@@ -6,7 +6,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao
+from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao, SolicitacaoMissao
 
 
 @admin.register(Oficial)
