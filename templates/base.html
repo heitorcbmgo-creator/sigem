@@ -69,10 +69,17 @@
                 {% endif %}
                 
                 {% if user.pode_ver_painel %}
-                <a href="{% url 'consultar_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'consultar_oficial' or request.resolver_match.url_name == 'consultar_oficial_id' or request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
+                {% if user.role == 'oficial' %}
+                <a href="{% url 'painel_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
                     <i data-lucide="user-circle"></i>
-                    <span>{% if user.role in 'admin,comando_geral,comandante' %}Consultar Oficial{% else %}Meu Painel{% endif %}</span>
+                    <span>Meu Painel</span>
                 </a>
+                {% else %}
+                <a href="{% url 'consultar_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'consultar_oficial' or request.resolver_match.url_name == 'consultar_oficial_id' %}active{% endif %}">
+                    <i data-lucide="user-circle"></i>
+                    <span>Consultar Oficial</span>
+                </a>
+                {% endif %}
                 {% endif %}
                 
                 {% if user.oficial and user.role == 'oficial' %}
@@ -130,7 +137,7 @@
                             </div>
                         </div>
                         <div class="navbar-dropdown-divider"></div>
-                        <a href="{% url 'consultar_oficial' %}" class="navbar-dropdown-item">
+                        <a href="{% if user.role == 'oficial' %}{% url 'painel_oficial' %}{% else %}{% url 'consultar_oficial' %}{% endif %}" class="navbar-dropdown-item">
                             <i data-lucide="user"></i>
                             Meu Painel
                         </a>

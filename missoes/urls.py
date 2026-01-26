@@ -86,7 +86,11 @@ urlpatterns = [
     path('htmx/solicitacao/missao/criar/', views.htmx_solicitacao_missao_criar, name='htmx_solicitacao_missao_criar'),
     path('htmx/solicitacao/designacao/criar/', views.htmx_solicitacao_designacao_criar, name='htmx_solicitacao_designacao_criar'),
     path('htmx/solicitacoes/lista/', views.htmx_solicitacoes_lista, name='htmx_solicitacoes_lista'),
+    path('htmx/solicitacao/missao/<int:pk>/dados/', views.htmx_solicitacao_missao_dados, name='htmx_solicitacao_missao_dados'),
+    path('htmx/solicitacao/missao/<int:pk>/editar/', views.htmx_solicitacao_missao_editar, name='htmx_solicitacao_missao_editar'),
     path('htmx/solicitacao/missao/<int:pk>/avaliar/', views.htmx_solicitacao_missao_avaliar, name='htmx_solicitacao_missao_avaliar'),
+    path('htmx/solicitacao/designacao/<int:pk>/dados/', views.htmx_solicitacao_designacao_dados, name='htmx_solicitacao_designacao_dados'),
+    path('htmx/solicitacao/designacao/<int:pk>/editar/', views.htmx_solicitacao_designacao_editar, name='htmx_solicitacao_designacao_editar'),
     path('htmx/solicitacao/designacao/<int:pk>/avaliar/', views.htmx_solicitacao_designacao_avaliar, name='htmx_solicitacao_designacao_avaliar'),
     path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
     

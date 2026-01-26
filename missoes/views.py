@@ -2102,6 +2102,94 @@ def htmx_solicitacao_designacao_avaliar(request, pk):
 
 
 @login_required
+def htmx_solicitacao_missao_dados(request, pk):
+    """Retorna os dados de uma solicitação de missão para edição."""
+    
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+    
+    solicitacao = get_object_or_404(SolicitacaoMissao, pk=pk)
+    
+    context = {
+        'solicitacao': solicitacao,
+        'tipo_choices': Missao.TIPO_CHOICES,
+        'status_missao_choices': Missao.STATUS_CHOICES,
+        'local_choices': SolicitacaoMissao.LOCAL_CHOICES,
+    }
+    
+    return render(request, 'htmx/solicitacao_missao_form.html', context)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_missao_editar(request, pk):
+    """Edita uma solicitação de missão."""
+    
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+    
+    solicitacao = get_object_or_404(SolicitacaoMissao, pk=pk)
+    
+    try:
+        solicitacao.nome_missao = request.POST.get('nome_missao', solicitacao.nome_missao)
+        solicitacao.tipo_missao = request.POST.get('tipo_missao', solicitacao.tipo_missao)
+        solicitacao.status_missao = request.POST.get('status_missao', solicitacao.status_missao)
+        solicitacao.local = request.POST.get('local', solicitacao.local)
+        solicitacao.data_inicio = request.POST.get('data_inicio', solicitacao.data_inicio)
+        data_fim = request.POST.get('data_fim')
+        solicitacao.data_fim = data_fim if data_fim else None
+        solicitacao.documento_sei = request.POST.get('documento_sei', solicitacao.documento_sei)
+        solicitacao.save()
+        
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação atualizada com sucesso!</div><script>lucide.createIcons(); setTimeout(() => location.reload(), 1000);</script>')
+        
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao atualizar: {str(e)}</div>')
+
+
+@login_required
+def htmx_solicitacao_designacao_dados(request, pk):
+    """Retorna os dados de uma solicitação de designação para edição."""
+    
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+    
+    solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
+    missoes = Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome')
+    
+    context = {
+        'solicitacao': solicitacao,
+        'missoes': missoes,
+    }
+    
+    return render(request, 'htmx/solicitacao_designacao_form.html', context)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_designacao_editar(request, pk):
+    """Edita uma solicitação de designação."""
+    
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+    
+    solicitacao = get_object_or_404(SolicitacaoDesignacao, pk=pk)
+    
+    try:
+        missao_id = request.POST.get('missao_id')
+        if missao_id:
+            solicitacao.missao = Missao.objects.get(id=missao_id)
+        solicitacao.funcao_na_missao = request.POST.get('funcao_na_missao', solicitacao.funcao_na_missao)
+        solicitacao.documento_sei = request.POST.get('documento_sei', solicitacao.documento_sei)
+        solicitacao.save()
+        
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação atualizada com sucesso!</div><script>lucide.createIcons(); setTimeout(() => location.reload(), 1000);</script>')
+        
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao atualizar: {str(e)}</div>')
+
+
+@login_required
 def minhas_solicitacoes(request):
     """Página com histórico de solicitações do oficial logado."""
     
