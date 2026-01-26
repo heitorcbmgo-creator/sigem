@@ -544,6 +544,7 @@ class SolicitacaoDesignacao(models.Model):
     data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
     observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
     
     class Meta:
         verbose_name = 'Solicitação de Designação'
