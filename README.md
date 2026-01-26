@@ -434,8 +434,6 @@ sigem/
 
 ---
 
-## 📞 Suporte
-
-Desenvolvido para o **CBMGO** - Corpo de Bombeiros Militar do Estado de Goiás.
+Desenvolvido para Corporações Militares Estaduais (CBM's e PM's).
 
 **"Vidas Alheias e Riquezas Salvar"** 🔥
