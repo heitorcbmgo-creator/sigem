@@ -55,10 +55,9 @@ def redirecionar_por_perfil(request):
     """Redireciona o usuário para a página inicial conforme seu perfil."""
     user = request.user
     
-    if user.role in ['admin', 'comando_geral']:
+    # Perfis com acesso ao dashboard
+    if user.role in ['admin', 'comando_geral', 'comandante', 'bm3', 'corregedor']:
         return redirect('dashboard')
-    elif user.role in ['corregedor', 'bm3', 'comandante']:
-        return redirect('comparar_oficiais')
     else:  # oficial
         return redirect('painel_oficial')
 
@@ -621,54 +620,50 @@ def missoes_dashboard(request):
 def consultar_oficial(request, oficial_id=None):
     """
     Consulta painel de um oficial.
-    - Oficial: vê apenas seu próprio painel
+    - Oficial comum: não tem acesso (usa painel_oficial)
     - Comandante: vê oficiais da sua OBM e subordinadas
-    - Admin/Comando-Geral: vê todos os oficiais
+    - BM/3, Corregedor, Comando-Geral, Admin: vê todos os oficiais
     """
     
     usuario = request.user
     oficial = None
     
     # Verificar se pode consultar outros oficiais
-    pode_consultar_outros = usuario.role in ['admin', 'comando_geral', 'comandante']
+    pode_consultar_outros = usuario.pode_ver_consultar_oficial
+    
+    # Se não pode consultar outros, redireciona
+    if not pode_consultar_outros:
+        messages.warning(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('painel_oficial')
     
     # Determinar qual oficial será exibido
     if oficial_id:
         # Tentando ver outro oficial
         oficial = get_object_or_404(Oficial, pk=oficial_id)
         
-        # Verificar permissão
+        # Verificar permissão (comandante só vê sua OBM)
         if not usuario.pode_ver_oficial(oficial):
             messages.error(request, 'Você não tem permissão para visualizar este oficial.')
             return redirect('consultar_oficial')
     else:
-        # Se pode consultar outros, mostrar apenas a tela de busca (sem oficial pré-selecionado)
-        if pode_consultar_outros:
-            # Admin/Comandante podem acessar sem ter oficial vinculado
-            oficial = usuario.oficial  # Pode ser None
-        else:
-            # Perfil oficial: deve ver seu próprio painel
-            oficial = usuario.oficial
-            if not oficial:
-                messages.warning(request, 'Seu usuário não está vinculado a um oficial.')
-                return redirect('dashboard')
+        # Mostrar apenas a tela de busca (sem oficial pré-selecionado)
+        oficial = None
     
     # Lista de OBMs disponíveis para o filtro
     obms_disponiveis = []
-    if pode_consultar_outros:
-        if usuario.role in ['admin', 'comando_geral']:
-            # Admin e Comando-Geral veem todas as OBMs
-            obms_disponiveis = list(
-                Oficial.objects.filter(ativo=True)
-                .exclude(obm__isnull=True)
-                .exclude(obm='')
-                .values_list('obm', flat=True)
-                .distinct()
-                .order_by('obm')
-            )
-        elif usuario.role == 'comandante':
-            # Comandante vê apenas sua OBM e subordinadas
-            obms_disponiveis = usuario.get_obm_subordinadas()
+    if usuario.role in ['admin', 'comando_geral', 'bm3', 'corregedor']:
+        # Estes perfis veem todas as OBMs
+        obms_disponiveis = list(
+            Oficial.objects.filter(ativo=True)
+            .exclude(obm__isnull=True)
+            .exclude(obm='')
+            .values_list('obm', flat=True)
+            .distinct()
+            .order_by('obm')
+        )
+    elif usuario.role == 'comandante':
+        # Comandante vê apenas sua OBM e subordinadas
+        obms_disponiveis = usuario.get_obm_subordinadas()
     
     # Designações do oficial (se houver oficial selecionado)
     designacoes = []
@@ -713,7 +708,7 @@ def htmx_buscar_oficiais(request):
     usuario = request.user
     
     # Verificar permissão
-    if usuario.role not in ['admin', 'comando_geral', 'comandante']:
+    if not usuario.pode_ver_consultar_oficial:
         return HttpResponse('<p class="text-danger">Sem permissão.</p>')
     
     # Base query

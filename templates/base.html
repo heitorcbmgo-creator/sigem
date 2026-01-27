@@ -47,17 +47,20 @@
             
             <!-- Menu Principal -->
             <div class="navbar-menu" id="navbarMenu">
+                {% comment %} 
+                PLANO DE ACESSOS:
+                - Oficial: Missões, Meu Painel
+                - Comandante: Visão Geral, Missões, Comparar, Consultar, Meu Painel
+                - BM/3: Visão Geral, Missões, Comparar, Consultar, Meu Painel, Admin
+                - Corregedor: Visão Geral, Missões, Comparar, Consultar, Meu Painel, Admin
+                - Comando Geral: Visão Geral, Missões, Comparar, Consultar, Meu Painel, Admin
+                - Admin: Tudo
+                {% endcomment %}
+                
                 {% if user.pode_ver_dashboard %}
                 <a href="{% url 'dashboard' %}" class="navbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     <i data-lucide="layout-dashboard"></i>
                     <span>Visão Geral</span>
-                </a>
-                {% endif %}
-                
-                {% if user.pode_ver_comparar %}
-                <a href="{% url 'comparar_oficiais' %}" class="navbar-link {% if request.resolver_match.url_name == 'comparar_oficiais' %}active{% endif %}">
-                    <i data-lucide="users"></i>
-                    <span>Comparar Oficiais</span>
                 </a>
                 {% endif %}
                 
@@ -68,31 +71,33 @@
                 </a>
                 {% endif %}
                 
-                {% if user.pode_ver_painel %}
-                {% if user.role == 'oficial' %}
+                {% if user.pode_ver_comparar %}
+                <a href="{% url 'comparar_oficiais' %}" class="navbar-link {% if request.resolver_match.url_name == 'comparar_oficiais' %}active{% endif %}">
+                    <i data-lucide="git-compare"></i>
+                    <span>Comparar</span>
+                </a>
+                {% endif %}
+                
+                {% comment %} Consultar Oficial - Comandante, BM/3, Corregedor, Comando Geral, Admin {% endcomment %}
+                {% if user.pode_ver_consultar_oficial %}
+                <a href="{% url 'consultar_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'consultar_oficial' or request.resolver_match.url_name == 'consultar_oficial_id' %}active{% endif %}">
+                    <i data-lucide="search"></i>
+                    <span>Consultar</span>
+                </a>
+                {% endif %}
+                
+                {% comment %} Meu Painel - para quem tem oficial vinculado {% endcomment %}
+                {% if user.oficial %}
                 <a href="{% url 'painel_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'painel_oficial' %}active{% endif %}">
                     <i data-lucide="user-circle"></i>
                     <span>Meu Painel</span>
-                </a>
-                {% else %}
-                <a href="{% url 'consultar_oficial' %}" class="navbar-link {% if request.resolver_match.url_name == 'consultar_oficial' or request.resolver_match.url_name == 'consultar_oficial_id' %}active{% endif %}">
-                    <i data-lucide="user-circle"></i>
-                    <span>Consultar Oficial</span>
-                </a>
-                {% endif %}
-                {% endif %}
-                
-                {% if user.oficial and user.role == 'oficial' %}
-                <a href="{% url 'minhas_solicitacoes' %}" class="navbar-link {% if request.resolver_match.url_name == 'minhas_solicitacoes' %}active{% endif %}">
-                    <i data-lucide="file-clock"></i>
-                    <span>Minhas Solicitações</span>
                 </a>
                 {% endif %}
                 
                 {% if user.pode_ver_admin %}
                 <a href="{% url 'admin_painel' %}" class="navbar-link {% if request.resolver_match.url_name == 'admin_painel' %}active{% endif %}">
                     <i data-lucide="settings"></i>
-                    <span>Administração</span>
+                    <span>Admin</span>
                 </a>
                 {% endif %}
                 
@@ -105,6 +110,12 @@
                             <small>{{ user.get_role_display }}</small>
                         </div>
                     </div>
+                    {% if user.oficial %}
+                    <a href="{% url 'minhas_solicitacoes' %}" class="navbar-link">
+                        <i data-lucide="file-clock"></i>
+                        <span>Minhas Solicitações</span>
+                    </a>
+                    {% endif %}
                     <a href="{% url 'logout' %}" class="navbar-link navbar-link-logout">
                         <i data-lucide="log-out"></i>
                         <span>Sair</span>
@@ -137,15 +148,16 @@
                             </div>
                         </div>
                         <div class="navbar-dropdown-divider"></div>
-                        <a href="{% if user.role == 'oficial' %}{% url 'painel_oficial' %}{% else %}{% url 'consultar_oficial' %}{% endif %}" class="navbar-dropdown-item">
-                            <i data-lucide="user"></i>
+                        {% if user.oficial %}
+                        <a href="{% url 'painel_oficial' %}" class="navbar-dropdown-item">
+                            <i data-lucide="user-circle"></i>
                             Meu Painel
                         </a>
-                        {% if user.oficial and user.role == 'oficial' %}
                         <a href="{% url 'minhas_solicitacoes' %}" class="navbar-dropdown-item">
                             <i data-lucide="file-clock"></i>
                             Minhas Solicitações
                         </a>
+                        <div class="navbar-dropdown-divider"></div>
                         {% endif %}
                         <a href="{% url 'logout' %}" class="navbar-dropdown-item navbar-dropdown-logout">
                             <i data-lucide="log-out"></i>

@@ -385,12 +385,13 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @property
     def pode_ver_dashboard(self):
         """Quem pode ver a página Visão Geral"""
-        return self.role in ['admin', 'comando_geral', 'comandante']
+        # Todos exceto Oficial comum
+        return self.role in ['admin', 'comando_geral', 'comandante', 'bm3', 'corregedor']
     
     @property
     def pode_ver_comparar(self):
         """Quem pode ver a página Comparar Oficiais"""
-        return self.role in ['admin', 'corregedor', 'bm3', 'comando_geral', 'comandante']
+        return self.role in ['admin', 'comando_geral', 'comandante', 'bm3', 'corregedor']
     
     @property
     def pode_ver_missoes(self):
@@ -398,14 +399,19 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         return True  # Todos podem ver
     
     @property
+    def pode_ver_consultar_oficial(self):
+        """Quem pode consultar outros oficiais"""
+        return self.role in ['admin', 'comando_geral', 'comandante', 'bm3', 'corregedor']
+    
+    @property
     def pode_ver_painel(self):
-        """Quem pode ver o Meu Painel"""
-        return True  # Todos podem ver
+        """Quem pode ver o Meu Painel (precisa ter oficial vinculado)"""
+        return self.oficial is not None
     
     @property
     def pode_ver_admin(self):
         """Quem pode ver a página de Administração"""
-        return self.role in ['admin', 'corregedor', 'bm3']
+        return self.role in ['admin', 'comando_geral', 'corregedor', 'bm3']
     
     # ============================================================
     # 🔑 PERMISSÕES DE AÇÕES NA ADMINISTRAÇÃO
@@ -419,12 +425,12 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @property
     def pode_gerenciar_missoes(self):
         """Quem pode CRUD de missões"""
-        return self.role in ['admin', 'corregedor', 'bm3']
+        return self.role in ['admin', 'comando_geral', 'corregedor', 'bm3']
     
     @property
     def pode_gerenciar_designacoes(self):
         """Quem pode CRUD de designações"""
-        return self.role in ['admin', 'corregedor', 'bm3']
+        return self.role in ['admin', 'comando_geral', 'corregedor', 'bm3']
     
     @property
     def pode_gerenciar_unidades(self):
