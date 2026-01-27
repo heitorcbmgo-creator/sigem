@@ -627,6 +627,10 @@ def consultar_oficial(request, oficial_id=None):
     """
     
     usuario = request.user
+    oficial = None
+    
+    # Verificar se pode consultar outros oficiais
+    pode_consultar_outros = usuario.role in ['admin', 'comando_geral', 'comandante']
     
     # Determinar qual oficial será exibido
     if oficial_id:
@@ -638,14 +642,16 @@ def consultar_oficial(request, oficial_id=None):
             messages.error(request, 'Você não tem permissão para visualizar este oficial.')
             return redirect('consultar_oficial')
     else:
-        # Ver próprio painel
-        oficial = usuario.oficial
-        if not oficial:
-            messages.warning(request, 'Seu usuário não está vinculado a um oficial.')
-            return redirect('dashboard')
-    
-    # Verificar se pode consultar outros oficiais
-    pode_consultar_outros = usuario.role in ['admin', 'comando_geral', 'comandante']
+        # Se pode consultar outros, mostrar apenas a tela de busca (sem oficial pré-selecionado)
+        if pode_consultar_outros:
+            # Admin/Comandante podem acessar sem ter oficial vinculado
+            oficial = usuario.oficial  # Pode ser None
+        else:
+            # Perfil oficial: deve ver seu próprio painel
+            oficial = usuario.oficial
+            if not oficial:
+                messages.warning(request, 'Seu usuário não está vinculado a um oficial.')
+                return redirect('dashboard')
     
     # Lista de OBMs disponíveis para o filtro
     obms_disponiveis = []
@@ -664,33 +670,29 @@ def consultar_oficial(request, oficial_id=None):
             # Comandante vê apenas sua OBM e subordinadas
             obms_disponiveis = usuario.get_obm_subordinadas()
     
-    # Designações do oficial
-    designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
-    
-    # Filtros
-    tipo = request.GET.get('tipo', '')
-    status = request.GET.get('status', '')
-    complexidade = request.GET.get('complexidade', '')
-    
-    if tipo:
-        designacoes = designacoes.filter(missao__tipo=tipo)
-    if status:
-        designacoes = designacoes.filter(missao__status=status)
-    if complexidade:
-        designacoes = designacoes.filter(complexidade=complexidade)
-    
-    # Solicitações pendentes (só mostra se for o próprio oficial)
-    solicitacoes = []
-    if usuario.oficial and usuario.oficial.id == oficial.id:
-        solicitacoes = SolicitacaoDesignacao.objects.filter(solicitante=oficial).order_by('-criado_em')[:5]
+    # Designações do oficial (se houver oficial selecionado)
+    designacoes = []
+    if oficial:
+        designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
+        
+        # Filtros
+        tipo = request.GET.get('tipo', '')
+        status = request.GET.get('status', '')
+        complexidade = request.GET.get('complexidade', '')
+        
+        if tipo:
+            designacoes = designacoes.filter(missao__tipo=tipo)
+        if status:
+            designacoes = designacoes.filter(missao__status=status)
+        if complexidade:
+            designacoes = designacoes.filter(complexidade=complexidade)
     
     # Verificar se está vendo o próprio painel
-    visualizando_proprio = usuario.oficial and usuario.oficial.id == oficial.id
+    visualizando_proprio = oficial and usuario.oficial and usuario.oficial.id == oficial.id
     
     context = {
         'oficial': oficial,
         'designacoes': designacoes,
-        'solicitacoes': solicitacoes,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
         'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,

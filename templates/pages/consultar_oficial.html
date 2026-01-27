@@ -1,16 +1,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{% if visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}{% endblock %}
+{% block title %}{% if oficial and visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
-        <i data-lucide="{% if visualizando_proprio %}user-circle{% else %}search{% endif %}"></i>
-        {% if visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}
+        <i data-lucide="{% if oficial and visualizando_proprio %}user-circle{% else %}search{% endif %}"></i>
+        {% if oficial and visualizando_proprio %}Meu Painel{% else %}Consultar Oficial{% endif %}
     </h1>
     <p class="page-subtitle">
-        {% if visualizando_proprio %}
+        {% if not oficial %}
+            Busque um oficial para visualizar suas designações
+        {% elif visualizando_proprio %}
             Suas missões e designações
         {% else %}
             Visualizando painel de {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}
@@ -26,10 +28,10 @@
             <i data-lucide="search"></i>
             Buscar Oficial
         </h2>
-        {% if not visualizando_proprio %}
+        {% if oficial and not visualizando_proprio %}
         <a href="{% url 'consultar_oficial' %}" class="btn btn-secondary btn-sm">
-            <i data-lucide="home"></i>
-            Voltar ao Meu Painel
+            <i data-lucide="arrow-left"></i>
+            Nova Busca
         </a>
         {% endif %}
     </div>
@@ -150,6 +152,7 @@ function limparBusca() {
 </script>
 {% endif %}
 
+{% if oficial %}
 <!-- Card do Perfil -->
 <div class="card mb-4">
     <div class="card-body">
@@ -222,6 +225,9 @@ function limparBusca() {
 <!-- Filtros de Designações -->
 <div class="filter-bar">
     <form method="get" action="" class="flex gap-2 items-end flex-wrap">
+        {% if pode_consultar_outros and not visualizando_proprio %}
+        <input type="hidden" name="oficial_id" value="{{ oficial.id }}">
+        {% endif %}
         <div class="form-group">
             <label class="form-label">Tipo</label>
             <select class="form-select" name="tipo" onchange="this.form.submit()">
@@ -262,11 +268,11 @@ function limparBusca() {
             {% if visualizando_proprio %}Minhas Designações{% else %}Designações de {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}{% endif %}
         </h2>
         <div class="flex gap-1">
-            <a href="{% url 'exportar_excel' 'designacoes' %}{% if not visualizando_proprio %}?oficial_id={{ oficial.id }}{% endif %}" class="btn btn-sm btn-success">
+            <a href="{% url 'exportar_excel' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm btn-success">
                 <i data-lucide="file-spreadsheet"></i>
                 Exportar Excel
             </a>
-            <a href="{% url 'exportar_pdf' 'designacoes' %}{% if not visualizando_proprio %}?oficial_id={{ oficial.id }}{% endif %}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
+            <a href="{% url 'exportar_pdf' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
                 <i data-lucide="file-text"></i>
                 Gerar PDF
             </a>
@@ -289,7 +295,7 @@ function limparBusca() {
                     {% for d in designacoes %}
                     <tr>
                         <td><strong>{{ d.missao.nome }}</strong></td>
-                        <td>{{ d.get_funcao_na_missao_display }}</td>
+                        <td>{{ d.funcao_na_missao }}</td>
                         <td>
                             <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
                                 {{ d.get_complexidade_display }}
@@ -320,102 +326,6 @@ function limparBusca() {
         </div>
     </div>
 </div>
-
-<!-- Formulário de Solicitação (só aparece para o próprio oficial) -->
-{% if visualizando_proprio %}
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="plus-circle"></i>
-            Solicitar Inclusão de Designação
-        </h2>
-    </div>
-    <div class="card-body">
-        <form hx-post="{% url 'htmx_solicitacao_criar' %}" hx-target="#solicitacao-feedback" hx-swap="innerHTML">
-            {% csrf_token %}
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Nome da Missão</label>
-                    <input type="text" class="form-input" name="nome_missao" required placeholder="Ex: Operação Verão 2024">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Função na Missão</label>
-                    <input type="text" class="form-input" name="funcao_na_missao" required placeholder="Ex: Coordenador">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Complexidade</label>
-                    <select class="form-select" name="complexidade" required>
-                        <option value="">Selecione...</option>
-                        <option value="BAIXA">Baixa</option>
-                        <option value="MEDIA">Média</option>
-                        <option value="ALTA">Alta</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;">
-                    <label class="form-label">Nº SEI / BG (referência)</label>
-                    <input type="text" class="form-input" name="documento_referencia" placeholder="Ex: SEI 202400012345">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Justificativa (opcional)</label>
-                <textarea class="form-input" name="justificativa" rows="2" placeholder="Descreva o motivo da solicitação..."></textarea>
-            </div>
-            
-            <div id="solicitacao-feedback"></div>
-            
-            <button type="submit" class="btn btn-primary">
-                <i data-lucide="send"></i>
-                Enviar Solicitação
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- Solicitações Anteriores -->
-{% if solicitacoes %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="history"></i>
-            Minhas Solicitações Recentes
-        </h2>
-    </div>
-    <div class="card-body">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Função</th>
-                        <th>Data</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in solicitacoes %}
-                    <tr>
-                        <td>{{ s.nome_missao }}</td>
-                        <td>{{ s.funcao_na_missao }}</td>
-                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
-                                {{ s.get_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endif %}
 
 {% endblock %}
