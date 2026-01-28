@@ -117,10 +117,16 @@
             <i data-lucide="briefcase"></i>
             Minhas Designações
         </h2>
-        <a href="{% url 'minhas_solicitacoes' %}" class="btn btn-sm btn-outline">
-            <i data-lucide="history"></i>
-            Ver Histórico de Solicitações
-        </a>
+        <div class="flex gap-1">
+            <a href="{% url 'exportar_excel' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm btn-success">
+                <i data-lucide="file-spreadsheet"></i>
+                Excel
+            </a>
+            <a href="{% url 'exportar_pdf' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
+                <i data-lucide="file-text"></i>
+                PDF
+            </a>
+        </div>
     </div>
     <div class="card-body" style="padding: 0;">
         <div class="table-container">
