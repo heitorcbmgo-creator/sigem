@@ -539,6 +539,8 @@ class Solicitacao(models.Model):
     ]
     
     LOCAL_CHOICES = [
+        ('INTERNACIONAL', 'Internacional'),
+        ('NACIONAL', 'Nacional'),
         ('ESTADUAL', 'Estadual'),
         ('CAPITAL', 'Capital'),
         ('1_CRBM', '1º CRBM'),
