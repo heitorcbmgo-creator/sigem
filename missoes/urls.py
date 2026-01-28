@@ -81,8 +81,19 @@ urlpatterns = [
     path('htmx/usuario/<int:pk>/reset-senha/', views.htmx_usuario_reset_senha, name='htmx_usuario_reset_senha'),
     
     # ============================================================
-    # 🔄 ENDPOINTS HTMX - SOLICITAÇÕES
+    # 🔄 ENDPOINTS HTMX - SOLICITAÇÕES (Sistema Unificado)
     # ============================================================
+    # Novas URLs do sistema unificado
+    path('htmx/solicitacao/criar/', views.htmx_solicitacao_criar, name='htmx_solicitacao_criar'),
+    path('htmx/solicitacoes/unificadas/', views.htmx_solicitacoes_unificadas_lista, name='htmx_solicitacoes_unificadas_lista'),
+    path('htmx/solicitacao/<int:pk>/dados/', views.htmx_solicitacao_dados, name='htmx_solicitacao_dados'),
+    path('htmx/solicitacao/<int:pk>/editar/', views.htmx_solicitacao_editar, name='htmx_solicitacao_editar'),
+    path('htmx/solicitacao/<int:pk>/aprovar/', views.htmx_solicitacao_aprovar, name='htmx_solicitacao_aprovar'),
+    path('htmx/solicitacao/<int:pk>/recusar/', views.htmx_solicitacao_recusar, name='htmx_solicitacao_recusar'),
+    path('htmx/missoes/disponiveis/', views.htmx_buscar_missoes_disponiveis, name='htmx_buscar_missoes_disponiveis'),
+    path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
+    
+    # URLs legadas (mantidas para compatibilidade)
     path('htmx/solicitacao/missao/criar/', views.htmx_solicitacao_missao_criar, name='htmx_solicitacao_missao_criar'),
     path('htmx/solicitacao/designacao/criar/', views.htmx_solicitacao_designacao_criar, name='htmx_solicitacao_designacao_criar'),
     path('htmx/solicitacoes/lista/', views.htmx_solicitacoes_lista, name='htmx_solicitacoes_lista'),
@@ -92,7 +103,6 @@ urlpatterns = [
     path('htmx/solicitacao/designacao/<int:pk>/dados/', views.htmx_solicitacao_designacao_dados, name='htmx_solicitacao_designacao_dados'),
     path('htmx/solicitacao/designacao/<int:pk>/editar/', views.htmx_solicitacao_designacao_editar, name='htmx_solicitacao_designacao_editar'),
     path('htmx/solicitacao/designacao/<int:pk>/avaliar/', views.htmx_solicitacao_designacao_avaliar, name='htmx_solicitacao_designacao_avaliar'),
-    path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
     
     # ============================================================
     # 📥 EXPORTAÇÃO

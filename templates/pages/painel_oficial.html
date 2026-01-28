@@ -46,70 +46,6 @@
     </div>
 </div>
 
-<style>
-.perfil-container {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-}
-
-.perfil-info {
-    flex: 1;
-    min-width: 200px;
-}
-
-.perfil-stats {
-    text-align: right;
-}
-
-.totalizadores-mini {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.totalizador-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    min-width: 60px;
-}
-
-.totalizador-item.baixa { background: #dcfce7; }
-.totalizador-item.media { background: #fef3c7; }
-.totalizador-item.alta { background: #fee2e2; }
-
-.totalizador-valor {
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-.totalizador-item.baixa .totalizador-valor { color: #166534; }
-.totalizador-item.media .totalizador-valor { color: #92400e; }
-.totalizador-item.alta .totalizador-valor { color: #991b1b; }
-
-.totalizador-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    color: #6b7280;
-}
-
-@media (max-width: 768px) {
-    .perfil-container {
-        flex-direction: column;
-        text-align: center;
-    }
-    .perfil-stats {
-        text-align: center;
-    }
-    .totalizadores-mini {
-        justify-content: center;
-    }
-}
-</style>
-
 <!-- Minhas Designações -->
 <div class="card mb-4">
     <div class="card-header">
@@ -177,148 +113,248 @@
     </div>
 </div>
 
-<!-- Grid de Formulários -->
-<div class="solicitacoes-grid">
-    <!-- Formulário: Solicitar Inclusão de Missão -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <i data-lucide="folder-plus"></i>
-                Solicitar Inclusão de Missão
-            </h2>
+<!-- Card de Nova Solicitação (Wizard) -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="plus-circle"></i>
+            Nova Solicitação
+        </h2>
+    </div>
+    <div class="card-body">
+        <!-- Step 1: Escolha do tipo -->
+        <div id="wizard-step-1">
+            <p class="text-muted mb-4">O que você deseja solicitar?</p>
+            
+            <div class="wizard-options">
+                <div class="wizard-option" onclick="showForm('NOVA_MISSAO')">
+                    <div class="wizard-option-icon">
+                        <i data-lucide="folder-plus"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Criar uma NOVA MISSÃO</h3>
+                        <p>Solicite a criação de uma nova missão no sistema e já se designe para ela.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+                
+                <div class="wizard-option" onclick="showForm('DESIGNACAO')">
+                    <div class="wizard-option-icon">
+                        <i data-lucide="user-plus"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Me designar para uma MISSÃO EXISTENTE</h3>
+                        <p>Solicite sua designação em uma missão já cadastrada no SIGEM.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <p class="text-muted mb-3" style="font-size: 0.85rem;">
-                Solicite a criação de uma nova missão no sistema. A BM/3 irá avaliar e aprovar.
-            </p>
-            <form hx-post="{% url 'htmx_solicitacao_missao_criar' %}" 
-                  hx-target="#feedback-missao" 
+        
+        <!-- Step 2: Formulário Nova Missão -->
+        <div id="wizard-step-nova-missao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="folder-plus"></i> Nova Missão + Designação</h3>
+            </div>
+            
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}" 
+                  hx-target="#feedback-solicitacao" 
                   hx-swap="innerHTML"
-                  id="form-solicitar-missao">
+                  id="form-nova-missao">
                 {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="NOVA_MISSAO">
                 
-                <div class="form-group">
-                    <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
-                    <input type="text" class="form-input" name="nome_missao" required 
-                           placeholder="Ex: Operação Carnaval 2025">
-                </div>
-                
-                <div class="form-row">
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
+                    
                     <div class="form-group">
-                        <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                        <select class="form-select" name="tipo_missao" required>
+                        <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="nome_missao" required 
+                               placeholder="Ex: Operação Carnaval 2025">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                            <select class="form-select" name="tipo_missao" required>
+                                <option value="">Selecione...</option>
+                                {% for value, label in tipo_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="status_missao" required id="status-missao-select" 
+                                    onchange="toggleDataFim()">
+                                <option value="">Selecione...</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Local <span class="text-danger">*</span></label>
+                        <select class="form-select" name="local_missao" required>
                             <option value="">Selecione...</option>
-                            {% for value, label in tipo_choices %}
+                            {% for value, label in local_choices %}
                             <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Status <span class="text-danger">*</span></label>
-                        <select class="form-select" name="status_missao" required id="status-missao-select" 
-                                onchange="toggleDataFim()">
-                            <option value="">Selecione...</option>
-                            {% for value, label in status_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Local <span class="text-danger">*</span></label>
-                    <select class="form-select" name="local" required>
-                        <option value="">Selecione...</option>
-                        {% for value, label in local_choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Data de Início <span class="text-danger">*</span></label>
-                        <input type="date" class="form-input" name="data_inicio" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="data_inicio" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Data de Término <span id="label-data-fim-obrig"></span></label>
+                            <input type="date" class="form-input" name="data_fim" id="data-fim-input">
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">Data de Término <span id="label-data-fim-obrig"></span></label>
-                        <input type="date" class="form-input" name="data_fim" id="data-fim-input">
+                        <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="documento_sei_missao" required 
+                               placeholder="Ex: 202500012345">
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Nº SEI <span class="text-danger">*</span></label>
-                    <input type="text" class="form-input" name="documento_sei" required 
-                           placeholder="Ex: 202500012345">
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="funcao_na_missao" required 
+                                   placeholder="Ex: Coordenador, Membro, Fiscal">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Nº SEI/BG da Designação <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="documento_sei_designacao" required 
+                                   placeholder="Ex: BG 001/2025">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Complexidade</label>
+                        <input type="text" class="form-input" value="Será definida pela BM/3 na aprovação" disabled 
+                               style="background: #f3f4f6; color: #6b7280;">
+                    </div>
                 </div>
                 
-                <div id="feedback-missao"></div>
+                <div id="feedback-solicitacao"></div>
                 
                 <button type="submit" class="btn btn-primary btn-block">
                     <i data-lucide="send"></i>
-                    Enviar Solicitação de Missão
+                    Enviar Solicitação
                 </button>
             </form>
         </div>
-    </div>
-    
-    <!-- Formulário: Solicitar Inclusão de Designação -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <i data-lucide="user-plus"></i>
-                Solicitar Inclusão de Designação
-            </h2>
-        </div>
-        <div class="card-body">
-            <p class="text-muted mb-3" style="font-size: 0.85rem;">
-                Solicite sua designação em uma missão existente. A BM/3 definirá a complexidade.
-            </p>
-            <form hx-post="{% url 'htmx_solicitacao_designacao_criar' %}" 
-                  hx-target="#feedback-designacao" 
+        
+        <!-- Step 2: Formulário Designação Existente -->
+        <div id="wizard-step-designacao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="user-plus"></i> Designação em Missão Existente</h3>
+            </div>
+            
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}" 
+                  hx-target="#feedback-solicitacao-desig" 
                   hx-swap="innerHTML"
-                  id="form-solicitar-designacao">
+                  id="form-designacao">
                 {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="DESIGNACAO">
                 
-                <div class="form-group">
-                    <label class="form-label">Missão <span class="text-danger">*</span></label>
-                    <select class="form-select" name="missao_id" required>
-                        <option value="">Selecione uma missão...</option>
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="search"></i> Buscar Missão</h4>
+                    
+                    <div class="form-row form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="filtro-tipo" onchange="buscarMissoes()">
+                                <option value="">Todos</option>
+                                {% for value, label in tipo_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Ano</label>
+                            <select class="form-select" id="filtro-ano" onchange="buscarMissoes()">
+                                <option value="">Todos</option>
+                                {% for ano in anos_disponiveis %}
+                                <option value="{{ ano }}">{{ ano }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" class="form-input" id="filtro-busca" 
+                                   placeholder="Nome ou SEI..." onkeyup="debounce(buscarMissoes, 300)()">
+                        </div>
+                    </div>
+                    
+                    <div class="missoes-lista" id="missoes-lista">
                         {% for m in missoes_disponiveis %}
-                        <option value="{{ m.id }}">{{ m.nome }} ({{ m.get_status_display }})</option>
+                        <label class="missao-item">
+                            <input type="radio" name="missao_id" value="{{ m.id }}" required>
+                            <div class="missao-item-content">
+                                <strong>{{ m.nome }}</strong>
+                                <span class="missao-item-meta">
+                                    {{ m.get_tipo_display }} • {{ m.get_status_display }}
+                                    {% if m.data_inicio %} • {{ m.data_inicio|date:"d/m/Y" }}{% if m.data_fim %} → {{ m.data_fim|date:"d/m/Y" }}{% endif %}{% endif %}
+                                </span>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">Nenhuma missão disponível para designação.</p>
                         {% endfor %}
-                    </select>
-                    {% if not missoes_disponiveis %}
-                    <small class="text-muted">Nenhuma missão disponível para designação.</small>
-                    {% endif %}
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
-                    <input type="text" class="form-input" name="funcao_na_missao" required 
-                           placeholder="Ex: Coordenador, Membro, Fiscal">
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="funcao_na_missao" required 
+                                   placeholder="Ex: Coordenador, Membro, Fiscal">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="documento_sei_designacao" required 
+                                   placeholder="Ex: BG 001/2025">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Complexidade</label>
+                        <input type="text" class="form-input" value="Será definida pela BM/3 na aprovação" disabled 
+                               style="background: #f3f4f6; color: #6b7280;">
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label class="form-label">Complexidade</label>
-                    <input type="text" class="form-input" value="Definida pela BM/3" disabled 
-                           style="background: #f3f4f6; color: #6b7280;">
-                    <small class="text-muted">A complexidade será atribuída pelo avaliador na aprovação.</small>
-                </div>
+                <div id="feedback-solicitacao-desig"></div>
                 
-                <div class="form-group">
-                    <label class="form-label">Nº SEI / BG <span class="text-danger">*</span></label>
-                    <input type="text" class="form-input" name="documento_sei" required 
-                           placeholder="Ex: SEI 202500012345 ou BG 001/2025">
-                </div>
-                
-                <div id="feedback-designacao"></div>
-                
-                <button type="submit" class="btn btn-primary btn-block" {% if not missoes_disponiveis %}disabled{% endif %}>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-designacao">
                     <i data-lucide="send"></i>
-                    Enviar Solicitação de Designação
+                    Enviar Solicitação
                 </button>
             </form>
         </div>
@@ -326,16 +362,158 @@
 </div>
 
 <style>
-.solicitacoes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+.perfil-container {
+    display: flex;
+    align-items: center;
     gap: 1.5rem;
+    flex-wrap: wrap;
 }
 
-@media (max-width: 860px) {
-    .solicitacoes-grid {
-        grid-template-columns: 1fr;
-    }
+.perfil-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.perfil-stats {
+    text-align: right;
+}
+
+.totalizadores-mini {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.totalizador-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    min-width: 60px;
+}
+
+.totalizador-item.baixa { background: #dcfce7; }
+.totalizador-item.media { background: #fef3c7; }
+.totalizador-item.alta { background: #fee2e2; }
+
+.totalizador-valor {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.totalizador-item.baixa .totalizador-valor { color: #166534; }
+.totalizador-item.media .totalizador-valor { color: #92400e; }
+.totalizador-item.alta .totalizador-valor { color: #991b1b; }
+
+.totalizador-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+/* Wizard Styles */
+.wizard-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wizard-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 2px solid var(--sigem-gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wizard-option:hover {
+    border-color: var(--sigem-red);
+    background: #fef2f2;
+}
+
+.wizard-option-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--sigem-red);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.wizard-option-icon i {
+    width: 24px;
+    height: 24px;
+}
+
+.wizard-option-content {
+    flex: 1;
+}
+
+.wizard-option-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--sigem-gray-900);
+    margin-bottom: 0.25rem;
+}
+
+.wizard-option-content p {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-500);
+    margin: 0;
+}
+
+.wizard-option-arrow {
+    color: var(--sigem-gray-400);
+    width: 20px;
+    height: 20px;
+}
+
+.wizard-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.wizard-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.form-section {
+    background: var(--sigem-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sigem-gray-700);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.form-section-title i {
+    width: 16px;
+    height: 16px;
 }
 
 .form-row {
@@ -344,9 +522,26 @@
     gap: 1rem;
 }
 
-@media (max-width: 500px) {
-    .form-row {
+.form-row-3 {
+    grid-template-columns: 1fr 1fr 2fr;
+}
+
+@media (max-width: 600px) {
+    .form-row, .form-row-3 {
         grid-template-columns: 1fr;
+    }
+    
+    .perfil-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .perfil-stats {
+        text-align: center;
+    }
+    
+    .totalizadores-mini {
+        justify-content: center;
     }
 }
 
@@ -355,14 +550,60 @@
     margin-top: 1rem;
 }
 
-.mb-3 {
-    margin-bottom: 0.75rem;
-}
-
 .mb-4 {
     margin-bottom: 1rem;
 }
 
+/* Lista de Missões */
+.missoes-lista {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    background: white;
+}
+
+.missao-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sigem-gray-100);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.missao-item:hover {
+    background: var(--sigem-gray-50);
+}
+
+.missao-item:last-child {
+    border-bottom: none;
+}
+
+.missao-item input[type="radio"] {
+    margin-top: 4px;
+    accent-color: var(--sigem-red);
+}
+
+.missao-item-content {
+    flex: 1;
+}
+
+.missao-item-content strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--sigem-gray-800);
+}
+
+.missao-item-meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.25rem;
+}
+
+/* Alerts */
 .alert {
     padding: 0.75rem 1rem;
     border-radius: 8px;
@@ -398,6 +639,25 @@
 </style>
 
 <script>
+function showForm(tipo) {
+    document.getElementById('wizard-step-1').style.display = 'none';
+    
+    if (tipo === 'NOVA_MISSAO') {
+        document.getElementById('wizard-step-nova-missao').style.display = 'block';
+    } else {
+        document.getElementById('wizard-step-designacao').style.display = 'block';
+    }
+    
+    lucide.createIcons();
+}
+
+function backToStep1() {
+    document.getElementById('wizard-step-1').style.display = 'block';
+    document.getElementById('wizard-step-nova-missao').style.display = 'none';
+    document.getElementById('wizard-step-designacao').style.display = 'none';
+    lucide.createIcons();
+}
+
 function toggleDataFim() {
     const statusSelect = document.getElementById('status-missao-select');
     const dataFimInput = document.getElementById('data-fim-input');
@@ -419,13 +679,49 @@ function toggleDataFim() {
     }
 }
 
-// Limpar formulário após sucesso
+// Debounce para busca
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function buscarMissoes() {
+    const tipo = document.getElementById('filtro-tipo').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const busca = document.getElementById('filtro-busca').value;
+    
+    const params = new URLSearchParams();
+    if (tipo) params.append('tipo', tipo);
+    if (ano) params.append('ano', ano);
+    if (busca) params.append('busca', busca);
+    
+    fetch(`{% url 'htmx_buscar_missoes_disponiveis' %}?${params.toString()}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('missoes-lista').innerHTML = html;
+        });
+}
+
+// Limpar formulário e voltar ao step 1 após sucesso
 document.body.addEventListener('htmx:afterSwap', function(evt) {
-    if (evt.detail.target.id === 'feedback-missao' && evt.detail.xhr.response.includes('alert-success')) {
-        document.getElementById('form-solicitar-missao').reset();
-    }
-    if (evt.detail.target.id === 'feedback-designacao' && evt.detail.xhr.response.includes('alert-success')) {
-        document.getElementById('form-solicitar-designacao').reset();
+    if ((evt.detail.target.id === 'feedback-solicitacao' || evt.detail.target.id === 'feedback-solicitacao-desig') 
+        && evt.detail.xhr.response.includes('alert-success')) {
+        
+        setTimeout(() => {
+            if (evt.detail.target.id === 'feedback-solicitacao') {
+                document.getElementById('form-nova-missao').reset();
+            } else {
+                document.getElementById('form-designacao').reset();
+            }
+            backToStep1();
+        }, 2000);
     }
     lucide.createIcons();
 });

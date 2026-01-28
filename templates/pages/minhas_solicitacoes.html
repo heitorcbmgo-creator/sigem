@@ -19,8 +19,8 @@
             <i data-lucide="folder-plus"></i>
         </div>
         <div class="kpi-content-mini">
-            <span class="kpi-value-mini">{{ total_missao }}</span>
-            <span class="kpi-label-mini">Missões Solicitadas</span>
+            <span class="kpi-value-mini">{{ total_nova_missao }}</span>
+            <span class="kpi-label-mini">Novas Missões</span>
         </div>
     </div>
     
@@ -30,7 +30,7 @@
         </div>
         <div class="kpi-content-mini">
             <span class="kpi-value-mini">{{ total_designacao }}</span>
-            <span class="kpi-label-mini">Designações Solicitadas</span>
+            <span class="kpi-label-mini">Designações</span>
         </div>
     </div>
     
@@ -44,6 +44,154 @@
         </div>
     </div>
 </div>
+
+<!-- Filtros -->
+<div class="filter-bar mb-4">
+    <form method="get" class="filter-form">
+        <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select name="tipo" class="form-select" onchange="this.form.submit()">
+                <option value="todas" {% if filtros.tipo == 'todas' %}selected{% endif %}>Todas</option>
+                <option value="missao" {% if filtros.tipo == 'missao' %}selected{% endif %}>Novas Missões</option>
+                <option value="designacao" {% if filtros.tipo == 'designacao' %}selected{% endif %}>Designações</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<!-- Lista de Solicitações -->
+{% if solicitacoes %}
+<div class="solicitacoes-lista">
+    {% for s in solicitacoes %}
+    <div class="solicitacao-card {% if s.status == 'PENDENTE' %}pendente{% elif s.status == 'APROVADA' %}aprovada{% else %}recusada{% endif %}">
+        <div class="solicitacao-header">
+            <div class="solicitacao-tipo">
+                {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                <span class="badge badge-info">
+                    <i data-lucide="folder-plus"></i>
+                    Nova Missão + Designação
+                </span>
+                {% else %}
+                <span class="badge badge-purple">
+                    <i data-lucide="user-plus"></i>
+                    Designação
+                </span>
+                {% endif %}
+            </div>
+            <div class="solicitacao-data">
+                <small>{{ s.criado_em|date:"d/m/Y H:i" }}</small>
+            </div>
+        </div>
+        
+        <div class="solicitacao-body">
+            <div class="solicitacao-info-principal">
+                {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                <h3>{{ s.nome_missao }}</h3>
+                <p class="solicitacao-meta-text">
+                    {{ s.get_tipo_missao_display }} • {{ s.get_local_missao_display }} • {{ s.get_status_missao_display }}
+                </p>
+                {% if s.data_inicio %}
+                <p class="solicitacao-meta-text">
+                    <i data-lucide="calendar"></i>
+                    {{ s.data_inicio|date:"d/m/Y" }}{% if s.data_fim %} → {{ s.data_fim|date:"d/m/Y" }}{% endif %}
+                </p>
+                {% endif %}
+                <p class="solicitacao-meta-text">
+                    <i data-lucide="file-text"></i>
+                    SEI Missão: {{ s.documento_sei_missao }}
+                </p>
+                {% else %}
+                <h3>{{ s.missao_existente.nome }}</h3>
+                <p class="solicitacao-meta-text">
+                    {{ s.missao_existente.get_tipo_display }} • {{ s.missao_existente.get_status_display }}
+                </p>
+                {% endif %}
+                
+                <div class="solicitacao-designacao">
+                    <span class="designacao-label">Sua designação:</span>
+                    <span class="designacao-funcao">{{ s.funcao_na_missao }}</span>
+                    <span class="designacao-sei">SEI/BG: {{ s.documento_sei_designacao }}</span>
+                </div>
+            </div>
+            
+            <div class="solicitacao-status-area">
+                <span class="badge badge-lg badge-{% if s.status == 'PENDENTE' %}warning{% elif s.status == 'APROVADA' %}success{% else %}danger{% endif %}">
+                    {% if s.status == 'PENDENTE' %}
+                    <i data-lucide="clock"></i>
+                    {% elif s.status == 'APROVADA' %}
+                    <i data-lucide="check-circle"></i>
+                    {% else %}
+                    <i data-lucide="x-circle"></i>
+                    {% endif %}
+                    {{ s.get_status_display }}
+                </span>
+                
+                {% if s.status == 'APROVADA' and s.complexidade %}
+                <div class="complexidade-info">
+                    Complexidade: 
+                    <span class="badge badge-sm badge-{% if s.complexidade == 'ALTA' %}danger{% elif s.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                        {{ s.get_complexidade_display }}
+                    </span>
+                </div>
+                {% endif %}
+                
+                {% if s.status == 'APROVADA' %}
+                <div class="registros-criados">
+                    {% if s.missao_criada %}
+                    <small class="text-success">
+                        <i data-lucide="check"></i> Missão criada
+                    </small>
+                    {% endif %}
+                    {% if s.designacao_criada %}
+                    <small class="text-success">
+                        <i data-lucide="check"></i> Designação criada
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if s.avaliado_por %}
+        <div class="solicitacao-avaliacao">
+            <div class="avaliacao-info">
+                <i data-lucide="user-check"></i>
+                <span>Avaliado por {{ s.avaliado_por.oficial|default:s.avaliado_por.cpf }} em {{ s.data_avaliacao|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% if s.observacao_avaliador %}
+            <div class="avaliacao-obs">
+                <i data-lucide="message-circle"></i>
+                <span>{{ s.observacao_avaliador }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-8">
+        <i data-lucide="inbox" style="width:64px;height:64px;color:#d1d5db;margin-bottom:1rem;"></i>
+        <h3 class="text-gray">Nenhuma solicitação encontrada</h3>
+        <p class="text-muted">Você ainda não fez nenhuma solicitação{% if filtros.status %} com este status{% endif %}.</p>
+        <a href="{% url 'painel_oficial' %}" class="btn btn-primary mt-4">
+            <i data-lucide="plus"></i>
+            Fazer Nova Solicitação
+        </a>
+    </div>
+</div>
+{% endif %}
 
 <style>
 .kpi-grid-mini {
@@ -99,172 +247,7 @@
 .mb-4 {
     margin-bottom: 1rem;
 }
-</style>
 
-<!-- Filtros -->
-<div class="filter-bar mb-4">
-    <form method="get" class="filter-form">
-        <div class="form-group">
-            <label class="form-label">Tipo</label>
-            <select name="tipo" class="form-select" onchange="this.form.submit()">
-                <option value="todas" {% if filtros.tipo == 'todas' %}selected{% endif %}>Todas</option>
-                <option value="missao" {% if filtros.tipo == 'missao' %}selected{% endif %}>Missões</option>
-                <option value="designacao" {% if filtros.tipo == 'designacao' %}selected{% endif %}>Designações</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">Status</label>
-            <select name="status" class="form-select" onchange="this.form.submit()">
-                <option value="">Todos</option>
-                {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </form>
-</div>
-
-<!-- Solicitações de Missão -->
-{% if solicitacoes_missao %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="folder-plus"></i>
-            Solicitações de Missão
-        </h2>
-        <span class="badge badge-info">{{ solicitacoes_missao|length }}</span>
-    </div>
-    <div class="card-body" style="padding: 0;">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Tipo</th>
-                        <th>Local</th>
-                        <th>Data Solicitação</th>
-                        <th>Status</th>
-                        <th>Observação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in solicitacoes_missao %}
-                    <tr>
-                        <td>
-                            <strong>{{ s.nome_missao }}</strong>
-                            <br><small class="text-muted">SEI: {{ s.documento_sei }}</small>
-                        </td>
-                        <td>{{ s.get_tipo_missao_display }}</td>
-                        <td>{{ s.get_local_display }}</td>
-                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
-                                {{ s.get_status_display }}
-                            </span>
-                            {% if s.status == 'APROVADA' and s.missao_criada %}
-                            <br><small class="text-success">Missão #{{ s.missao_criada.id }} criada</small>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if s.observacao_avaliador %}
-                            <span class="tooltip-container">
-                                <i data-lucide="message-circle" style="width:16px;height:16px;color:#6b7280;"></i>
-                                <span class="tooltip-text">{{ s.observacao_avaliador }}</span>
-                            </span>
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- Solicitações de Designação -->
-{% if solicitacoes_designacao %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="user-plus"></i>
-            Solicitações de Designação
-        </h2>
-        <span class="badge badge-info">{{ solicitacoes_designacao|length }}</span>
-    </div>
-    <div class="card-body" style="padding: 0;">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Função</th>
-                        <th>Data Solicitação</th>
-                        <th>Status</th>
-                        <th>Complexidade</th>
-                        <th>Observação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in solicitacoes_designacao %}
-                    <tr>
-                        <td>
-                            <strong>{{ s.missao.nome|truncatechars:40 }}</strong>
-                            <br><small class="text-muted">SEI: {{ s.documento_sei }}</small>
-                        </td>
-                        <td>{{ s.funcao_na_missao }}</td>
-                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
-                                {{ s.get_status_display }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if s.complexidade %}
-                            <span class="badge badge-{% if s.complexidade == 'ALTA' %}danger{% elif s.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
-                                {{ s.complexidade }}
-                            </span>
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if s.observacao_avaliador %}
-                            <span class="tooltip-container">
-                                <i data-lucide="message-circle" style="width:16px;height:16px;color:#6b7280;"></i>
-                                <span class="tooltip-text">{{ s.observacao_avaliador }}</span>
-                            </span>
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-{% if not solicitacoes_missao and not solicitacoes_designacao %}
-<div class="card">
-    <div class="card-body text-center py-8">
-        <i data-lucide="inbox" style="width:64px;height:64px;color:#d1d5db;margin-bottom:1rem;"></i>
-        <h3 class="text-gray">Nenhuma solicitação encontrada</h3>
-        <p class="text-muted">Você ainda não fez nenhuma solicitação{% if filtros.status %} com este status{% endif %}.</p>
-        <a href="{% url 'painel_oficial' %}" class="btn btn-primary mt-4">
-            <i data-lucide="plus"></i>
-            Fazer Nova Solicitação
-        </a>
-    </div>
-</div>
-{% endif %}
-
-<style>
 .filter-bar {
     background: white;
     padding: 1rem;
@@ -282,6 +265,197 @@
     min-width: 150px;
 }
 
+/* Solicitações Lista */
+.solicitacoes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.solicitacao-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.solicitacao-card.pendente {
+    border-left: 4px solid #f59e0b;
+}
+
+.solicitacao-card.aprovada {
+    border-left: 4px solid #22c55e;
+}
+
+.solicitacao-card.recusada {
+    border-left: 4px solid #ef4444;
+}
+
+.solicitacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--sigem-gray-50);
+    border-bottom: 1px solid var(--sigem-gray-100);
+}
+
+.solicitacao-tipo .badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.solicitacao-tipo .badge i {
+    width: 14px;
+    height: 14px;
+}
+
+.solicitacao-data {
+    color: var(--sigem-gray-500);
+}
+
+.solicitacao-body {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+@media (max-width: 600px) {
+    .solicitacao-body {
+        flex-direction: column;
+    }
+}
+
+.solicitacao-info-principal {
+    flex: 1;
+}
+
+.solicitacao-info-principal h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    color: var(--sigem-gray-900);
+}
+
+.solicitacao-meta-text {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-600);
+    margin: 0.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.solicitacao-meta-text i {
+    width: 14px;
+    height: 14px;
+}
+
+.solicitacao-designacao {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sigem-gray-100);
+}
+
+.designacao-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-500);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.designacao-funcao {
+    display: block;
+    font-weight: 600;
+    color: var(--sigem-gray-800);
+}
+
+.designacao-sei {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--sigem-gray-500);
+}
+
+.solicitacao-status-area {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.badge-lg {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badge-lg i {
+    width: 16px;
+    height: 16px;
+}
+
+.badge-purple {
+    background: #e9d5ff;
+    color: #7c3aed;
+}
+
+.complexidade-info {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-600);
+}
+
+.registros-criados {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.registros-criados small {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.registros-criados i {
+    width: 12px;
+    height: 12px;
+}
+
+.solicitacao-avaliacao {
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border-top: 1px solid #fcd34d;
+    font-size: 0.85rem;
+}
+
+.avaliacao-info, .avaliacao-obs {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: #92400e;
+}
+
+.avaliacao-info i, .avaliacao-obs i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.avaliacao-obs {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #fcd34d;
+}
+
 .py-8 {
     padding-top: 3rem;
     padding-bottom: 3rem;
@@ -289,46 +463,6 @@
 
 .mt-4 {
     margin-top: 1rem;
-}
-
-/* Tooltip para observações */
-.tooltip-container {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-}
-
-.tooltip-text {
-    visibility: hidden;
-    position: absolute;
-    z-index: 100;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1f2937;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    max-width: 300px;
-    white-space: normal;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.tooltip-text::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #1f2937 transparent transparent transparent;
-}
-
-.tooltip-container:hover .tooltip-text {
-    visibility: visible;
 }
 </style>
 {% endblock %}

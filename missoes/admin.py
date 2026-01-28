@@ -6,7 +6,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao, SolicitacaoMissao
+from .models import Oficial, Missao, Designacao, Unidade, Usuario, Solicitacao, SolicitacaoDesignacao, SolicitacaoMissao
 
 
 @admin.register(Oficial)
@@ -59,6 +59,21 @@ class UsuarioAdmin(UserAdmin):
     )
 
 
+@admin.register(Solicitacao)
+class SolicitacaoAdmin(admin.ModelAdmin):
+    list_display = ['tipo_solicitacao', 'solicitante', 'get_missao_nome', 'funcao_na_missao', 'status', 'criado_em']
+    list_filter = ['tipo_solicitacao', 'status', 'tipo_missao']
+    search_fields = ['nome_missao', 'solicitante__nome', 'missao_existente__nome']
+    readonly_fields = ['criado_em', 'atualizado_em', 'missao_criada', 'designacao_criada']
+    
+    def get_missao_nome(self, obj):
+        if obj.tipo_solicitacao == 'NOVA_MISSAO':
+            return f"[NOVA] {obj.nome_missao}"
+        return obj.missao_existente.nome if obj.missao_existente else '-'
+    get_missao_nome.short_description = 'Missão'
+
+
+# [LEGADO] Mantidos para compatibilidade com dados antigos
 @admin.register(SolicitacaoMissao)
 class SolicitacaoMissaoAdmin(admin.ModelAdmin):
     list_display = ['solicitante', 'nome_missao', 'tipo_missao', 'status', 'criado_em']

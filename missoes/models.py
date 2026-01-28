@@ -516,10 +516,21 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
 
 # ============================================================
-# 📝 MODELO: SOLICITAÇÃO DE DESIGNAÇÃO
+# 📝 MODELO: SOLICITAÇÃO UNIFICADA
 # ============================================================
-class SolicitacaoMissao(models.Model):
-    """Solicitação de inclusão de missão feita pelo oficial."""
+class Solicitacao(models.Model):
+    """
+    Solicitação unificada para inclusão de missão e/ou designação.
+    
+    Tipos:
+    - NOVA_MISSAO: Cria uma nova missão E uma designação para o solicitante
+    - DESIGNACAO: Cria apenas uma designação em missão já existente
+    """
+    
+    TIPO_SOLICITACAO_CHOICES = [
+        ('NOVA_MISSAO', 'Nova Missão + Designação'),
+        ('DESIGNACAO', 'Designação em Missão Existente'),
+    ]
     
     STATUS_CHOICES = [
         ('PENDENTE', 'Pendente'),
@@ -541,54 +552,205 @@ class SolicitacaoMissao(models.Model):
         ('9_CRBM', '9º CRBM'),
     ]
     
+    # === Identificação ===
+    tipo_solicitacao = models.CharField(
+        'Tipo de Solicitação',
+        max_length=20,
+        choices=TIPO_SOLICITACAO_CHOICES
+    )
     solicitante = models.ForeignKey(
         Oficial,
         on_delete=models.CASCADE,
-        related_name='solicitacoes_missao',
+        related_name='solicitacoes',
         verbose_name='Solicitante'
     )
-    nome_missao = models.CharField('Nome da Missão', max_length=200)
-    tipo_missao = models.CharField('Tipo', max_length=20, choices=Missao.TIPO_CHOICES)
-    status_missao = models.CharField('Status da Missão', max_length=20, choices=Missao.STATUS_CHOICES, default='EM_ANDAMENTO')
-    local = models.CharField('Local', max_length=20, choices=LOCAL_CHOICES)
-    data_inicio = models.DateField('Data de Início')
-    data_fim = models.DateField('Data de Término', null=True, blank=True)
-    documento_sei = models.CharField('Nº SEI', max_length=100)
     
-    # Controle da solicitação
-    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    # === Campos de MISSÃO (preenchidos se tipo='NOVA_MISSAO') ===
+    nome_missao = models.CharField('Nome da Missão', max_length=200, blank=True)
+    tipo_missao = models.CharField(
+        'Tipo da Missão',
+        max_length=20,
+        choices=Missao.TIPO_CHOICES,
+        blank=True
+    )
+    status_missao = models.CharField(
+        'Status da Missão',
+        max_length=20,
+        choices=Missao.STATUS_CHOICES,
+        default='EM_ANDAMENTO',
+        blank=True
+    )
+    local_missao = models.CharField(
+        'Local da Missão',
+        max_length=20,
+        choices=LOCAL_CHOICES,
+        blank=True
+    )
+    data_inicio = models.DateField('Data de Início', null=True, blank=True)
+    data_fim = models.DateField('Data de Término', null=True, blank=True)
+    documento_sei_missao = models.CharField('Nº SEI da Missão', max_length=100, blank=True)
+    
+    # === Campos de DESIGNAÇÃO (sempre preenchidos) ===
+    missao_existente = models.ForeignKey(
+        Missao,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_designacao',
+        verbose_name='Missão Existente',
+        help_text='Preenchido apenas se tipo=DESIGNACAO'
+    )
+    funcao_na_missao = models.CharField('Função na Missão', max_length=100)
+    documento_sei_designacao = models.CharField('Nº SEI/BG da Designação', max_length=100)
+    
+    # === Controle da Solicitação ===
+    status = models.CharField(
+        'Status',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='PENDENTE'
+    )
+    complexidade = models.CharField(
+        'Complexidade',
+        max_length=20,
+        choices=Designacao.COMPLEXIDADE_CHOICES,
+        blank=True,
+        help_text='Definida pelo BM/3 na aprovação'
+    )
     avaliado_por = models.ForeignKey(
-        Usuario,
+        'Usuario',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='solicitacoes_missao_avaliadas',
+        related_name='solicitacoes_avaliadas',
         verbose_name='Avaliado por'
     )
     data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
     observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
+    
+    # === Resultados (preenchidos na aprovação) ===
     missao_criada = models.ForeignKey(
         Missao,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='solicitacao_origem',
-        verbose_name='Missão Criada'
+        related_name='solicitacao_origem_missao',
+        verbose_name='Missão Criada',
+        help_text='Preenchido automaticamente na aprovação se tipo=NOVA_MISSAO'
     )
+    designacao_criada = models.ForeignKey(
+        Designacao,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacao_origem',
+        verbose_name='Designação Criada',
+        help_text='Preenchido automaticamente na aprovação'
+    )
+    
+    # === Timestamps ===
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
     
     class Meta:
-        verbose_name = 'Solicitação de Missão'
-        verbose_name_plural = 'Solicitações de Missão'
+        verbose_name = 'Solicitação'
+        verbose_name_plural = 'Solicitações'
         ordering = ['-criado_em']
     
     def __str__(self):
-        return f"{self.solicitante} - {self.nome_missao} ({self.get_status_display()})"
+        if self.tipo_solicitacao == 'NOVA_MISSAO':
+            return f"{self.solicitante} - Nova: {self.nome_missao} ({self.get_status_display()})"
+        else:
+            missao_nome = self.missao_existente.nome if self.missao_existente else '?'
+            return f"{self.solicitante} - Designação em: {missao_nome} ({self.get_status_display()})"
+    
+    @property
+    def is_nova_missao(self):
+        """Verifica se é solicitação de nova missão."""
+        return self.tipo_solicitacao == 'NOVA_MISSAO'
+    
+    @property
+    def is_designacao(self):
+        """Verifica se é solicitação de designação em missão existente."""
+        return self.tipo_solicitacao == 'DESIGNACAO'
+    
+    @property
+    def missao_referencia(self):
+        """Retorna a missão de referência (criada ou existente)."""
+        if self.tipo_solicitacao == 'NOVA_MISSAO':
+            return self.missao_criada
+        return self.missao_existente
+    
+    def aprovar(self, avaliador, complexidade, observacao=''):
+        """
+        Aprova a solicitação e cria os registros necessários.
+        
+        Se NOVA_MISSAO: Cria Missão + Designação
+        Se DESIGNACAO: Cria apenas Designação
+        """
+        from django.utils import timezone
+        
+        # Definir complexidade
+        self.complexidade = complexidade
+        self.avaliado_por = avaliador
+        self.data_avaliacao = timezone.now()
+        self.observacao_avaliador = observacao
+        self.status = 'APROVADA'
+        
+        if self.tipo_solicitacao == 'NOVA_MISSAO':
+            # 1. Criar a Missão
+            missao = Missao.objects.create(
+                nome=self.nome_missao,
+                tipo=self.tipo_missao,
+                status=self.status_missao,
+                local=self.local_missao,
+                data_inicio=self.data_inicio,
+                data_fim=self.data_fim,
+                documento_ref=self.documento_sei_missao,
+            )
+            self.missao_criada = missao
+            
+            # 2. Criar a Designação vinculada à nova missão
+            designacao = Designacao.objects.create(
+                oficial=self.solicitante,
+                missao=missao,
+                funcao_na_missao=self.funcao_na_missao,
+                complexidade=complexidade,
+                observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
+            )
+            self.designacao_criada = designacao
+            
+        else:  # DESIGNACAO em missão existente
+            # Criar apenas a Designação
+            designacao = Designacao.objects.create(
+                oficial=self.solicitante,
+                missao=self.missao_existente,
+                funcao_na_missao=self.funcao_na_missao,
+                complexidade=complexidade,
+                observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
+            )
+            self.designacao_criada = designacao
+        
+        self.save()
+        return True
+    
+    def recusar(self, avaliador, observacao=''):
+        """Recusa a solicitação."""
+        from django.utils import timezone
+        
+        self.avaliado_por = avaliador
+        self.data_avaliacao = timezone.now()
+        self.observacao_avaliador = observacao
+        self.status = 'RECUSADA'
+        self.save()
+        return True
 
 
-class SolicitacaoDesignacao(models.Model):
-    """Solicitação de inclusão de designação feita pelo oficial."""
+# ============================================================
+# 📝 MODELOS LEGADOS (mantidos para compatibilidade)
+# ============================================================
+class SolicitacaoMissao(models.Model):
+    """[LEGADO] Usar modelo Solicitacao unificado."""
     
     STATUS_CHOICES = [
         ('PENDENTE', 'Pendente'),
@@ -596,49 +758,71 @@ class SolicitacaoDesignacao(models.Model):
         ('RECUSADA', 'Recusada'),
     ]
     
-    solicitante = models.ForeignKey(
-        Oficial,
-        on_delete=models.CASCADE,
-        related_name='solicitacoes_designacao',
-        verbose_name='Solicitante'
-    )
-    missao = models.ForeignKey(
-        Missao,
-        on_delete=models.CASCADE,
-        related_name='solicitacoes_designacao',
-        verbose_name='Missão'
-    )
-    funcao_na_missao = models.CharField('Função na Missão', max_length=100)
-    documento_sei = models.CharField('Nº SEI / BG', max_length=100)
+    LOCAL_CHOICES = [
+        ('ESTADUAL', 'Estadual'),
+        ('CAPITAL', 'Capital'),
+        ('1_CRBM', '1º CRBM'),
+        ('2_CRBM', '2º CRBM'),
+        ('3_CRBM', '3º CRBM'),
+        ('4_CRBM', '4º CRBM'),
+        ('5_CRBM', '5º CRBM'),
+        ('6_CRBM', '6º CRBM'),
+        ('7_CRBM', '7º CRBM'),
+        ('8_CRBM', '8º CRBM'),
+        ('9_CRBM', '9º CRBM'),
+    ]
     
-    # Controle da solicitação
+    solicitante = models.ForeignKey(Oficial, on_delete=models.CASCADE, related_name='solicitacoes_missao_legado')
+    nome_missao = models.CharField('Nome da Missão', max_length=200)
+    tipo_missao = models.CharField('Tipo', max_length=20, choices=Missao.TIPO_CHOICES)
+    status_missao = models.CharField('Status da Missão', max_length=20, choices=Missao.STATUS_CHOICES, default='EM_ANDAMENTO')
+    local = models.CharField('Local', max_length=20, choices=LOCAL_CHOICES)
+    data_inicio = models.DateField('Data de Início')
+    data_fim = models.DateField('Data de Término', null=True, blank=True)
+    documento_sei = models.CharField('Nº SEI', max_length=100)
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
-    complexidade = models.CharField('Complexidade', max_length=20, blank=True)  # Preenchido pelo BM/3 na aprovação
-    avaliado_por = models.ForeignKey(
-        Usuario,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='solicitacoes_designacao_avaliadas',
-        verbose_name='Avaliado por'
-    )
+    avaliado_por = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='sol_missao_avaliadas_legado')
     data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
     observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
-    designacao_criada = models.ForeignKey(
-        Designacao,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='solicitacao_origem',
-        verbose_name='Designação Criada'
-    )
+    missao_criada = models.ForeignKey(Missao, on_delete=models.SET_NULL, null=True, blank=True, related_name='sol_origem_legado')
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
     
     class Meta:
-        verbose_name = 'Solicitação de Designação'
-        verbose_name_plural = 'Solicitações de Designação'
+        verbose_name = '[Legado] Solicitação de Missão'
+        verbose_name_plural = '[Legado] Solicitações de Missão'
         ordering = ['-criado_em']
     
     def __str__(self):
-        return f"{self.solicitante} - {self.missao.nome} ({self.get_status_display()})"
+        return f"[LEGADO] {self.solicitante} - {self.nome_missao}"
+
+
+class SolicitacaoDesignacao(models.Model):
+    """[LEGADO] Usar modelo Solicitacao unificado."""
+    
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('APROVADA', 'Aprovada'),
+        ('RECUSADA', 'Recusada'),
+    ]
+    
+    solicitante = models.ForeignKey(Oficial, on_delete=models.CASCADE, related_name='solicitacoes_designacao_legado')
+    missao = models.ForeignKey(Missao, on_delete=models.CASCADE, related_name='sol_designacao_legado')
+    funcao_na_missao = models.CharField('Função na Missão', max_length=100)
+    documento_sei = models.CharField('Nº SEI / BG', max_length=100)
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    complexidade = models.CharField('Complexidade', max_length=20, blank=True)
+    avaliado_por = models.ForeignKey('Usuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='sol_desig_avaliadas_legado')
+    data_avaliacao = models.DateTimeField('Data da Avaliação', null=True, blank=True)
+    observacao_avaliador = models.TextField('Observação do Avaliador', blank=True)
+    designacao_criada = models.ForeignKey(Designacao, on_delete=models.SET_NULL, null=True, blank=True, related_name='sol_origem_legado')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
+    
+    class Meta:
+        verbose_name = '[Legado] Solicitação de Designação'
+        verbose_name_plural = '[Legado] Solicitações de Designação'
+        ordering = ['-criado_em']
+    
+    def __str__(self):
+        return f"[LEGADO] {self.solicitante} - {self.missao.nome}"

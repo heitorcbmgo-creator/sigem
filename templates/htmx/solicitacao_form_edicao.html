@@ -1,0 +1,266 @@
+{% load static %}
+
+<form id="form-avaliar-solicitacao" 
+      hx-post="{% url 'htmx_solicitacao_aprovar' solicitacao.id %}"
+      hx-target="#modal-avaliar-body">
+    
+    {% if solicitacao.tipo_solicitacao == 'NOVA_MISSAO' %}
+    <!-- Dados da Missão a Criar -->
+    <div class="form-section">
+        <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
+        
+        <div class="form-group">
+            <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+            <input type="text" class="form-input" name="nome_missao" value="{{ solicitacao.nome_missao }}" required>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                <select class="form-select" name="tipo_missao" required>
+                    {% for value, label in tipo_missao_choices %}
+                    <option value="{{ value }}" {% if solicitacao.tipo_missao == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Status <span class="text-danger">*</span></label>
+                <select class="form-select" name="status_missao" required>
+                    {% for value, label in status_missao_choices %}
+                    <option value="{{ value }}" {% if solicitacao.status_missao == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Local <span class="text-danger">*</span></label>
+            <select class="form-select" name="local_missao" required>
+                {% for value, label in local_choices %}
+                <option value="{{ value }}" {% if solicitacao.local_missao == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                <input type="date" class="form-input" name="data_inicio" value="{{ solicitacao.data_inicio|date:'Y-m-d' }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Data de Término</label>
+                <input type="date" class="form-input" name="data_fim" value="{{ solicitacao.data_fim|date:'Y-m-d' }}">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
+            <input type="text" class="form-input" name="documento_sei_missao" value="{{ solicitacao.documento_sei_missao }}" required>
+        </div>
+    </div>
+    {% else %}
+    <!-- Missão Existente -->
+    <div class="form-section">
+        <h4 class="form-section-title"><i data-lucide="folder"></i> Missão</h4>
+        
+        <div class="form-group">
+            <label class="form-label">Missão <span class="text-danger">*</span></label>
+            <select class="form-select" name="missao_id" required>
+                {% for m in missoes_disponiveis %}
+                <option value="{{ m.id }}" {% if solicitacao.missao_existente.id == m.id %}selected{% endif %}>
+                    {{ m.nome }} ({{ m.get_status_display }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        {% if solicitacao.missao_existente %}
+        <div class="info-box">
+            <p><strong>Missão atual:</strong> {{ solicitacao.missao_existente.nome }}</p>
+            <p>{{ solicitacao.missao_existente.get_tipo_display }} • {{ solicitacao.missao_existente.get_status_display }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Dados da Designação -->
+    <div class="form-section">
+        <h4 class="form-section-title"><i data-lucide="user"></i> Designação de {{ solicitacao.solicitante }}</h4>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="funcao_na_missao" value="{{ solicitacao.funcao_na_missao }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="documento_sei_designacao" value="{{ solicitacao.documento_sei_designacao }}" required>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Complexidade <span class="text-danger">*</span></label>
+            <div class="complexidade-options">
+                {% for value, label in complexidade_choices %}
+                <label class="complexidade-option {% if value == 'BAIXA' %}baixa{% elif value == 'MEDIA' %}media{% else %}alta{% endif %}">
+                    <input type="radio" name="complexidade" value="{{ value }}" {% if solicitacao.complexidade == value %}checked{% endif %} required>
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <small class="text-muted">Selecione a complexidade que será atribuída à designação.</small>
+        </div>
+    </div>
+    
+    <!-- Observações -->
+    <div class="form-section">
+        <h4 class="form-section-title"><i data-lucide="message-square"></i> Observações</h4>
+        
+        <div class="form-group">
+            <label class="form-label">Observação (opcional)</label>
+            <textarea class="form-input" name="observacao" rows="2" 
+                      placeholder="Adicione uma observação se necessário...">{{ solicitacao.observacao_avaliador }}</textarea>
+        </div>
+    </div>
+    
+    <div id="feedback-aprovacao"></div>
+    
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="fecharModais()">Cancelar</button>
+        <button type="button" class="btn btn-danger" onclick="recusarSolicitacao({{ solicitacao.id }})">
+            <i data-lucide="x"></i>
+            Recusar
+        </button>
+        <button type="submit" class="btn btn-success">
+            <i data-lucide="check"></i>
+            Aprovar e Criar Registros
+        </button>
+    </div>
+</form>
+
+<style>
+.form-section {
+    background: var(--sigem-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sigem-gray-700);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.form-section-title i {
+    width: 16px;
+    height: 16px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 500px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.complexidade-options {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.complexidade-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.complexidade-option:hover {
+    border-color: var(--sigem-gray-400);
+}
+
+.complexidade-option input[type="radio"] {
+    accent-color: var(--sigem-red);
+}
+
+.complexidade-option.baixa:has(input:checked) {
+    border-color: #22c55e;
+    background: #dcfce7;
+}
+
+.complexidade-option.media:has(input:checked) {
+    border-color: #f59e0b;
+    background: #fef3c7;
+}
+
+.complexidade-option.alta:has(input:checked) {
+    border-color: #ef4444;
+    background: #fee2e2;
+}
+
+.info-box {
+    background: white;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.info-box p {
+    margin: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sigem-gray-200);
+}
+</style>
+
+<script>
+function recusarSolicitacao(id) {
+    if (confirm('Tem certeza que deseja recusar esta solicitação?')) {
+        const observacao = document.querySelector('[name="observacao"]').value;
+        
+        fetch(`{% url 'htmx_solicitacao_recusar' solicitacao.id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `observacao=${encodeURIComponent(observacao)}`
+        })
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('modal-avaliar-body').innerHTML = html;
+            lucide.createIcons();
+        });
+    }
+}
+
+lucide.createIcons();
+</script>

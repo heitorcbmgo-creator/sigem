@@ -1,0 +1,457 @@
+<!-- Filtros -->
+<div class="table-filters">
+    <div class="filters-form">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Tipo</label>
+                <select class="form-control" 
+                        hx-get="{% url 'htmx_solicitacoes_unificadas_lista' %}" 
+                        hx-target="#tab-content" 
+                        hx-include="[name='busca'], [name='status']"
+                        name="tipo_solicitacao">
+                    <option value="todas" {% if tipo_solicitacao == 'todas' %}selected{% endif %}>Todas</option>
+                    <option value="missao" {% if tipo_solicitacao == 'missao' %}selected{% endif %}>Nova Missão ({{ pendentes_missao }})</option>
+                    <option value="designacao" {% if tipo_solicitacao == 'designacao' %}selected{% endif %}>Designação ({{ pendentes_designacao }})</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Status</label>
+                <select class="form-control"
+                        hx-get="{% url 'htmx_solicitacoes_unificadas_lista' %}" 
+                        hx-target="#tab-content"
+                        hx-include="[name='busca'], [name='tipo_solicitacao']"
+                        name="status">
+                    <option value="">Todos</option>
+                    <option value="PENDENTE" {% if status_filtro == 'PENDENTE' %}selected{% endif %}>Pendentes</option>
+                    <option value="APROVADA" {% if status_filtro == 'APROVADA' %}selected{% endif %}>Aprovadas</option>
+                    <option value="RECUSADA" {% if status_filtro == 'RECUSADA' %}selected{% endif %}>Recusadas</option>
+                </select>
+            </div>
+            
+            <div class="filter-group filter-group-search">
+                <label>Buscar</label>
+                <input type="text" class="form-control" name="busca" value="{{ busca }}" 
+                       placeholder="Nome do oficial ou missão..."
+                       hx-get="{% url 'htmx_solicitacoes_unificadas_lista' %}" 
+                       hx-target="#tab-content"
+                       hx-include="[name='tipo_solicitacao'], [name='status']"
+                       hx-trigger="keyup changed delay:500ms">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contador -->
+<div class="flex justify-between items-center mb-3">
+    <span class="badge badge-warning" style="font-size: 0.9rem;">
+        {{ pendentes_total }} solicitação(ões) pendente(s)
+    </span>
+</div>
+
+<!-- Lista de Solicitações -->
+<div class="solicitacoes-container">
+    {% for s in solicitacoes %}
+    <div class="solicitacao-card {% if s.status == 'PENDENTE' %}pendente{% elif s.status == 'APROVADA' %}aprovada{% else %}recusada{% endif %}">
+        <div class="solicitacao-header">
+            <div class="solicitacao-tipo">
+                {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                <span class="badge badge-info">
+                    <i data-lucide="folder-plus"></i>
+                    Nova Missão + Designação
+                </span>
+                {% else %}
+                <span class="badge badge-purple">
+                    <i data-lucide="user-plus"></i>
+                    Designação em Missão Existente
+                </span>
+                {% endif %}
+            </div>
+            <div class="solicitacao-status">
+                <span class="badge badge-{% if s.status == 'PENDENTE' %}warning{% elif s.status == 'APROVADA' %}success{% else %}danger{% endif %}">
+                    {{ s.get_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div class="solicitacao-body">
+            <div class="solicitacao-solicitante">
+                <img src="{{ s.solicitante.foto_url }}" alt="Foto" class="avatar-sm">
+                <div>
+                    <strong>{{ s.solicitante.posto }} {{ s.solicitante.nome_guerra|default:s.solicitante.nome }}</strong>
+                    <span>{{ s.solicitante.obm|default:"—" }}</span>
+                </div>
+            </div>
+            
+            <div class="solicitacao-detalhes">
+                {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                <div class="detalhe-grupo">
+                    <h5>Missão a Criar</h5>
+                    <p><strong>{{ s.nome_missao }}</strong></p>
+                    <p>{{ s.get_tipo_missao_display }} • {{ s.get_local_missao_display }} • {{ s.get_status_missao_display }}</p>
+                    <p>{% if s.data_inicio %}{{ s.data_inicio|date:"d/m/Y" }}{% if s.data_fim %} → {{ s.data_fim|date:"d/m/Y" }}{% endif %}{% endif %}</p>
+                    <p>SEI: {{ s.documento_sei_missao }}</p>
+                </div>
+                {% else %}
+                <div class="detalhe-grupo">
+                    <h5>Missão</h5>
+                    <p><strong>{{ s.missao_existente.nome }}</strong></p>
+                    <p>{{ s.missao_existente.get_tipo_display }} • {{ s.missao_existente.get_status_display }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="detalhe-grupo">
+                    <h5>Designação Solicitada</h5>
+                    <p>Função: <strong>{{ s.funcao_na_missao }}</strong></p>
+                    <p>SEI/BG: {{ s.documento_sei_designacao }}</p>
+                </div>
+            </div>
+            
+            <div class="solicitacao-meta">
+                <small>Solicitado em {{ s.criado_em|date:"d/m/Y H:i" }}</small>
+                {% if s.avaliado_por %}
+                <small>Avaliado por {{ s.avaliado_por.oficial|default:s.avaliado_por.cpf }} em {{ s.data_avaliacao|date:"d/m/Y H:i" }}</small>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if s.status == 'PENDENTE' %}
+        <div class="solicitacao-acoes">
+            <button class="btn btn-sm btn-secondary" onclick="abrirModalEditar({{ s.id }})">
+                <i data-lucide="edit"></i>
+                Editar
+            </button>
+            <button class="btn btn-sm btn-success" onclick="abrirModalAprovar({{ s.id }}, '{{ s.tipo_solicitacao }}')">
+                <i data-lucide="check"></i>
+                Aprovar
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="abrirModalRecusar({{ s.id }})">
+                <i data-lucide="x"></i>
+                Recusar
+            </button>
+        </div>
+        {% endif %}
+        
+        {% if s.observacao_avaliador %}
+        <div class="solicitacao-observacao">
+            <i data-lucide="message-circle"></i>
+            <span>{{ s.observacao_avaliador }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i data-lucide="inbox"></i>
+        <p>Nenhuma solicitação encontrada.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal Aprovar -->
+<div id="modal-avaliar" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="modal-title">Avaliar Solicitação</h3>
+            <button class="modal-close" onclick="fecharModais()">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-avaliar-body">
+            <!-- Carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar -->
+<div id="modal-editar" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>Editar Solicitação</h3>
+            <button class="modal-close" onclick="fecharModais()">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-editar-body">
+            <!-- Carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+<style>
+.solicitacoes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.solicitacao-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--sigem-gray-200);
+    overflow: hidden;
+}
+
+.solicitacao-card.pendente {
+    border-left: 4px solid #f59e0b;
+}
+
+.solicitacao-card.aprovada {
+    border-left: 4px solid #22c55e;
+}
+
+.solicitacao-card.recusada {
+    border-left: 4px solid #ef4444;
+}
+
+.solicitacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--sigem-gray-50);
+    border-bottom: 1px solid var(--sigem-gray-100);
+}
+
+.solicitacao-tipo .badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.solicitacao-tipo .badge i {
+    width: 14px;
+    height: 14px;
+}
+
+.solicitacao-body {
+    padding: 1rem;
+}
+
+.solicitacao-solicitante {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--sigem-gray-100);
+}
+
+.solicitacao-solicitante strong {
+    display: block;
+    font-size: 0.95rem;
+}
+
+.solicitacao-solicitante span {
+    font-size: 0.8rem;
+    color: var(--sigem-gray-500);
+}
+
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.solicitacao-detalhes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .solicitacao-detalhes {
+        grid-template-columns: 1fr;
+    }
+}
+
+.detalhe-grupo h5 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-500);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.detalhe-grupo p {
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+    color: var(--sigem-gray-700);
+}
+
+.solicitacao-meta {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sigem-gray-100);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.solicitacao-meta small {
+    color: var(--sigem-gray-500);
+    font-size: 0.75rem;
+}
+
+.solicitacao-acoes {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--sigem-gray-50);
+    border-top: 1px solid var(--sigem-gray-100);
+}
+
+.solicitacao-observacao {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border-top: 1px solid #fcd34d;
+    font-size: 0.85rem;
+    color: #92400e;
+}
+
+.solicitacao-observacao i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-400);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--sigem-gray-500);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.badge-purple {
+    background: #e9d5ff;
+    color: #7c3aed;
+}
+</style>
+
+<script>
+function abrirModalAprovar(id, tipo) {
+    document.getElementById('modal-avaliar').style.display = 'flex';
+    document.getElementById('modal-title').textContent = tipo === 'NOVA_MISSAO' ? 'Aprovar Nova Missão + Designação' : 'Aprovar Designação';
+    
+    // Carregar formulário de aprovação
+    fetch(`{% url 'htmx_solicitacao_dados' 0 %}`.replace('0', id))
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('modal-avaliar-body').innerHTML = html;
+            lucide.createIcons();
+        });
+}
+
+function abrirModalEditar(id) {
+    document.getElementById('modal-editar').style.display = 'flex';
+    
+    fetch(`{% url 'htmx_solicitacao_dados' 0 %}`.replace('0', id) + '?modo=editar')
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('modal-editar-body').innerHTML = html;
+            lucide.createIcons();
+        });
+}
+
+function abrirModalRecusar(id) {
+    document.getElementById('modal-avaliar').style.display = 'flex';
+    document.getElementById('modal-title').textContent = 'Recusar Solicitação';
+    
+    document.getElementById('modal-avaliar-body').innerHTML = `
+        <form hx-post="{% url 'htmx_solicitacao_recusar' 0 %}".replace('0', '${id}')
+              hx-target="#modal-avaliar-body">
+            <div class="form-group">
+                <label class="form-label">Motivo da recusa (opcional)</label>
+                <textarea class="form-input" name="observacao" rows="3" 
+                          placeholder="Informe o motivo da recusa..."></textarea>
+            </div>
+            <div class="flex gap-2 justify-end mt-4">
+                <button type="button" class="btn btn-secondary" onclick="fecharModais()">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="x"></i>
+                    Confirmar Recusa
+                </button>
+            </div>
+        </form>
+    `.replace("{% url 'htmx_solicitacao_recusar' 0 %}", "{% url 'htmx_solicitacao_recusar' 0 %}".replace('0', id));
+    
+    htmx.process(document.getElementById('modal-avaliar-body'));
+    lucide.createIcons();
+}
+
+function fecharModais() {
+    document.getElementById('modal-avaliar').style.display = 'none';
+    document.getElementById('modal-editar').style.display = 'none';
+}
+
+// Fechar modal ao clicar fora
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            fecharModais();
+        }
+    });
+});
+
+// Atualizar ícones após HTMX
+document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+});
+</script>
