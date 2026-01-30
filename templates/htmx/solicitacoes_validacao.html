@@ -1,0 +1,546 @@
+<!-- Barra de Filtros -->
+<div class="validation-filters">
+    <div class="filters-row">
+        <div class="filter-group">
+            <label>Tipo</label>
+            <select class="form-control"
+                    hx-get="{% url 'htmx_solicitacoes_validacao' %}"
+                    hx-target="#validation-content"
+                    hx-include="[name='status'], [name='data_inicio'], [name='data_fim'], [name='busca']"
+                    name="tipo">
+                <option value="" {% if not filtros.tipo %}selected{% endif %}>Todas ({{ stats.total }})</option>
+                <option value="NOVA_MISSAO" {% if filtros.tipo == 'NOVA_MISSAO' %}selected{% endif %}>Nova Missão ({{ stats.count_missao }})</option>
+                <option value="DESIGNACAO" {% if filtros.tipo == 'DESIGNACAO' %}selected{% endif %}>Designação ({{ stats.count_designacao }})</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Status</label>
+            <select class="form-control"
+                    hx-get="{% url 'htmx_solicitacoes_validacao' %}"
+                    hx-target="#validation-content"
+                    hx-include="[name='tipo'], [name='data_inicio'], [name='data_fim'], [name='busca']"
+                    name="status">
+                <option value="">Todos</option>
+                <option value="PENDENTE" {% if filtros.status == 'PENDENTE' %}selected{% endif %}>Pendentes ({{ stats.pendentes }})</option>
+                <option value="APROVADA" {% if filtros.status == 'APROVADA' %}selected{% endif %}>Aprovadas</option>
+                <option value="RECUSADA" {% if filtros.status == 'RECUSADA' %}selected{% endif %}>Recusadas</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Data Início</label>
+            <input type="date" class="form-control" name="data_inicio" value="{{ filtros.data_inicio }}"
+                   hx-get="{% url 'htmx_solicitacoes_validacao' %}"
+                   hx-target="#validation-content"
+                   hx-include="[name='tipo'], [name='status'], [name='data_fim'], [name='busca']"
+                   hx-trigger="change">
+        </div>
+
+        <div class="filter-group">
+            <label>Data Fim</label>
+            <input type="date" class="form-control" name="data_fim" value="{{ filtros.data_fim }}"
+                   hx-get="{% url 'htmx_solicitacoes_validacao' %}"
+                   hx-target="#validation-content"
+                   hx-include="[name='tipo'], [name='status'], [name='data_inicio'], [name='busca']"
+                   hx-trigger="change">
+        </div>
+
+        <div class="filter-group filter-group-search">
+            <label>Buscar</label>
+            <input type="text" class="form-control" name="busca" value="{{ filtros.busca }}"
+                   placeholder="Nome do oficial ou missão..."
+                   hx-get="{% url 'htmx_solicitacoes_validacao' %}"
+                   hx-target="#validation-content"
+                   hx-include="[name='tipo'], [name='status'], [name='data_inicio'], [name='data_fim']"
+                   hx-trigger="keyup changed delay:300ms">
+        </div>
+    </div>
+
+    <!-- Barra de Ações em Lote -->
+    <div class="batch-actions" id="batch-actions" style="display: none;">
+        <div class="batch-info">
+            <span id="selected-count">0</span> selecionada(s)
+        </div>
+        <div class="batch-buttons">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="selectAll()">
+                <i data-lucide="check-square"></i> Selecionar Todas
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="deselectAll()">
+                <i data-lucide="square"></i> Desmarcar
+            </button>
+            <button type="button" class="btn btn-sm btn-success" onclick="openBatchApproveModal()">
+                <i data-lucide="check-circle"></i> Aprovar Selecionadas
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="openBatchRejectModal()">
+                <i data-lucide="x-circle"></i> Recusar Selecionadas
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela Compacta -->
+<div class="validation-table-container">
+    <table class="validation-table">
+        <thead>
+            <tr>
+                <th width="40"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
+                <th width="180">Tipo</th>
+                <th width="180">Solicitante</th>
+                <th>Missão/Função</th>
+                <th width="120">Criado em</th>
+                <th width="100">Status</th>
+                <th width="100">Complex.</th>
+                <th width="120">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sol in solicitacoes %}
+            <tr class="clickable-row {% if sol.status == 'PENDENTE' %}row-pendente{% elif sol.status == 'APROVADA' %}row-aprovada{% else %}row-recusada{% endif %}"
+                onclick="openDetailModal({{ sol.id }})">
+                <td onclick="event.stopPropagation();">
+                    <input type="checkbox" class="row-checkbox" value="{{ sol.id }}"
+                           onclick="toggleRowSelection(this, {{ sol.id }})">
+                </td>
+
+                <td>
+                    {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                    <span class="badge-tipo badge-tipo-missao">
+                        <i data-lucide="folder-plus"></i> Nova Missão
+                    </span>
+                    {% else %}
+                    <span class="badge-tipo badge-tipo-designacao">
+                        <i data-lucide="user-plus"></i> Designação
+                    </span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <div class="oficial-cell">
+                        <strong>{{ sol.solicitante.posto_abreviado }} {{ sol.solicitante.nome_guerra }}</strong>
+                    </div>
+                </td>
+
+                <td>
+                    <div class="missao-cell">
+                        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                            <strong>{{ sol.nome_missao }}</strong>
+                            <small>{{ sol.funcao_na_missao }}</small>
+                        {% else %}
+                            <strong>{{ sol.missao_existente.nome }}</strong>
+                            <small>{{ sol.funcao_na_missao }}</small>
+                        {% endif %}
+                    </div>
+                </td>
+
+                <td>{{ sol.criado_em|date:"d/m H:i" }}</td>
+
+                <td>
+                    <span class="badge badge-{% if sol.status == 'PENDENTE' %}warning{% elif sol.status == 'APROVADA' %}success{% else %}danger{% endif %}">
+                        {{ sol.get_status_display }}
+                    </span>
+                </td>
+
+                <td>
+                    {% if sol.complexidade %}
+                        <span class="badge-complexidade badge-complexidade-{{ sol.complexidade|lower }}">
+                            {{ sol.get_complexidade_display }}
+                        </span>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+
+                <td onclick="event.stopPropagation();">
+                    {% if sol.status == 'PENDENTE' %}
+                    <button class="btn-quick-approve" onclick="openQuickApproveModal({{ sol.id }})" title="Aprovação rápida">
+                        <i data-lucide="zap"></i>
+                    </button>
+                    {% endif %}
+                    <button class="btn-view" onclick="openDetailModal({{ sol.id }})" title="Ver detalhes">
+                        <i data-lucide="eye"></i>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="empty-state">
+                    <i data-lucide="inbox"></i>
+                    <p>Nenhuma solicitação encontrada.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal: Quick Approve -->
+<div id="modal-quick-approve" class="modal" style="display: none;">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Aprovação Rápida</h3>
+            <button class="modal-close" onclick="closeModal('modal-quick-approve')">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-quick-approve-body">
+            <!-- Carregado via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Batch Approve -->
+<div id="modal-batch-approve" class="modal" style="display: none;">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3>Aprovar em Lote</h3>
+            <button class="modal-close" onclick="closeModal('modal-batch-approve')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Aprovar <strong id="batch-approve-count">0</strong> solicitação(ões) selecionada(s).</p>
+
+            <form id="form-batch-approve" onsubmit="event.preventDefault(); submitBatchApprove();">
+                <div class="form-group">
+                    <label class="form-label">Complexidade (aplicada a todas) *</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="complexidade" value="BAIXA"> Baixa
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="complexidade" value="MEDIA" checked> Média
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="complexidade" value="ALTA"> Alta
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Observação (opcional)</label>
+                    <textarea class="form-input" name="observacao" rows="3"
+                              placeholder="Observações sobre a aprovação..."></textarea>
+                </div>
+
+                <div class="alert alert-warning">
+                    <i data-lucide="alert-triangle"></i>
+                    Esta ação criará missões e/ou designações automaticamente
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-batch-approve')">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i data-lucide="check-circle"></i> Confirmar Aprovação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Batch Reject -->
+<div id="modal-batch-reject" class="modal" style="display: none;">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3>Recusar em Lote</h3>
+            <button class="modal-close" onclick="closeModal('modal-batch-reject')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Recusar <strong id="batch-reject-count">0</strong> solicitação(ões) selecionada(s).</p>
+
+            <form id="form-batch-reject" onsubmit="event.preventDefault(); submitBatchReject();">
+                <div class="form-group">
+                    <label class="form-label">Justificativa *</label>
+                    <textarea class="form-input" name="observacao" rows="4" required
+                              placeholder="Informe o motivo da recusa..."></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-batch-reject')">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i data-lucide="x-circle"></i> Confirmar Recusa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalhes (será carregado do próximo template) -->
+<div id="modal-detalhes" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+        <div class="modal-body" id="modal-detalhes-body">
+            <!-- Carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+<style>
+/* Validation Filters */
+.validation-filters {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.filters-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.filter-group-search {
+    grid-column: span 2;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-600);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+/* Batch Actions */
+.batch-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.batch-info {
+    font-weight: 600;
+    color: var(--sigem-primary);
+}
+
+.batch-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Validation Table */
+.validation-table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.validation-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.validation-table thead {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.validation-table thead th {
+    padding: 0.75rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-600);
+    text-transform: uppercase;
+}
+
+.validation-table tbody td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.85rem;
+}
+
+.validation-table tbody tr.clickable-row {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.validation-table tbody tr.clickable-row:hover {
+    background: #fef2f2;
+}
+
+.validation-table tbody tr.selected {
+    background: #dbeafe !important;
+}
+
+.validation-table tbody tr.row-pendente {
+    border-left: 3px solid #f59e0b;
+}
+
+.validation-table tbody tr.row-aprovada {
+    border-left: 3px solid #22c55e;
+}
+
+.validation-table tbody tr.row-recusada {
+    border-left: 3px solid #ef4444;
+}
+
+/* Badges */
+.badge-tipo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-tipo i {
+    width: 12px;
+    height: 12px;
+}
+
+.badge-tipo-missao {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-tipo-designacao {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-complexidade {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.badge-complexidade-baixa {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-complexidade-media {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-complexidade-alta {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Cells */
+.oficial-cell strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--sigem-gray-800);
+}
+
+.missao-cell strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--sigem-gray-800);
+}
+
+.missao-cell small {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.15rem;
+}
+
+/* Action Buttons */
+.btn-quick-approve {
+    background: #16a34a;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-quick-approve:hover {
+    background: #15803d;
+}
+
+.btn-quick-approve i {
+    width: 14px;
+    height: 14px;
+}
+
+.btn-view {
+    background: #6b7280;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-left: 0.25rem;
+}
+
+.btn-view:hover {
+    background: #4b5563;
+}
+
+.btn-view i {
+    width: 14px;
+    height: 14px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--sigem-gray-400);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+/* Modal Sizes */
+.modal-sm .modal-content {
+    max-width: 400px;
+}
+
+.modal-md .modal-content {
+    max-width: 600px;
+}
+
+/* Radio Group */
+.radio-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+</style>
+
+<script src="{% static 'js/validation.js' %}"></script>
+
+<script>
+// Inicializar ícones após carregar
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+});
+
+// Atualizar ícones após HTMX
+document.body.addEventListener('htmx:afterSwap', function() {
+    lucide.createIcons();
+});
+</script>

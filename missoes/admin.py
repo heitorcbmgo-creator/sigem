@@ -6,7 +6,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Oficial, Missao, Designacao, Unidade, Usuario, Solicitacao, SolicitacaoDesignacao, SolicitacaoMissao
+from .models import Oficial, Missao, Designacao, Unidade, Usuario, Solicitacao
 
 
 @admin.register(Oficial)
@@ -71,23 +71,6 @@ class SolicitacaoAdmin(admin.ModelAdmin):
             return f"[NOVA] {obj.nome_missao}"
         return obj.missao_existente.nome if obj.missao_existente else '-'
     get_missao_nome.short_description = 'Missão'
-
-
-# [LEGADO] Mantidos para compatibilidade com dados antigos
-@admin.register(SolicitacaoMissao)
-class SolicitacaoMissaoAdmin(admin.ModelAdmin):
-    list_display = ['solicitante', 'nome_missao', 'tipo_missao', 'status', 'criado_em']
-    list_filter = ['status', 'tipo_missao']
-    search_fields = ['nome_missao', 'solicitante__nome']
-    readonly_fields = ['criado_em', 'atualizado_em']
-
-
-@admin.register(SolicitacaoDesignacao)
-class SolicitacaoDesignacaoAdmin(admin.ModelAdmin):
-    list_display = ['solicitante', 'missao', 'funcao_na_missao', 'status', 'criado_em']
-    list_filter = ['status', 'complexidade']
-    search_fields = ['missao__nome', 'solicitante__nome']
-    readonly_fields = ['criado_em', 'atualizado_em']
 
 
 # Customização do Admin

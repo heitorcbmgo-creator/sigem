@@ -92,18 +92,14 @@ urlpatterns = [
     path('htmx/solicitacao/<int:pk>/recusar/', views.htmx_solicitacao_recusar, name='htmx_solicitacao_recusar'),
     path('htmx/missoes/disponiveis/', views.htmx_buscar_missoes_disponiveis, name='htmx_buscar_missoes_disponiveis'),
     path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
-    
-    # URLs legadas (mantidas para compatibilidade)
-    path('htmx/solicitacao/missao/criar/', views.htmx_solicitacao_missao_criar, name='htmx_solicitacao_missao_criar'),
-    path('htmx/solicitacao/designacao/criar/', views.htmx_solicitacao_designacao_criar, name='htmx_solicitacao_designacao_criar'),
-    path('htmx/solicitacoes/lista/', views.htmx_solicitacoes_lista, name='htmx_solicitacoes_lista'),
-    path('htmx/solicitacao/missao/<int:pk>/dados/', views.htmx_solicitacao_missao_dados, name='htmx_solicitacao_missao_dados'),
-    path('htmx/solicitacao/missao/<int:pk>/editar/', views.htmx_solicitacao_missao_editar, name='htmx_solicitacao_missao_editar'),
-    path('htmx/solicitacao/missao/<int:pk>/avaliar/', views.htmx_solicitacao_missao_avaliar, name='htmx_solicitacao_missao_avaliar'),
-    path('htmx/solicitacao/designacao/<int:pk>/dados/', views.htmx_solicitacao_designacao_dados, name='htmx_solicitacao_designacao_dados'),
-    path('htmx/solicitacao/designacao/<int:pk>/editar/', views.htmx_solicitacao_designacao_editar, name='htmx_solicitacao_designacao_editar'),
-    path('htmx/solicitacao/designacao/<int:pk>/avaliar/', views.htmx_solicitacao_designacao_avaliar, name='htmx_solicitacao_designacao_avaliar'),
-    
+
+    # Sistema Moderno de Validação
+    path('htmx/solicitacoes/validacao/', views.htmx_solicitacoes_validacao, name='htmx_solicitacoes_validacao'),
+    path('htmx/solicitacao/<int:pk>/quick-approve/', views.htmx_solicitacao_quick_approve, name='htmx_solicitacao_quick_approve'),
+    path('htmx/solicitacao/batch-approve/', views.htmx_solicitacao_batch_approve, name='htmx_solicitacao_batch_approve'),
+    path('htmx/solicitacao/batch-reject/', views.htmx_solicitacao_batch_reject, name='htmx_solicitacao_batch_reject'),
+    path('htmx/solicitacao/<int:pk>/detalhes/', views.htmx_solicitacao_detalhes_modal, name='htmx_solicitacao_detalhes_modal'),
+
     # ============================================================
     # 📥 EXPORTAÇÃO
     # ============================================================

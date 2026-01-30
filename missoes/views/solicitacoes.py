@@ -396,3 +396,242 @@ def htmx_solicitacao_recusar(request, pk):
 
     except Exception as e:
         return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao recusar: {str(e)}</div>')
+
+
+# ========================================
+# VALIDATION PANEL VIEWS (Modern System)
+# ========================================
+
+@login_required
+def htmx_solicitacoes_validacao(request):
+    """
+    Painel de validação moderno para BM/3 e Admin.
+    Lista compacta com filtros, seleção em lote e modal de edição.
+    """
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    # Filtros
+    tipo_filtro = request.GET.get('tipo', '')
+    status_filtro = request.GET.get('status', 'PENDENTE')
+    data_inicio = request.GET.get('data_inicio', '')
+    data_fim = request.GET.get('data_fim', '')
+    busca = request.GET.get('busca', '').strip()
+
+    # Base query com otimização
+    solicitacoes = Solicitacao.objects.select_related(
+        'solicitante',
+        'missao_existente',
+        'avaliado_por',
+        'missao_criada',
+        'designacao_criada'
+    ).only(
+        'id', 'tipo_solicitacao', 'status', 'criado_em', 'funcao_na_missao',
+        'nome_missao', 'complexidade',
+        'solicitante__nome', 'solicitante__nome_guerra', 'solicitante__posto',
+        'missao_existente__nome',
+        'avaliado_por__nome'
+    )
+
+    # Aplicar filtros
+    if tipo_filtro:
+        solicitacoes = solicitacoes.filter(tipo_solicitacao=tipo_filtro)
+
+    if status_filtro:
+        solicitacoes = solicitacoes.filter(status=status_filtro)
+
+    if data_inicio:
+        solicitacoes = solicitacoes.filter(criado_em__gte=data_inicio)
+
+    if data_fim:
+        from datetime import datetime, timedelta
+        data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d')
+        data_fim_final = data_fim_obj + timedelta(days=1)
+        solicitacoes = solicitacoes.filter(criado_em__lt=data_fim_final)
+
+    if busca:
+        solicitacoes = solicitacoes.filter(
+            Q(solicitante__nome__icontains=busca) |
+            Q(solicitante__nome_guerra__icontains=busca) |
+            Q(nome_missao__icontains=busca) |
+            Q(missao_existente__nome__icontains=busca) |
+            Q(funcao_na_missao__icontains=busca)
+        )
+
+    solicitacoes = solicitacoes.order_by('-criado_em')
+
+    # Estatísticas
+    stats = {
+        'total': Solicitacao.objects.count(),
+        'pendentes': Solicitacao.objects.filter(status='PENDENTE').count(),
+        'count_missao': Solicitacao.objects.filter(tipo_solicitacao='NOVA_MISSAO').count(),
+        'count_designacao': Solicitacao.objects.filter(tipo_solicitacao='DESIGNACAO').count(),
+    }
+
+    context = {
+        'solicitacoes': solicitacoes,
+        'stats': stats,
+        'filtros': {
+            'tipo': tipo_filtro,
+            'status': status_filtro,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'busca': busca,
+        },
+        'status_choices': Solicitacao.STATUS_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+    }
+
+    return render(request, 'htmx/solicitacoes_validacao.html', context)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_quick_approve(request, pk):
+    """
+    Aprovação rápida: pede apenas complexidade.
+    Não permite edição dos dados antes de aprovar.
+    """
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(Solicitacao, pk=pk)
+
+    if solicitacao.status != 'PENDENTE':
+        return HttpResponse('<div class="alert alert-warning">Esta solicitação já foi avaliada.</div>')
+
+    complexidade = request.POST.get('complexidade')
+
+    if not complexidade:
+        return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Selecione a complexidade.</div>')
+
+    try:
+        solicitacao.aprovar(
+            avaliador=request.user,
+            complexidade=complexidade,
+            observacao='Aprovação rápida'
+        )
+
+        return HttpResponse(
+            '<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação aprovada!</div>'
+            '<script>lucide.createIcons(); setTimeout(() => { htmx.trigger("#validation-content", "refresh"); }, 1000);</script>'
+        )
+
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro: {str(e)}</div>')
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_batch_approve(request):
+    """
+    Aprovação em lote: recebe lista de IDs e complexidade única.
+    """
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    ids = request.POST.getlist('ids[]')
+    complexidade = request.POST.get('complexidade')
+    observacao = request.POST.get('observacao', 'Aprovação em lote').strip()
+
+    if not ids:
+        return HttpResponse('<div class="alert alert-warning">Nenhuma solicitação selecionada.</div>')
+
+    if not complexidade:
+        return HttpResponse('<div class="alert alert-danger">Selecione a complexidade.</div>')
+
+    aprovadas = 0
+    erros = []
+
+    for sol_id in ids:
+        try:
+            solicitacao = Solicitacao.objects.get(id=sol_id, status='PENDENTE')
+            solicitacao.aprovar(
+                avaliador=request.user,
+                complexidade=complexidade,
+                observacao=observacao
+            )
+            aprovadas += 1
+        except Solicitacao.DoesNotExist:
+            erros.append(f'Solicitação {sol_id} não encontrada ou já avaliada')
+        except Exception as e:
+            erros.append(f'Erro na solicitação {sol_id}: {str(e)}')
+
+    mensagem = f'<div class="alert alert-success"><i data-lucide="check-circle"></i> {aprovadas} solicitação(ões) aprovada(s)!'
+    if erros:
+        mensagem += f'<br><small>{len(erros)} erro(s): {"; ".join(erros[:3])}</small>'
+    mensagem += '</div><script>lucide.createIcons(); setTimeout(() => { htmx.trigger("#validation-content", "refresh"); }, 1500);</script>'
+
+    return HttpResponse(mensagem)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_batch_reject(request):
+    """
+    Recusa em lote: recebe lista de IDs e observação obrigatória.
+    """
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    ids = request.POST.getlist('ids[]')
+    observacao = request.POST.get('observacao', '').strip()
+
+    if not ids:
+        return HttpResponse('<div class="alert alert-warning">Nenhuma solicitação selecionada.</div>')
+
+    if not observacao:
+        return HttpResponse('<div class="alert alert-danger">A justificativa é obrigatória para recusa em lote.</div>')
+
+    recusadas = 0
+    erros = []
+
+    for sol_id in ids:
+        try:
+            solicitacao = Solicitacao.objects.get(id=sol_id, status='PENDENTE')
+            solicitacao.recusar(
+                avaliador=request.user,
+                observacao=observacao
+            )
+            recusadas += 1
+        except Solicitacao.DoesNotExist:
+            erros.append(f'Solicitação {sol_id} não encontrada ou já avaliada')
+        except Exception as e:
+            erros.append(f'Erro na solicitação {sol_id}: {str(e)}')
+
+    mensagem = f'<div class="alert alert-info"><i data-lucide="x-circle"></i> {recusadas} solicitação(ões) recusada(s)!'
+    if erros:
+        mensagem += f'<br><small>{len(erros)} erro(s): {"; ".join(erros[:3])}</small>'
+    mensagem += '</div><script>lucide.createIcons(); setTimeout(() => { htmx.trigger("#validation-content", "refresh"); }, 1500);</script>'
+
+    return HttpResponse(mensagem)
+
+
+@login_required
+def htmx_solicitacao_detalhes_modal(request, pk):
+    """
+    Carrega modal com detalhes completos e aba de edição.
+    """
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(
+        Solicitacao.objects.select_related('solicitante', 'missao_existente', 'avaliado_por', 'missao_criada', 'designacao_criada'),
+        pk=pk
+    )
+
+    # Missões disponíveis para dropdown (caso seja DESIGNACAO)
+    missoes_disponiveis = Missao.objects.filter(
+        status__in=['PLANEJADA', 'EM_ANDAMENTO']
+    ).order_by('nome')
+
+    context = {
+        'sol': solicitacao,
+        'tipo_missao_choices': Missao.TIPO_CHOICES,
+        'status_missao_choices': Missao.STATUS_CHOICES,
+        'local_choices': Solicitacao.LOCAL_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'missoes_disponiveis': missoes_disponiveis,
+    }
+
+    return render(request, 'htmx/solicitacao_detalhes_modal.html', context)

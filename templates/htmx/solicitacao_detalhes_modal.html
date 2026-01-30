@@ -1,0 +1,588 @@
+{% load static %}
+
+<!-- Modal Header -->
+<div class="modal-header">
+    <h3>Solicitação #{{ sol.id }}</h3>
+    <button class="modal-close" onclick="closeModal('modal-detalhes')">&times;</button>
+</div>
+
+<!-- Tabs -->
+<div class="modal-tabs">
+    <button class="tab-btn active" onclick="switchTab('detalhes', event)">
+        <i data-lucide="file-text"></i> Detalhes
+    </button>
+    <button class="tab-btn" onclick="switchTab('editar', event)">
+        <i data-lucide="edit-3"></i> Editar
+    </button>
+</div>
+
+<!-- Tab 1: Detalhes (Read-only) -->
+<div class="tab-content active" data-tab="detalhes">
+    <div class="detalhes-grid">
+        <!-- Informações Básicas -->
+        <div class="detalhes-section">
+            <h4 class="detalhes-section-title">
+                <i data-lucide="info"></i> Informações Básicas
+            </h4>
+            <dl class="detalhes-list">
+                <dt>Tipo:</dt>
+                <dd>
+                    {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                    <span class="badge-tipo badge-tipo-missao">
+                        <i data-lucide="folder-plus"></i> Nova Missão + Designação
+                    </span>
+                    {% else %}
+                    <span class="badge-tipo badge-tipo-designacao">
+                        <i data-lucide="user-plus"></i> Designação em Missão Existente
+                    </span>
+                    {% endif %}
+                </dd>
+
+                <dt>Status:</dt>
+                <dd>
+                    <span class="badge badge-{% if sol.status == 'PENDENTE' %}warning{% elif sol.status == 'APROVADA' %}success{% else %}danger{% endif %}">
+                        {{ sol.get_status_display }}
+                    </span>
+                </dd>
+
+                <dt>Solicitante:</dt>
+                <dd>
+                    <div class="solicitante-info">
+                        <img src="{{ sol.solicitante.foto_url }}" alt="Foto" class="avatar-sm">
+                        <div>
+                            <strong>{{ sol.solicitante.posto }} {{ sol.solicitante.nome_guerra|default:sol.solicitante.nome }}</strong>
+                            <small>{{ sol.solicitante.obm|default:"—" }}</small>
+                        </div>
+                    </div>
+                </dd>
+
+                <dt>Data da Solicitação:</dt>
+                <dd>{{ sol.criado_em|date:"d/m/Y H:i" }}</dd>
+
+                {% if sol.avaliado_por %}
+                <dt>Avaliado por:</dt>
+                <dd>{{ sol.avaliado_por.oficial|default:sol.avaliado_por.cpf }} em {{ sol.data_avaliacao|date:"d/m/Y H:i" }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Dados da Missão -->
+        <div class="detalhes-section">
+            {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+            <h4 class="detalhes-section-title">
+                <i data-lucide="folder"></i> Missão a Criar
+            </h4>
+            <dl class="detalhes-list">
+                <dt>Nome:</dt>
+                <dd><strong>{{ sol.nome_missao }}</strong></dd>
+
+                <dt>Tipo:</dt>
+                <dd>{{ sol.get_tipo_missao_display }}</dd>
+
+                <dt>Status:</dt>
+                <dd>{{ sol.get_status_missao_display }}</dd>
+
+                <dt>Local:</dt>
+                <dd>{{ sol.get_local_missao_display }}</dd>
+
+                <dt>Período:</dt>
+                <dd>
+                    {{ sol.data_inicio|date:"d/m/Y" }}
+                    {% if sol.data_fim %} → {{ sol.data_fim|date:"d/m/Y" }}{% else %} (em andamento){% endif %}
+                </dd>
+
+                <dt>Nº SEI da Missão:</dt>
+                <dd>{{ sol.documento_sei_missao }}</dd>
+            </dl>
+
+            {% if sol.missao_criada %}
+            <div class="info-box success">
+                <i data-lucide="check-circle"></i>
+                <span>Missão criada: <strong>{{ sol.missao_criada.nome }}</strong></span>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <h4 class="detalhes-section-title">
+                <i data-lucide="folder"></i> Missão
+            </h4>
+            <dl class="detalhes-list">
+                <dt>Missão:</dt>
+                <dd><strong>{{ sol.missao_existente.nome }}</strong></dd>
+
+                <dt>Tipo:</dt>
+                <dd>{{ sol.missao_existente.get_tipo_display }}</dd>
+
+                <dt>Status:</dt>
+                <dd>{{ sol.missao_existente.get_status_display }}</dd>
+
+                <dt>Local:</dt>
+                <dd>{{ sol.missao_existente.get_local_display }}</dd>
+            </dl>
+            {% endif %}
+        </div>
+
+        <!-- Dados da Designação -->
+        <div class="detalhes-section">
+            <h4 class="detalhes-section-title">
+                <i data-lucide="user"></i> Designação Solicitada
+            </h4>
+            <dl class="detalhes-list">
+                <dt>Função:</dt>
+                <dd><strong>{{ sol.funcao_na_missao }}</strong></dd>
+
+                <dt>Nº SEI/BG:</dt>
+                <dd>{{ sol.documento_sei_designacao }}</dd>
+
+                {% if sol.complexidade %}
+                <dt>Complexidade:</dt>
+                <dd>
+                    <span class="badge-complexidade badge-complexidade-{{ sol.complexidade|lower }}">
+                        {{ sol.get_complexidade_display }}
+                    </span>
+                </dd>
+                {% endif %}
+            </dl>
+
+            {% if sol.designacao_criada %}
+            <div class="info-box success">
+                <i data-lucide="check-circle"></i>
+                <span>Designação criada em {{ sol.designacao_criada.data_inicio|date:"d/m/Y" }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Observações -->
+        {% if sol.observacao_avaliador %}
+        <div class="detalhes-section full-width">
+            <h4 class="detalhes-section-title">
+                <i data-lucide="message-circle"></i> Observação do Avaliador
+            </h4>
+            <div class="observacao-box">
+                {{ sol.observacao_avaliador }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tab 2: Editar -->
+<div class="tab-content" data-tab="editar">
+    <form id="form-editar-modal"
+          hx-post="{% url 'htmx_solicitacao_editar' sol.id %}"
+          hx-target="#modal-feedback">
+
+        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+        <!-- Dados da Missão a Criar -->
+        <div class="form-section">
+            <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
+
+            <div class="form-group">
+                <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="nome_missao" value="{{ sol.nome_missao }}" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                    <select class="form-select" name="tipo_missao" required>
+                        {% for value, label in tipo_missao_choices %}
+                        <option value="{{ value }}" {% if sol.tipo_missao == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Status <span class="text-danger">*</span></label>
+                    <select class="form-select" name="status_missao" required>
+                        {% for value, label in status_missao_choices %}
+                        <option value="{{ value }}" {% if sol.status_missao == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Local <span class="text-danger">*</span></label>
+                <select class="form-select" name="local_missao" required>
+                    {% for value, label in local_choices %}
+                    <option value="{{ value }}" {% if sol.local_missao == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                    <input type="date" class="form-input" name="data_inicio" value="{{ sol.data_inicio|date:'Y-m-d' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Data de Término</label>
+                    <input type="date" class="form-input" name="data_fim" value="{{ sol.data_fim|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="documento_sei_missao" value="{{ sol.documento_sei_missao }}" required>
+            </div>
+        </div>
+        {% else %}
+        <!-- Missão Existente -->
+        <div class="form-section">
+            <h4 class="form-section-title"><i data-lucide="folder"></i> Missão</h4>
+
+            <div class="form-group">
+                <label class="form-label">Missão <span class="text-danger">*</span></label>
+                <select class="form-select" name="missao_id" required>
+                    {% for m in missoes_disponiveis %}
+                    <option value="{{ m.id }}" {% if sol.missao_existente.id == m.id %}selected{% endif %}>
+                        {{ m.nome }} ({{ m.get_status_display }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Dados da Designação -->
+        <div class="form-section">
+            <h4 class="form-section-title"><i data-lucide="user"></i> Designação de {{ sol.solicitante }}</h4>
+
+            <div class="form-group">
+                <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="funcao_na_missao" value="{{ sol.funcao_na_missao }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="documento_sei_designacao" value="{{ sol.documento_sei_designacao }}" required>
+            </div>
+        </div>
+
+        <div id="modal-feedback"></div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="save"></i> Salvar Alterações
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Modal Footer (apenas se status PENDENTE) -->
+{% if sol.status == 'PENDENTE' %}
+<div class="modal-footer-actions">
+    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-detalhes')">Fechar</button>
+    <button type="button" class="btn btn-danger" onclick="showRejectForm({{ sol.id }})">
+        <i data-lucide="x"></i> Recusar
+    </button>
+    <button type="button" class="btn btn-success" onclick="showApproveForm({{ sol.id }})">
+        <i data-lucide="check"></i> Aprovar
+    </button>
+</div>
+
+<!-- Modal Inline: Aprovação -->
+<div id="inline-approve-form" style="display: none;">
+    <div class="inline-form-container">
+        <h4>Aprovar Solicitação</h4>
+        <form hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
+              hx-target="#modal-feedback">
+
+            <div class="form-group">
+                <label class="form-label">Complexidade <span class="text-danger">*</span></label>
+                <div class="complexidade-options">
+                    {% for value, label in complexidade_choices %}
+                    <label class="complexidade-option {% if value == 'BAIXA' %}baixa{% elif value == 'MEDIA' %}media{% else %}alta{% endif %}">
+                        <input type="radio" name="complexidade" value="{{ value }}" required>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Observação (opcional)</label>
+                <textarea class="form-input" name="observacao" rows="2"
+                          placeholder="Adicione uma observação se necessário..."></textarea>
+            </div>
+
+            <div id="modal-feedback"></div>
+
+            <div class="inline-form-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideApproveForm()">Cancelar</button>
+                <button type="submit" class="btn btn-success">
+                    <i data-lucide="check-circle"></i> Confirmar Aprovação
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Inline: Recusa -->
+<div id="inline-reject-form" style="display: none;">
+    <div class="inline-form-container">
+        <h4>Recusar Solicitação</h4>
+        <form hx-post="{% url 'htmx_solicitacao_recusar' sol.id %}"
+              hx-target="#modal-feedback">
+
+            <div class="form-group">
+                <label class="form-label">Justificativa (opcional)</label>
+                <textarea class="form-input" name="observacao" rows="3"
+                          placeholder="Informe o motivo da recusa..."></textarea>
+            </div>
+
+            <div id="modal-feedback"></div>
+
+            <div class="inline-form-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideRejectForm()">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="x-circle"></i> Confirmar Recusa
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Tabs */
+.modal-tabs {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb;
+    padding: 0 1.5rem;
+    background: white;
+}
+
+.tab-btn {
+    padding: 1rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--sigem-gray-600);
+    transition: all 0.2s;
+}
+
+.tab-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+.tab-btn:hover {
+    color: var(--sigem-gray-800);
+}
+
+.tab-btn.active {
+    color: #8b0000;
+    border-bottom-color: #8b0000;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    padding: 1.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Detalhes Grid */
+.detalhes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.detalhes-section {
+    background: var(--sigem-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.detalhes-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.detalhes-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sigem-gray-700);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.detalhes-section-title i {
+    width: 14px;
+    height: 14px;
+}
+
+.detalhes-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.detalhes-list dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-500);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.detalhes-list dd {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-800);
+    margin: 0 0 0.5rem 0;
+}
+
+.solicitante-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.solicitante-info .avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.solicitante-info strong {
+    display: block;
+    font-size: 0.9rem;
+}
+
+.solicitante-info small {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+}
+
+.observacao-box {
+    background: white;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--sigem-gray-700);
+}
+
+.info-box {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.info-box.success {
+    background: #dcfce7;
+    border: 1px solid #22c55e;
+    color: #065f46;
+}
+
+.info-box i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Footer Actions */
+.modal-footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--sigem-gray-200);
+    background: var(--sigem-gray-50);
+}
+
+/* Inline Forms */
+.inline-form-container {
+    background: #fffbeb;
+    border: 2px solid #fbbf24;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.inline-form-container h4 {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    color: var(--sigem-gray-800);
+}
+
+.inline-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+</style>
+
+<script>
+function switchTab(tabName, event) {
+    // Remover active de todos os botões e conteúdos
+    document.querySelectorAll('#modal-detalhes .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#modal-detalhes .tab-content').forEach(content => content.classList.remove('active'));
+
+    // Adicionar active no botão clicado e conteúdo correspondente
+    event.target.closest('.tab-btn').classList.add('active');
+    document.querySelector(`#modal-detalhes .tab-content[data-tab="${tabName}"]`).classList.add('active');
+
+    lucide.createIcons();
+}
+
+function showApproveForm(id) {
+    document.querySelector('.modal-footer-actions').style.display = 'none';
+    document.getElementById('inline-approve-form').style.display = 'block';
+    lucide.createIcons();
+}
+
+function hideApproveForm() {
+    document.querySelector('.modal-footer-actions').style.display = 'flex';
+    document.getElementById('inline-approve-form').style.display = 'none';
+}
+
+function showRejectForm(id) {
+    document.querySelector('.modal-footer-actions').style.display = 'none';
+    document.getElementById('inline-reject-form').style.display = 'block';
+    lucide.createIcons();
+}
+
+function hideRejectForm() {
+    document.querySelector('.modal-footer-actions').style.display = 'flex';
+    document.getElementById('inline-reject-form').style.display = 'none';
+}
+
+// Inicializar ícones
+lucide.createIcons();
+
+// Atualizar ícones após submissões HTMX
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'modal-feedback') {
+        lucide.createIcons();
+        // Fechar modal após sucesso e atualizar lista
+        setTimeout(() => {
+            closeModal('modal-detalhes');
+            htmx.trigger('#validation-content', 'refresh');
+        }, 1500);
+    }
+});
+</script>

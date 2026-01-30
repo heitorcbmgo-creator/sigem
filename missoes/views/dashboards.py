@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from ..models import Oficial, Missao, Designacao, Unidade, SolicitacaoDesignacao, SolicitacaoMissao
+from ..models import Oficial, Missao, Designacao, Unidade, Solicitacao
 from ..decorators import acesso_dashboard, acesso_comparar
 
 
@@ -90,10 +90,7 @@ def dashboard(request):
 
         # Solicitações pendentes (apenas para não-comandantes)
         if not is_comandante:
-            solicitacoes_pendentes = (
-                SolicitacaoDesignacao.objects.filter(status='PENDENTE').count() +
-                SolicitacaoMissao.objects.filter(status='PENDENTE').count()
-            ) or 0
+            solicitacoes_pendentes = Solicitacao.objects.filter(status='PENDENTE').count() or 0
         else:
             solicitacoes_pendentes = 0
 
@@ -278,16 +275,10 @@ def dashboard(request):
 
             # 🟠 Solicitações pendentes há mais de 7 dias
             sete_dias_atras = timezone.now() - timedelta(days=7)
-            solicitacoes_atrasadas = (
-                SolicitacaoDesignacao.objects.filter(
-                    status='PENDENTE',
-                    criado_em__lt=sete_dias_atras
-                ).count() +
-                SolicitacaoMissao.objects.filter(
-                    status='PENDENTE',
-                    criado_em__lt=sete_dias_atras
-                ).count()
-            )
+            solicitacoes_atrasadas = Solicitacao.objects.filter(
+                status='PENDENTE',
+                criado_em__lt=sete_dias_atras
+            ).count()
 
             if solicitacoes_atrasadas > 0:
                 alertas.append({

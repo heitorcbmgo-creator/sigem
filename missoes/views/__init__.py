@@ -47,20 +47,14 @@ from .usuarios import (
     htmx_usuario_excluir, htmx_usuario_reset_senha
 )
 
-# Solicitações (Legacy System)
-from .solicitacoes_legacy import (
-    htmx_solicitacao_missao_criar, htmx_solicitacao_designacao_criar,
-    htmx_solicitacoes_lista, htmx_solicitacao_missao_avaliar,
-    htmx_solicitacao_designacao_avaliar, htmx_solicitacao_missao_dados,
-    htmx_solicitacao_missao_editar, htmx_solicitacao_designacao_dados,
-    htmx_solicitacao_designacao_editar
-)
-
-# Solicitações (Unified System)
+# Solicitações (Modern System)
 from .solicitacoes import (
     minhas_solicitacoes, htmx_solicitacao_criar, htmx_buscar_missoes_disponiveis,
     htmx_solicitacoes_unificadas_lista, htmx_solicitacao_dados,
-    htmx_solicitacao_editar, htmx_solicitacao_aprovar, htmx_solicitacao_recusar
+    htmx_solicitacao_editar, htmx_solicitacao_aprovar, htmx_solicitacao_recusar,
+    htmx_solicitacoes_validacao, htmx_solicitacao_quick_approve,
+    htmx_solicitacao_batch_approve, htmx_solicitacao_batch_reject,
+    htmx_solicitacao_detalhes_modal
 )
 
 # Admin
@@ -95,16 +89,13 @@ __all__ = [
     # Usuários (5)
     'htmx_usuarios_lista', 'htmx_usuario_criar', 'htmx_usuario_editar',
     'htmx_usuario_excluir', 'htmx_usuario_reset_senha',
-    # Solicitações Legacy (9)
-    'htmx_solicitacao_missao_criar', 'htmx_solicitacao_designacao_criar',
-    'htmx_solicitacoes_lista', 'htmx_solicitacao_missao_avaliar',
-    'htmx_solicitacao_designacao_avaliar', 'htmx_solicitacao_missao_dados',
-    'htmx_solicitacao_missao_editar', 'htmx_solicitacao_designacao_dados',
-    'htmx_solicitacao_designacao_editar',
-    # Solicitações Unified (8)
+    # Solicitações (13)
     'minhas_solicitacoes', 'htmx_solicitacao_criar', 'htmx_buscar_missoes_disponiveis',
     'htmx_solicitacoes_unificadas_lista', 'htmx_solicitacao_dados',
     'htmx_solicitacao_editar', 'htmx_solicitacao_aprovar', 'htmx_solicitacao_recusar',
+    'htmx_solicitacoes_validacao', 'htmx_solicitacao_quick_approve',
+    'htmx_solicitacao_batch_approve', 'htmx_solicitacao_batch_reject',
+    'htmx_solicitacao_detalhes_modal',
     # Admin (1)
     'admin_painel',
     # Exports (4)

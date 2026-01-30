@@ -67,7 +67,7 @@
     {% if user.pode_gerenciar_solicitacoes %}
     <button class="tab {% if aba_ativa == 'solicitacoes' %}active{% endif %}"
             data-tipo="solicitacoes"
-            hx-get="{% url 'htmx_solicitacoes_lista' %}"
+            hx-get="{% url 'htmx_solicitacoes_validacao' %}"
             hx-target="#tab-content"
             onclick="setActiveTab(this, 'solicitacoes')">
         <i data-lucide="inbox"></i> Solicitações
@@ -121,7 +121,7 @@
             <p class="text-gray text-center">Carregando...</p>
         </div>
         {% elif user.pode_gerenciar_solicitacoes %}
-        <div id="tab-content" hx-get="{% url 'htmx_solicitacoes_lista' %}" hx-trigger="load">
+        <div id="tab-content" hx-get="{% url 'htmx_solicitacoes_validacao' %}" hx-trigger="load">
             <p class="text-gray text-center">Carregando...</p>
         </div>
         {% else %}
