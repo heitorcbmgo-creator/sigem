@@ -208,3 +208,10 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS = []
     if RENDER_EXTERNAL_HOSTNAME:
         CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+
+# ============================================================
+# 🔗 INTEGRAÇÃO COM SICAD
+# ============================================================
+# URL do filesystem do SICAD para fotos de oficiais
+# Formato: https://sicad.example.com/fotos/{id}/{hash}
+SICAD_FILESYSTEM_URL = os.environ.get('SICAD_FILESYSTEM_URL', '')

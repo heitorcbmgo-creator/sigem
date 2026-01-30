@@ -71,6 +71,18 @@ class Oficial(models.Model):
     email = models.EmailField('E-mail', blank=True)
     telefone = models.CharField('Telefone', max_length=20, blank=True)
     foto = models.ImageField('Foto', upload_to='fotos_oficiais/', blank=True, null=True)
+
+    # Campos para integração com SICAD
+    foto_sicad_id = models.CharField('ID da Foto no SICAD', max_length=100, blank=True)
+    foto_sicad_hash = models.CharField('Hash da Foto no SICAD', max_length=64, blank=True)
+    foto_origem = models.CharField(
+        'Origem da Foto',
+        max_length=10,
+        choices=[('LOCAL', 'Local'), ('SICAD', 'SICAD')],
+        default='LOCAL',
+        blank=True
+    )
+
     ativo = models.BooleanField('Ativo', default=True)
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
@@ -85,11 +97,20 @@ class Oficial(models.Model):
     
     @property
     def foto_url(self):
-        """Retorna a URL da foto ou uma imagem padrão."""
+        """Retorna a URL da foto priorizando SICAD."""
+        # Prioriza foto do SICAD se disponível
+        if self.foto_origem == 'SICAD' and self.foto_sicad_id and self.foto_sicad_hash:
+            from django.conf import settings
+            sicad_url = getattr(settings, 'SICAD_FILESYSTEM_URL', '')
+            if sicad_url:
+                return f"{sicad_url}/{self.foto_sicad_id}/{self.foto_sicad_hash}"
+
+        # Fallback para foto local
         if self.foto:
             return self.foto.url
+
         return '/static/img/default_avatar.png'
-    
+
     @property
     def total_missoes_ativas(self):
         """Retorna o total de missões ativas do oficial."""
