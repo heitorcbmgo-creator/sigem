@@ -97,23 +97,96 @@ Nenhuma mudança necessária nos templates! A property `foto_url` já funciona:
 - Integração via API REST com SICAD
 - Dados sempre atualizados
 
+## Layer de Integração Implementado
+
+### ✅ O que foi criado:
+
+1. **Views SQL** ([missoes/sql/create_sicad_views.sql](missoes/sql/create_sicad_views.sql))
+   - `sicad_usuario_vw` - Oficiais com nomenclatura SICAD
+   - `sicad_obm_vw` - Unidades com nomenclatura SICAD
+   - `sicad_usuario_funcao_vw` - Usuários + Funções
+   - `sicad_designacao_vw` - Designações/Escalas
+   - `sicad_missao_ativa_vw` - Missões ativas
+
+2. **Adaptadores Python** ([missoes/integrations/sicad_adapter.py](missoes/integrations/sicad_adapter.py))
+   - `SicadAdapter` - Conversão de dados SIGEM ↔ SICAD
+   - `SicadQueryBuilder` - Construtor de queries SQL
+   - `SicadSyncHelper` - Helper de sincronização
+
+3. **Comando Django** ([missoes/management/commands/sync_sicad.py](missoes/management/commands/sync_sicad.py))
+   ```bash
+   # Sincronizar todos os oficiais
+   python manage.py sync_sicad --oficiais
+
+   # Sincronizar oficial específico
+   python manage.py sync_sicad --cpf 12345678900
+
+   # Modo dry-run (testar sem salvar)
+   python manage.py sync_sicad --oficiais --dry-run
+
+   # Sincronizar tudo
+   python manage.py sync_sicad --all
+   ```
+
+## Como Usar o Layer de Integração
+
+### 1. Criar as Views SQL
+
+Execute o script SQL no banco de dados:
+
+```bash
+psql -U usuario -d sigem < missoes/sql/create_sicad_views.sql
+```
+
+Ou via Django:
+
+```bash
+python manage.py dbshell < missoes/sql/create_sicad_views.sql
+```
+
+### 2. Usar Adaptadores em Código
+
+```python
+from missoes.integrations.sicad_adapter import SicadAdapter, SicadSyncHelper
+
+# Converter dados
+adapter = SicadAdapter()
+dados_sicad = adapter.oficial_to_sicad(oficial)
+
+# Sincronizar do SICAD
+helper = SicadSyncHelper()
+oficial, created = helper.sync_oficial_from_sicad(dados_do_sicad)
+
+# Comparar diferenças
+diferencas = helper.compare_oficial(oficial, dados_do_sicad)
+```
+
+### 3. Consultar Views
+
+As views podem ser consultadas diretamente:
+
+```sql
+-- Ver todos os oficiais no formato SICAD
+SELECT * FROM sicad_usuario_vw;
+
+-- Ver unidades no formato SICAD
+SELECT * FROM sicad_obm_vw;
+
+-- Ver designações ativas
+SELECT * FROM sicad_designacao_vw WHERE "STATUS" = 'ATIVA';
+```
+
 ## Próximos Passos
 
 Quando for implementar a integração:
 
-1. **Criar adapter/client SICAD**
-   ```python
-   # sicad/client.py
-   class SicadClient:
-       def get_oficial(self, cpf):
-           # Query PostgreSQL view do SICAD
-           pass
-   ```
+1. **Configurar conexão com banco SICAD**
+   - Adicionar database router para SICAD
+   - Configurar credenciais de acesso
 
-2. **Criar comando de sincronização**
-   ```bash
-   python manage.py sync_sicad_oficiais
-   ```
+2. **Adaptar comando sync_sicad**
+   - Modificar `_execute_sicad_query()` para acessar banco SICAD
+   - Implementar sincronização de unidades
 
 3. **Adicionar campos adicionais se necessário**
    - LOGIN do SICAD (se precisar)
