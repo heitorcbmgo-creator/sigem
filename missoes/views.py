@@ -1,7 +1,34 @@
 """
 ============================================================
+⚠️  DEPRECATED - This file is being replaced by modular views
+============================================================
 🎯 SIGEM - Views (Lógica das Páginas)
 Sistema de Gestão de Missões - CBMGO
+
+⚠️  DEPRECATION NOTICE:
+This monolithic views.py file (3,341 lines) has been refactored
+into modular views organized by feature domain in missoes/views/
+
+New structure:
+├── views/
+│   ├── __init__.py           (exports all functions)
+│   ├── auth.py               (3 functions)
+│   ├── dashboards.py         (3 functions)
+│   ├── oficiais.py           (11 functions)
+│   ├── missoes.py            (7 functions)
+│   ├── designacoes.py        (5 functions)
+│   ├── unidades.py           (4 functions)
+│   ├── usuarios.py           (5 functions)
+│   ├── solicitacoes_legacy.py (9 functions)
+│   ├── solicitacoes.py       (8 functions)
+│   ├── admin.py              (1 function)
+│   ├── exports.py            (4 functions)
+│   └── utils.py              (shared utilities)
+
+All 55 functions maintain 100% backward compatibility.
+This file is kept for reference and will be removed in a future update.
+
+For new development, use the modular views in missoes/views/
 ============================================================
 """
 

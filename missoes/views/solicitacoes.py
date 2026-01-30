@@ -1,0 +1,398 @@
+"""
+Unified Solicitações System - Uses the unified Solicitacao model - This is the current/preferred system
+"""
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import HttpResponse
+from django.db.models import Q
+from django.views.decorators.http import require_POST
+
+from ..models import Solicitacao, Missao, Designacao, Oficial
+
+
+@login_required
+def minhas_solicitacoes(request):
+    """Página com histórico de solicitações do oficial logado (modelo unificado)."""
+
+    if not request.user.oficial:
+        messages.error(request, 'Você não possui um oficial vinculado ao seu usuário.')
+        return redirect('missoes_dashboard')
+
+    oficial = request.user.oficial
+
+    # Filtros
+    tipo = request.GET.get('tipo', 'todas')
+    status_filtro = request.GET.get('status', '')
+
+    # Buscar solicitações do novo modelo unificado
+    solicitacoes = Solicitacao.objects.filter(solicitante=oficial)
+
+    if tipo == 'missao':
+        solicitacoes = solicitacoes.filter(tipo_solicitacao='NOVA_MISSAO')
+    elif tipo == 'designacao':
+        solicitacoes = solicitacoes.filter(tipo_solicitacao='DESIGNACAO')
+
+    if status_filtro:
+        solicitacoes = solicitacoes.filter(status=status_filtro)
+
+    solicitacoes = solicitacoes.select_related('missao_existente', 'missao_criada', 'designacao_criada', 'avaliado_por').order_by('-criado_em')
+
+    # Contadores
+    total_nova_missao = Solicitacao.objects.filter(solicitante=oficial, tipo_solicitacao='NOVA_MISSAO').count()
+    total_designacao = Solicitacao.objects.filter(solicitante=oficial, tipo_solicitacao='DESIGNACAO').count()
+    pendentes = Solicitacao.objects.filter(solicitante=oficial, status='PENDENTE').count()
+
+    context = {
+        'oficial': oficial,
+        'solicitacoes': solicitacoes,
+        'total_nova_missao': total_nova_missao,
+        'total_designacao': total_designacao,
+        'pendentes': pendentes,
+        'filtros': {
+            'tipo': tipo,
+            'status': status_filtro,
+        },
+        'status_choices': Solicitacao.STATUS_CHOICES,
+    }
+
+    return render(request, 'pages/minhas_solicitacoes.html', context)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_criar(request):
+    """Cria uma solicitação unificada (nova missão + designação OU apenas designação)."""
+
+    if not request.user.oficial:
+        return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Usuário não vinculado a um oficial.</div>')
+
+    tipo_solicitacao = request.POST.get('tipo_solicitacao')
+
+    try:
+        if tipo_solicitacao == 'NOVA_MISSAO':
+            # Validações para nova missão
+            nome_missao = request.POST.get('nome_missao', '').strip()
+            tipo_missao = request.POST.get('tipo_missao', '')
+            status_missao = request.POST.get('status_missao', 'EM_ANDAMENTO')
+            local_missao = request.POST.get('local_missao', '')
+            data_inicio = request.POST.get('data_inicio')
+            data_fim = request.POST.get('data_fim') or None
+            documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
+            funcao_na_missao = request.POST.get('funcao_na_missao', '').strip()
+            documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+
+            if not all([nome_missao, tipo_missao, local_missao, data_inicio, documento_sei_missao, funcao_na_missao, documento_sei_designacao]):
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
+
+            if status_missao == 'CONCLUIDA' and not data_fim:
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Data de término é obrigatória para missões concluídas.</div>')
+
+            # Criar solicitação
+            Solicitacao.objects.create(
+                tipo_solicitacao='NOVA_MISSAO',
+                solicitante=request.user.oficial,
+                nome_missao=nome_missao,
+                tipo_missao=tipo_missao,
+                status_missao=status_missao,
+                local_missao=local_missao,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                documento_sei_missao=documento_sei_missao,
+                funcao_na_missao=funcao_na_missao,
+                documento_sei_designacao=documento_sei_designacao,
+            )
+
+            return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de nova missão enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
+
+        elif tipo_solicitacao == 'DESIGNACAO':
+            # Validações para designação em missão existente
+            missao_id = request.POST.get('missao_id')
+            funcao_na_missao = request.POST.get('funcao_na_missao', '').strip()
+            documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+
+            if not all([missao_id, funcao_na_missao, documento_sei_designacao]):
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
+
+            missao = Missao.objects.get(id=missao_id)
+
+            # Verificar se já existe designação
+            if Designacao.objects.filter(oficial=request.user.oficial, missao=missao).exists():
+                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Você já está designado para esta missão.</div>')
+
+            # Verificar se já existe solicitação pendente
+            if Solicitacao.objects.filter(
+                solicitante=request.user.oficial,
+                missao_existente=missao,
+                status='PENDENTE'
+            ).exists():
+                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para esta missão.</div>')
+
+            # Criar solicitação
+            Solicitacao.objects.create(
+                tipo_solicitacao='DESIGNACAO',
+                solicitante=request.user.oficial,
+                missao_existente=missao,
+                funcao_na_missao=funcao_na_missao,
+                documento_sei_designacao=documento_sei_designacao,
+            )
+
+            return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de designação enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
+
+        else:
+            return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Tipo de solicitação inválido.</div>')
+
+    except Missao.DoesNotExist:
+        return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Missão não encontrada.</div>')
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao criar solicitação: {str(e)}</div>')
+
+
+@login_required
+def htmx_buscar_missoes_disponiveis(request):
+    """Busca missões disponíveis para designação com filtros (HTMX)."""
+
+    # Filtros
+    tipo = request.GET.get('tipo', '')
+    ano = request.GET.get('ano', '')
+    busca = request.GET.get('busca', '').strip()
+
+    # Base query - missões Planejadas ou Em Andamento
+    missoes = Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO'])
+
+    if tipo:
+        missoes = missoes.filter(tipo=tipo)
+
+    if ano:
+        missoes = missoes.filter(data_inicio__year=ano)
+
+    if busca:
+        missoes = missoes.filter(
+            Q(nome__icontains=busca) |
+            Q(documento_ref__icontains=busca)
+        )
+
+    # Ordenar e limitar
+    missoes = missoes.order_by('-data_inicio', 'nome')[:30]
+
+    # Anos disponíveis para o filtro
+    from datetime import datetime
+    ano_atual = datetime.now().year
+    anos_disponiveis = list(range(ano_atual, ano_atual - 5, -1))
+
+    return render(request, 'htmx/missoes_disponiveis.html', {
+        'missoes': missoes,
+        'tipo_choices': Missao.TIPO_CHOICES,
+        'anos_disponiveis': anos_disponiveis,
+        'filtros': {
+            'tipo': tipo,
+            'ano': ano,
+            'busca': busca,
+        }
+    })
+
+
+@login_required
+def htmx_solicitacoes_unificadas_lista(request):
+    """Lista solicitações unificadas para BM/3 e Admin."""
+
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    # Filtros
+    tipo_solicitacao = request.GET.get('tipo_solicitacao', 'todas')
+    busca = request.GET.get('busca', '').strip()
+    status = request.GET.get('status', '')
+
+    # Base query
+    solicitacoes = Solicitacao.objects.select_related(
+        'solicitante', 'missao_existente', 'avaliado_por', 'missao_criada', 'designacao_criada'
+    )
+
+    if tipo_solicitacao == 'missao':
+        solicitacoes = solicitacoes.filter(tipo_solicitacao='NOVA_MISSAO')
+    elif tipo_solicitacao == 'designacao':
+        solicitacoes = solicitacoes.filter(tipo_solicitacao='DESIGNACAO')
+
+    if busca:
+        solicitacoes = solicitacoes.filter(
+            Q(solicitante__nome__icontains=busca) |
+            Q(solicitante__nome_guerra__icontains=busca) |
+            Q(nome_missao__icontains=busca) |
+            Q(missao_existente__nome__icontains=busca)
+        )
+
+    if status:
+        solicitacoes = solicitacoes.filter(status=status)
+
+    solicitacoes = solicitacoes.order_by('-criado_em')
+
+    # Contadores
+    pendentes_total = Solicitacao.objects.filter(status='PENDENTE').count()
+    pendentes_missao = Solicitacao.objects.filter(status='PENDENTE', tipo_solicitacao='NOVA_MISSAO').count()
+    pendentes_designacao = Solicitacao.objects.filter(status='PENDENTE', tipo_solicitacao='DESIGNACAO').count()
+
+    context = {
+        'solicitacoes': solicitacoes,
+        'pendentes_total': pendentes_total,
+        'pendentes_missao': pendentes_missao,
+        'pendentes_designacao': pendentes_designacao,
+        'tipo_solicitacao': tipo_solicitacao,
+        'busca': busca,
+        'status_filtro': status,
+        'tipo_missao_choices': Missao.TIPO_CHOICES,
+        'local_choices': Solicitacao.LOCAL_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+    }
+
+    return render(request, 'htmx/solicitacoes_unificadas_lista.html', context)
+
+
+@login_required
+def htmx_solicitacao_dados(request, pk):
+    """Retorna dados de uma solicitação para edição."""
+
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(Solicitacao, pk=pk)
+
+    # Missões disponíveis (para caso seja designação)
+    missoes_disponiveis = Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome')
+
+    context = {
+        'solicitacao': solicitacao,
+        'tipo_missao_choices': Missao.TIPO_CHOICES,
+        'status_missao_choices': Missao.STATUS_CHOICES,
+        'local_choices': Solicitacao.LOCAL_CHOICES,
+        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'missoes_disponiveis': missoes_disponiveis,
+    }
+
+    return render(request, 'htmx/solicitacao_form_edicao.html', context)
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_editar(request, pk):
+    """Edita uma solicitação pendente."""
+
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(Solicitacao, pk=pk)
+
+    if solicitacao.status != 'PENDENTE':
+        return HttpResponse('<div class="alert alert-warning">Somente solicitações pendentes podem ser editadas.</div>')
+
+    try:
+        if solicitacao.tipo_solicitacao == 'NOVA_MISSAO':
+            solicitacao.nome_missao = request.POST.get('nome_missao', solicitacao.nome_missao)
+            solicitacao.tipo_missao = request.POST.get('tipo_missao', solicitacao.tipo_missao)
+            solicitacao.status_missao = request.POST.get('status_missao', solicitacao.status_missao)
+            solicitacao.local_missao = request.POST.get('local_missao', solicitacao.local_missao)
+            solicitacao.data_inicio = request.POST.get('data_inicio') or solicitacao.data_inicio
+            solicitacao.data_fim = request.POST.get('data_fim') or None
+            solicitacao.documento_sei_missao = request.POST.get('documento_sei_missao', solicitacao.documento_sei_missao)
+        else:
+            missao_id = request.POST.get('missao_id')
+            if missao_id:
+                solicitacao.missao_existente = Missao.objects.get(id=missao_id)
+
+        solicitacao.funcao_na_missao = request.POST.get('funcao_na_missao', solicitacao.funcao_na_missao)
+        solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao', solicitacao.documento_sei_designacao)
+        solicitacao.save()
+
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação atualizada com sucesso!</div><script>lucide.createIcons(); setTimeout(() => { document.getElementById("modal-editar").style.display="none"; htmx.trigger("#tab-content", "refresh"); }, 1000);</script>')
+
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao atualizar: {str(e)}</div>')
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_aprovar(request, pk):
+    """Aprova uma solicitação e cria os registros correspondentes."""
+
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(Solicitacao, pk=pk)
+
+    if solicitacao.status != 'PENDENTE':
+        return HttpResponse('<div class="alert alert-warning">Esta solicitação já foi avaliada.</div>')
+
+    complexidade = request.POST.get('complexidade')
+    observacao = request.POST.get('observacao', '').strip()
+
+    if not complexidade:
+        return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Selecione a complexidade para aprovar.</div>')
+
+    try:
+        # Atualizar dados editados antes de aprovar (caso tenham sido modificados)
+        if solicitacao.tipo_solicitacao == 'NOVA_MISSAO':
+            if request.POST.get('nome_missao'):
+                solicitacao.nome_missao = request.POST.get('nome_missao')
+            if request.POST.get('tipo_missao'):
+                solicitacao.tipo_missao = request.POST.get('tipo_missao')
+            if request.POST.get('status_missao'):
+                solicitacao.status_missao = request.POST.get('status_missao')
+            if request.POST.get('local_missao'):
+                solicitacao.local_missao = request.POST.get('local_missao')
+            if request.POST.get('data_inicio'):
+                solicitacao.data_inicio = request.POST.get('data_inicio')
+            if request.POST.get('data_fim'):
+                solicitacao.data_fim = request.POST.get('data_fim')
+            if request.POST.get('documento_sei_missao'):
+                solicitacao.documento_sei_missao = request.POST.get('documento_sei_missao')
+        else:
+            missao_id = request.POST.get('missao_id')
+            if missao_id:
+                solicitacao.missao_existente = Missao.objects.get(id=missao_id)
+
+        if request.POST.get('funcao_na_missao'):
+            solicitacao.funcao_na_missao = request.POST.get('funcao_na_missao')
+        if request.POST.get('documento_sei_designacao'):
+            solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao')
+
+        solicitacao.save()
+
+        # Aprovar usando o método do modelo
+        solicitacao.aprovar(
+            avaliador=request.user,
+            complexidade=complexidade,
+            observacao=observacao
+        )
+
+        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação aprovada com sucesso! Registros criados.</div><script>lucide.createIcons(); setTimeout(() => { document.getElementById("modal-avaliar").style.display="none"; htmx.trigger("#tab-content", "refresh"); }, 1500);</script>')
+
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao aprovar: {str(e)}</div>')
+
+
+@login_required
+@require_POST
+def htmx_solicitacao_recusar(request, pk):
+    """Recusa uma solicitação."""
+
+    if not request.user.pode_gerenciar_solicitacoes:
+        return HttpResponse('Sem permissão', status=403)
+
+    solicitacao = get_object_or_404(Solicitacao, pk=pk)
+
+    if solicitacao.status != 'PENDENTE':
+        return HttpResponse('<div class="alert alert-warning">Esta solicitação já foi avaliada.</div>')
+
+    observacao = request.POST.get('observacao', '').strip()
+
+    try:
+        solicitacao.recusar(
+            avaliador=request.user,
+            observacao=observacao
+        )
+
+        return HttpResponse('<div class="alert alert-info"><i data-lucide="x-circle"></i> Solicitação recusada.</div><script>lucide.createIcons(); setTimeout(() => { document.getElementById("modal-avaliar").style.display="none"; htmx.trigger("#tab-content", "refresh"); }, 1500);</script>')
+
+    except Exception as e:
+        return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao recusar: {str(e)}</div>')
