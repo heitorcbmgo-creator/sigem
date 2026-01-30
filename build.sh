@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
-# Script de build para o Render
+# exit on error
+set -o errexit
 
-set -o errexit  # Sai se algum comando falhar
-
-echo "📦 Instalando dependências..."
+echo "Installing dependencies..."
 pip install -r requirements.txt
 
-echo "📁 Coletando arquivos estáticos..."
+echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-echo "🗃️ Criando migrações..."
-python manage.py makemigrations --no-input
-
-echo "🗃️ Aplicando migrações do banco de dados..."
+echo "Running migrations..."
 python manage.py migrate
 
-echo "👤 Criando usuário administrador..."
-python manage.py criar_admin
-
-echo "✅ Build concluído!"
+echo "Build complete!"
