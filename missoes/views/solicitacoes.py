@@ -421,16 +421,12 @@ def htmx_solicitacoes_validacao(request):
     # Base query com otimização
     solicitacoes = Solicitacao.objects.select_related(
         'solicitante',
-        'missao_existente',
-        'avaliado_por',
-        'missao_criada',
-        'designacao_criada'
+        'missao_existente'
     ).only(
         'id', 'tipo_solicitacao', 'status', 'criado_em', 'funcao_na_missao',
         'nome_missao', 'complexidade',
         'solicitante__nome', 'solicitante__nome_guerra', 'solicitante__posto',
-        'missao_existente__nome',
-        'avaliado_por__nome'
+        'missao_existente__nome'
     )
 
     # Aplicar filtros

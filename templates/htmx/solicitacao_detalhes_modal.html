@@ -171,6 +171,7 @@
     <form id="form-editar-modal"
           hx-post="{% url 'htmx_solicitacao_editar' sol.id %}"
           hx-target="#modal-feedback">
+        {% csrf_token %}
 
         {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
         <!-- Dados da Missão a Criar -->
@@ -289,6 +290,7 @@
         <h4>Aprovar Solicitação</h4>
         <form hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
               hx-target="#modal-feedback">
+            {% csrf_token %}
 
             <div class="form-group">
                 <label class="form-label">Complexidade <span class="text-danger">*</span></label>
@@ -326,6 +328,7 @@
         <h4>Recusar Solicitação</h4>
         <form hx-post="{% url 'htmx_solicitacao_recusar' sol.id %}"
               hx-target="#modal-feedback">
+            {% csrf_token %}
 
             <div class="form-group">
                 <label class="form-label">Justificativa (opcional)</label>

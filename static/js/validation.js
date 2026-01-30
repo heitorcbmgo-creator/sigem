@@ -3,6 +3,26 @@
  * Gerenciamento de seleção em lote e modais para o painel de validação
  */
 
+// Helper function to get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function getCSRFToken() {
+    return getCookie('csrftoken');
+}
+
 // Gerenciamento de seleção em lote
 let selectedIds = new Set();
 
@@ -125,11 +145,13 @@ function closeAllModals() {
 function openQuickApproveModal(id) {
     const modal = document.getElementById('modal-quick-approve');
     const body = document.getElementById('modal-quick-approve-body');
+    const csrfToken = getCSRFToken();
 
     // Criar formulário de quick approve
     body.innerHTML = `
         <form id="form-quick-approve" hx-post="/htmx/solicitacao/${id}/quick-approve/"
               hx-target="#quick-approve-feedback">
+            <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
             <div class="form-group">
                 <label class="form-label">Complexidade *</label>
                 <div class="radio-group">
@@ -189,6 +211,58 @@ function openDetailModal(id) {
         });
 }
 
+/**
+ * Alterna entre tabs no modal de detalhes
+ */
+function switchTab(tabName, event) {
+    // Remove active de todos os botões e conteúdos
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    // Adiciona active no botão clicado e no conteúdo correspondente
+    if (event && event.target) {
+        event.target.closest('.tab-btn').classList.add('active');
+    }
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+    // Reinicializa ícones
+    lucide.createIcons();
+}
+
+/**
+ * Mostra formulário inline de aprovação
+ */
+function showApproveForm(id) {
+    const form = document.getElementById('inline-approve-form');
+    form.style.display = 'block';
+    document.getElementById('inline-reject-form').style.display = 'none';
+    lucide.createIcons();
+}
+
+/**
+ * Esconde formulário inline de aprovação
+ */
+function hideApproveForm() {
+    document.getElementById('inline-approve-form').style.display = 'none';
+}
+
+/**
+ * Mostra formulário inline de recusa
+ */
+function showRejectForm(id) {
+    const form = document.getElementById('inline-reject-form');
+    form.style.display = 'block';
+    document.getElementById('inline-approve-form').style.display = 'none';
+    lucide.createIcons();
+}
+
+/**
+ * Esconde formulário inline de recusa
+ */
+function hideRejectForm() {
+    document.getElementById('inline-reject-form').style.display = 'none';
+}
+
 // ========================================
 // Batch Operations
 // ========================================
@@ -227,7 +301,7 @@ function submitBatchApprove() {
     formData.append('observacao', observacao);
 
     // Obter CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    const csrfToken = getCSRFToken();
     if (csrfToken) {
         formData.append('csrfmiddlewaretoken', csrfToken);
     }
@@ -296,7 +370,7 @@ function submitBatchReject() {
     formData.append('observacao', observacao);
 
     // Obter CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    const csrfToken = getCSRFToken();
     if (csrfToken) {
         formData.append('csrfmiddlewaretoken', csrfToken);
     }
