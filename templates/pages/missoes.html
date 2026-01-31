@@ -15,12 +15,12 @@
 <!-- Totalizadores por Tipo -->
 <div class="dashboard-grid mb-4">
     {% for item in totais_por_tipo %}
-    <div class="stat-card {{ item.tipo|lower }}" 
-         style="cursor: pointer;"
+    <div class="stat-card {{ item.tipo|lower }}"
          hx-get="{% url 'htmx_missoes_lista' %}?tipo={{ item.tipo }}&status=EM_ANDAMENTO"
          hx-target="#lista-missoes">
         <p class="stat-card-label">{{ item.tipo_display }}</p>
         <p class="stat-card-value">{{ item.total }}</p>
+        <i data-lucide="filter" class="stat-card-filter-icon"></i>
     </div>
     {% endfor %}
 </div>

@@ -429,6 +429,7 @@ img {
     box-shadow: var(--shadow-sm);
     transition: var(--transition);
     cursor: pointer;
+    position: relative;
 }
 
 .stat-card:hover {
@@ -455,6 +456,22 @@ img {
     font-weight: 700;
     color: var(--sigem-gray-800);
     line-height: 1;
+}
+
+.stat-card-filter-icon {
+    position: absolute !important;
+    bottom: 0.75rem !important;
+    right: 0.75rem !important;
+    width: 14px !important;
+    height: 14px !important;
+    opacity: 0.5 !important;
+    transition: opacity var(--transition-base) !important;
+    pointer-events: none !important;
+    color: var(--sigem-gray-400) !important;
+}
+
+.stat-card:hover .stat-card-filter-icon {
+    opacity: 0.5 !important;
 }
 
 /* ============================================================
