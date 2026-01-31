@@ -33,7 +33,17 @@
         <i data-lucide="folder-kanban"></i> Missões
     </button>
     {% endif %}
-    
+
+    {% if user.is_superuser or user.unidade.tipo == 'COMANDO_GERAL' %}
+    <button class="tab {% if aba_ativa == 'funcoes' %}active{% endif %}"
+            data-tipo="funcoes"
+            hx-get="{% url 'htmx_funcoes_tabela' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this, 'funcoes')">
+        <i data-lucide="target"></i> Funções
+    </button>
+    {% endif %}
+
     {% if user.pode_gerenciar_designacoes %}
     <button class="tab {% if aba_ativa == 'designacoes' %}active{% endif %}"
             data-tipo="designacoes"
@@ -149,6 +159,7 @@
             <li><strong>Unidades</strong> - Cadastre primeiro as OBMs</li>
             <li><strong>Oficiais</strong> - Cadastre os oficiais (usuários são criados automaticamente)</li>
             <li><strong>Missões</strong> - Cadastre as missões/operações</li>
+            <li><strong>Funções</strong> - Defina as funções de cada missão com seus critérios de complexidade</li>
             <li><strong>Designações</strong> - Vincule oficiais às missões (use o ID da missão e RG do oficial)</li>
             <li><strong>Usuários</strong> - Apenas se precisar criar usuários adicionais ou alterar perfis</li>
         </ol>
@@ -174,6 +185,7 @@ function setActiveTab(clickedTab, tipo) {
     const nomes = {
         'oficiais': '📁 Oficiais',
         'missoes': '📁 Missões',
+        'funcoes': '📁 Funções',
         'designacoes': '📁 Designações',
         'unidades': '📁 Unidades',
         'usuarios': '📁 Usuários',

@@ -27,9 +27,13 @@ class MissaoAdmin(admin.ModelAdmin):
 
 @admin.register(Designacao)
 class DesignacaoAdmin(admin.ModelAdmin):
-    list_display = ['missao', 'oficial', 'funcao_na_missao', 'complexidade', 'status']
-    list_filter = ['funcao_na_missao', 'complexidade', 'status']
+    list_display = ['missao', 'oficial', 'funcao', 'get_complexidade', 'status']
+    list_filter = ['funcao', 'status']
     search_fields = ['missao__nome', 'oficial__nome']
+
+    def get_complexidade(self, obj):
+        return obj.complexidade
+    get_complexidade.short_description = 'Complexidade'
 
 
 @admin.register(Unidade)
@@ -61,7 +65,7 @@ class UsuarioAdmin(UserAdmin):
 
 @admin.register(Solicitacao)
 class SolicitacaoAdmin(admin.ModelAdmin):
-    list_display = ['tipo_solicitacao', 'solicitante', 'get_missao_nome', 'funcao_na_missao', 'status', 'criado_em']
+    list_display = ['tipo_solicitacao', 'solicitante', 'get_missao_nome', 'get_funcao_nome', 'status', 'criado_em']
     list_filter = ['tipo_solicitacao', 'status', 'tipo_missao']
     search_fields = ['nome_missao', 'solicitante__nome', 'missao_existente__nome']
     readonly_fields = ['criado_em', 'atualizado_em', 'missao_criada', 'designacao_criada']
@@ -71,6 +75,12 @@ class SolicitacaoAdmin(admin.ModelAdmin):
             return f"[NOVA] {obj.nome_missao}"
         return obj.missao_existente.nome if obj.missao_existente else '-'
     get_missao_nome.short_description = 'Missão'
+
+    def get_funcao_nome(self, obj):
+        if obj.tipo_solicitacao == 'NOVA_MISSAO':
+            return obj.nome_funcao
+        return obj.funcao_existente.funcao if obj.funcao_existente else '-'
+    get_funcao_nome.short_description = 'Função'
 
 
 # Customização do Admin

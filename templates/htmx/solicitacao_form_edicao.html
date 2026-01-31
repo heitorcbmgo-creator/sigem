@@ -88,30 +88,91 @@
     <!-- Dados da Designação -->
     <div class="form-section">
         <h4 class="form-section-title"><i data-lucide="user"></i> Designação de {{ solicitacao.solicitante }}</h4>
-        
+
+        {% if solicitacao.tipo_solicitacao == 'NOVA_MISSAO' %}
+        <!-- Para NOVA_MISSAO: nome da função e critérios TDE/NQT/GRS/DEC -->
+        <div class="form-group">
+            <label class="form-label">Nome da Função <span class="text-danger">*</span></label>
+            <input type="text" class="form-input" name="nome_funcao" value="{{ solicitacao.nome_funcao }}" required>
+        </div>
+
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
-                <input type="text" class="form-input" name="funcao_na_missao" value="{{ solicitacao.funcao_na_missao }}" required>
+                <label class="form-label">TDE - Tempo de Dedicação Exigido <span class="text-danger">*</span></label>
+                <select class="form-select" name="tde" required>
+                    {% for value, label in nivel_tde_nqt_grs_choices %}
+                    <option value="{{ value }}" {% if solicitacao.tde == value %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                    {% endfor %}
+                </select>
             </div>
-            
+
             <div class="form-group">
-                <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
-                <input type="text" class="form-input" name="documento_sei_designacao" value="{{ solicitacao.documento_sei_designacao }}" required>
+                <label class="form-label">NQT - Nível de Qualificação Técnica <span class="text-danger">*</span></label>
+                <select class="form-select" name="nqt" required>
+                    {% for value, label in nivel_tde_nqt_grs_choices %}
+                    <option value="{{ value }}" {% if solicitacao.nqt == value %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
-        
-        <div class="form-group">
-            <label class="form-label">Complexidade <span class="text-danger">*</span></label>
-            <div class="complexidade-options">
-                {% for value, label in complexidade_choices %}
-                <label class="complexidade-option {% if value == 'BAIXA' %}baixa{% elif value == 'MEDIA' %}media{% else %}alta{% endif %}">
-                    <input type="radio" name="complexidade" value="{{ value }}" {% if solicitacao.complexidade == value %}checked{% endif %} required>
-                    <span>{{ label }}</span>
-                </label>
-                {% endfor %}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">GRS - Grau de Responsabilidade <span class="text-danger">*</span></label>
+                <select class="form-select" name="grs" required>
+                    {% for value, label in nivel_tde_nqt_grs_choices %}
+                    <option value="{{ value }}" {% if solicitacao.grs == value %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                    {% endfor %}
+                </select>
             </div>
-            <small class="text-muted">Selecione a complexidade que será atribuída à designação.</small>
+
+            <div class="form-group">
+                <label class="form-label">DEC - Dimensão do Efetivo <span class="text-danger">*</span></label>
+                <select class="form-select" name="dec" required>
+                    {% for value, label in nivel_dec_choices %}
+                    <option value="{{ value }}" {% if solicitacao.dec == value %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Para DESIGNACAO: dropdown de funções existentes -->
+        <div class="form-group">
+            <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+            <select class="form-select" name="funcao_id" id="select-funcao-edit" required onchange="atualizarComplexidadeEdit()">
+                <option value="">Selecione...</option>
+                {% for f in funcoes_disponiveis %}
+                <option value="{{ f.id }}"
+                        data-complexidade="{{ f.get_complexidade_display }}"
+                        data-soma="{{ f.soma_criterios }}"
+                        {% if solicitacao.funcao_existente.id == f.id %}selected{% endif %}>
+                    {{ f.funcao }} ({{ f.get_complexidade_display }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Complexidade (Automática)</label>
+                <input type="text" class="form-input" id="display-complexidade-edit" readonly disabled
+                       value="{% if solicitacao.funcao_existente %}{{ solicitacao.funcao_existente.get_complexidade_display }}{% endif %}"
+                       style="background: #f3f4f6; color: #6b7280;">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Soma Critérios</label>
+                <input type="text" class="form-input" id="display-soma-edit" readonly disabled
+                       value="{% if solicitacao.funcao_existente %}{{ solicitacao.funcao_existente.soma_criterios }}{% endif %}"
+                       style="background: #f3f4f6; color: #6b7280;">
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+            <input type="text" class="form-input" name="documento_sei_designacao" value="{{ solicitacao.documento_sei_designacao }}" required>
         </div>
     </div>
     
@@ -259,6 +320,21 @@ function recusarSolicitacao(id) {
             document.getElementById('modal-avaliar-body').innerHTML = html;
             lucide.createIcons();
         });
+    }
+}
+
+function atualizarComplexidadeEdit() {
+    const selectFuncao = document.getElementById('select-funcao-edit');
+    if (!selectFuncao) return;
+
+    const selectedOption = selectFuncao.options[selectFuncao.selectedIndex];
+
+    if (selectedOption && selectedOption.value) {
+        document.getElementById('display-complexidade-edit').value = selectedOption.dataset.complexidade || '';
+        document.getElementById('display-soma-edit').value = selectedOption.dataset.soma || '';
+    } else {
+        document.getElementById('display-complexidade-edit').value = '';
+        document.getElementById('display-soma-edit').value = '';
     }
 }
 

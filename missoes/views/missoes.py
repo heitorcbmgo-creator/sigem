@@ -133,10 +133,10 @@ def htmx_missao_organograma(request, pk):
 
     # Separar por hierarquia
     superiores = designacoes.filter(
-        funcao_na_missao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
+        funcao__funcao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
     )
     subordinados = designacoes.exclude(
-        funcao_na_missao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
+        funcao__funcao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
     )
 
     context = {

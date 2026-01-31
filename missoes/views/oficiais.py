@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
-from ..models import Oficial, Designacao, Missao, Usuario, Unidade, Solicitacao
+from ..models import Oficial, Designacao, Missao, Usuario, Unidade, Solicitacao, Funcao
 
 
 @login_required
@@ -74,8 +74,9 @@ def consultar_oficial(request, oficial_id=None):
             designacoes = designacoes.filter(missao__tipo=tipo)
         if status:
             designacoes = designacoes.filter(missao__status=status)
-        if complexidade:
-            designacoes = designacoes.filter(complexidade=complexidade)
+        # Complexidade é calculada, não pode filtrar no banco
+        # if complexidade:
+        #     designacoes = designacoes.filter(complexidade=complexidade)
 
     # Verificar se está vendo o próprio painel
     visualizando_proprio = oficial and usuario.oficial and usuario.oficial.id == oficial.id
@@ -85,7 +86,7 @@ def consultar_oficial(request, oficial_id=None):
         'designacoes': designacoes,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'pode_consultar_outros': pode_consultar_outros,
         'obms_disponiveis': obms_disponiveis,
         'posto_choices': Oficial.POSTO_CHOICES,
@@ -196,7 +197,7 @@ def painel_oficial(request):
         'anos_disponiveis': anos_disponiveis,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
     }
 

@@ -62,7 +62,17 @@ urlpatterns = [
     path('htmx/designacao/criar/', views.htmx_designacao_criar, name='htmx_designacao_criar'),
     path('htmx/designacao/<int:pk>/editar/', views.htmx_designacao_editar, name='htmx_designacao_editar'),
     path('htmx/designacao/<int:pk>/excluir/', views.htmx_designacao_excluir, name='htmx_designacao_excluir'),
-    
+
+    # ============================================================
+    # 🔄 ENDPOINTS HTMX - FUNÇÕES
+    # ============================================================
+    path('htmx/funcoes/tabela/', views.htmx_funcoes_tabela, name='htmx_funcoes_tabela'),
+    path('htmx/funcao/<int:pk>/dados/', views.htmx_funcao_dados, name='htmx_funcao_dados'),
+    path('htmx/funcao/criar/', views.htmx_funcao_criar, name='htmx_funcao_criar'),
+    path('htmx/funcao/<int:pk>/editar/', views.htmx_funcao_editar, name='htmx_funcao_editar'),
+    path('htmx/funcao/<int:pk>/excluir/', views.htmx_funcao_excluir, name='htmx_funcao_excluir'),
+    path('htmx/funcoes/buscar-por-missao/', views.htmx_buscar_funcoes_por_missao, name='htmx_buscar_funcoes_por_missao'),
+
     # ============================================================
     # 🔄 ENDPOINTS HTMX - UNIDADES
     # ============================================================

@@ -9,7 +9,7 @@ from django.http import HttpResponse
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 
-from ..models import Solicitacao, Missao, Designacao, Oficial
+from ..models import Solicitacao, Missao, Designacao, Oficial, Funcao
 
 
 @login_required
@@ -81,10 +81,10 @@ def htmx_solicitacao_criar(request):
             data_inicio = request.POST.get('data_inicio')
             data_fim = request.POST.get('data_fim') or None
             documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
-            funcao_na_missao = request.POST.get('funcao_na_missao', '').strip()
+            nome_funcao = request.POST.get('nome_funcao', '').strip()
             documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
 
-            if not all([nome_missao, tipo_missao, local_missao, data_inicio, documento_sei_missao, funcao_na_missao, documento_sei_designacao]):
+            if not all([nome_missao, tipo_missao, local_missao, data_inicio, documento_sei_missao, nome_funcao, documento_sei_designacao]):
                 return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
             if status_missao == 'CONCLUIDA' and not data_fim:
@@ -102,7 +102,7 @@ def htmx_solicitacao_criar(request):
                 data_inicio=data_inicio,
                 data_fim=data_fim,
                 documento_sei_missao=documento_sei_missao,
-                funcao_na_missao=funcao_na_missao,
+                nome_funcao=nome_funcao,
                 documento_sei_designacao=documento_sei_designacao,
             )
 
@@ -111,32 +111,36 @@ def htmx_solicitacao_criar(request):
         elif tipo_solicitacao == 'DESIGNACAO':
             # Validações para designação em missão existente
             missao_id = request.POST.get('missao_id')
-            funcao_na_missao = request.POST.get('funcao_na_missao', '').strip()
+            funcao_id = request.POST.get('funcao_id')
             documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
 
-            if not all([missao_id, funcao_na_missao, documento_sei_designacao]):
+            if not all([missao_id, funcao_id, documento_sei_designacao]):
                 return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
             missao = Missao.objects.get(id=missao_id)
 
-            # Verificar se já existe designação
-            if Designacao.objects.filter(oficial=request.user.oficial, missao=missao).exists():
-                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Você já está designado para esta missão.</div>')
+            # Validar que a função pertence à missão selecionada
+            funcao = get_object_or_404(Funcao, pk=funcao_id, missao=missao)
 
-            # Verificar se já existe solicitação pendente
+            # Verificar se já existe designação para esta missão e função
+            if Designacao.objects.filter(oficial=request.user.oficial, missao=missao, funcao=funcao).exists():
+                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Você já está designado para esta função nesta missão.</div>')
+
+            # Verificar se já existe solicitação pendente para esta função
             if Solicitacao.objects.filter(
                 solicitante=request.user.oficial,
                 missao_existente=missao,
+                funcao_existente=funcao,
                 status='PENDENTE'
             ).exists():
-                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para esta missão.</div>')
+                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para esta função nesta missão.</div>')
 
             # Criar solicitação
             Solicitacao.objects.create(
                 tipo_solicitacao='DESIGNACAO',
                 solicitante=request.user.oficial,
                 missao_existente=missao,
-                funcao_na_missao=funcao_na_missao,
+                funcao_existente=funcao,
                 documento_sei_designacao=documento_sei_designacao,
             )
 
@@ -245,7 +249,10 @@ def htmx_solicitacoes_unificadas_lista(request):
         'status_filtro': status,
         'tipo_missao_choices': Missao.TIPO_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'nivel_tde_nqt_grs_choices': Funcao.NIVEL_TDE_NQT_GRS_CHOICES,
+        'nivel_dec_choices': Funcao.NIVEL_DEC_CHOICES,
+        'missoes_disponiveis': Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome'),
+        'oficiais_disponiveis': Oficial.objects.filter(ativo=True).order_by('posto', 'nome'),
     }
 
     return render(request, 'htmx/solicitacoes_unificadas_lista.html', context)
@@ -268,9 +275,14 @@ def htmx_solicitacao_dados(request, pk):
         'tipo_missao_choices': Missao.TIPO_CHOICES,
         'status_missao_choices': Missao.STATUS_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'nivel_tde_nqt_grs_choices': Funcao.NIVEL_TDE_NQT_GRS_CHOICES,
+        'nivel_dec_choices': Funcao.NIVEL_DEC_CHOICES,
         'missoes_disponiveis': missoes_disponiveis,
     }
+
+    # Funções da missão (se for designação e missão já selecionada)
+    if solicitacao.missao_existente:
+        context['funcoes_disponiveis'] = Funcao.objects.filter(missao=solicitacao.missao_existente).order_by('funcao')
 
     return render(request, 'htmx/solicitacao_form_edicao.html', context)
 
@@ -298,12 +310,28 @@ def htmx_solicitacao_editar(request, pk):
             solicitacao.data_inicio = request.POST.get('data_inicio') or solicitacao.data_inicio
             solicitacao.data_fim = request.POST.get('data_fim') or None
             solicitacao.documento_sei_missao = request.POST.get('documento_sei_missao', solicitacao.documento_sei_missao)
+            solicitacao.nome_funcao = request.POST.get('nome_funcao', solicitacao.nome_funcao)
+
+            # Campos TDE/NQT/GRS/DEC (preenchidos pelo avaliador)
+            if request.POST.get('tde'):
+                solicitacao.tde = int(request.POST.get('tde'))
+            if request.POST.get('nqt'):
+                solicitacao.nqt = int(request.POST.get('nqt'))
+            if request.POST.get('grs'):
+                solicitacao.grs = int(request.POST.get('grs'))
+            if request.POST.get('dec'):
+                solicitacao.dec = int(request.POST.get('dec'))
         else:
             missao_id = request.POST.get('missao_id')
             if missao_id:
                 solicitacao.missao_existente = Missao.objects.get(id=missao_id)
 
-        solicitacao.funcao_na_missao = request.POST.get('funcao_na_missao', solicitacao.funcao_na_missao)
+            # Atualizar função existente (FK)
+            funcao_id = request.POST.get('funcao_id')
+            if funcao_id:
+                funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
+                solicitacao.funcao_existente = funcao
+
         solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao', solicitacao.documento_sei_designacao)
         solicitacao.save()
 
@@ -326,11 +354,21 @@ def htmx_solicitacao_aprovar(request, pk):
     if solicitacao.status != 'PENDENTE':
         return HttpResponse('<div class="alert alert-warning">Esta solicitação já foi avaliada.</div>')
 
-    complexidade = request.POST.get('complexidade')
     observacao = request.POST.get('observacao', '').strip()
 
-    if not complexidade:
-        return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Selecione a complexidade para aprovar.</div>')
+    # Validar campos obrigatórios conforme tipo de solicitação
+    if solicitacao.tipo_solicitacao == 'NOVA_MISSAO':
+        # Para nova missão, TDE/NQT/GRS/DEC são obrigatórios
+        tde = request.POST.get('tde')
+        nqt = request.POST.get('nqt')
+        grs = request.POST.get('grs')
+        dec = request.POST.get('dec')
+
+        if not all([tde, nqt, grs, dec]):
+            return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha TDE, NQT, GRS e DEC para aprovar nova missão.</div>')
+    else:
+        # Para designação, complexidade virá da função selecionada
+        tde = nqt = grs = dec = None
 
     try:
         # Atualizar dados editados antes de aprovar (caso tenham sido modificados)
@@ -349,13 +387,25 @@ def htmx_solicitacao_aprovar(request, pk):
                 solicitacao.data_fim = request.POST.get('data_fim')
             if request.POST.get('documento_sei_missao'):
                 solicitacao.documento_sei_missao = request.POST.get('documento_sei_missao')
+            if request.POST.get('nome_funcao'):
+                solicitacao.nome_funcao = request.POST.get('nome_funcao')
+
+            # Salvar TDE/NQT/GRS/DEC na solicitação
+            solicitacao.tde = int(tde)
+            solicitacao.nqt = int(nqt)
+            solicitacao.grs = int(grs)
+            solicitacao.dec = int(dec)
         else:
             missao_id = request.POST.get('missao_id')
             if missao_id:
                 solicitacao.missao_existente = Missao.objects.get(id=missao_id)
 
-        if request.POST.get('funcao_na_missao'):
-            solicitacao.funcao_na_missao = request.POST.get('funcao_na_missao')
+            # Atualizar função existente (FK)
+            funcao_id = request.POST.get('funcao_id')
+            if funcao_id:
+                funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
+                solicitacao.funcao_existente = funcao
+
         if request.POST.get('documento_sei_designacao'):
             solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao')
 
@@ -364,7 +414,6 @@ def htmx_solicitacao_aprovar(request, pk):
         # Aprovar usando o método do modelo
         solicitacao.aprovar(
             avaliador=request.user,
-            complexidade=complexidade,
             observacao=observacao
         )
 
@@ -424,12 +473,13 @@ def htmx_solicitacoes_validacao(request):
     # Base query com otimização
     solicitacoes = Solicitacao.objects.select_related(
         'solicitante',
-        'missao_existente'
+        'missao_existente',
+        'funcao_existente'
     ).only(
-        'id', 'tipo_solicitacao', 'status', 'criado_em', 'funcao_na_missao',
-        'nome_missao', 'complexidade',
+        'id', 'tipo_solicitacao', 'status', 'criado_em', 'nome_funcao',
+        'nome_missao', 'tde', 'nqt', 'grs', 'dec',
         'solicitante__nome', 'solicitante__nome_guerra', 'solicitante__posto',
-        'missao_existente__nome'
+        'missao_existente__nome', 'funcao_existente__funcao'
     )
 
     # Aplicar filtros
@@ -454,7 +504,8 @@ def htmx_solicitacoes_validacao(request):
             Q(solicitante__nome_guerra__icontains=busca) |
             Q(nome_missao__icontains=busca) |
             Q(missao_existente__nome__icontains=busca) |
-            Q(funcao_na_missao__icontains=busca)
+            Q(nome_funcao__icontains=busca) |
+            Q(funcao_existente__funcao__icontains=busca)
         )
 
     solicitacoes = solicitacoes.order_by('-criado_em')
@@ -478,7 +529,7 @@ def htmx_solicitacoes_validacao(request):
             'busca': busca,
         },
         'status_choices': Solicitacao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
     }
 
     return render(request, 'htmx/solicitacoes_validacao.html', context)
@@ -629,8 +680,13 @@ def htmx_solicitacao_detalhes_modal(request, pk):
         'tipo_missao_choices': Missao.TIPO_CHOICES,
         'status_missao_choices': Missao.STATUS_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'nivel_tde_nqt_grs_choices': Funcao.NIVEL_TDE_NQT_GRS_CHOICES,
+        'nivel_dec_choices': Funcao.NIVEL_DEC_CHOICES,
         'missoes_disponiveis': missoes_disponiveis,
     }
+
+    # Funções da missão (se for designação e missão já selecionada)
+    if solicitacao.missao_existente:
+        context['funcoes_disponiveis'] = Funcao.objects.filter(missao=solicitacao.missao_existente).order_by('funcao')
 
     return render(request, 'htmx/solicitacao_detalhes_modal.html', context)

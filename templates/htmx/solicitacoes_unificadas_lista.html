@@ -102,7 +102,13 @@
                 
                 <div class="detalhe-grupo">
                     <h5>Designação Solicitada</h5>
-                    <p>Função: <strong>{{ s.funcao_na_missao }}</strong></p>
+                    <p>Função: <strong>
+                        {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                            {{ s.nome_funcao }}
+                        {% else %}
+                            {{ s.funcao_existente.funcao }}
+                        {% endif %}
+                    </strong></p>
                     <p>SEI/BG: {{ s.documento_sei_designacao }}</p>
                 </div>
             </div>

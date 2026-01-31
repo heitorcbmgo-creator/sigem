@@ -119,7 +119,13 @@
                 
                 <div class="solicitacao-designacao">
                     <span class="designacao-label">Sua designação:</span>
-                    <span class="designacao-funcao">{{ s.funcao_na_missao }}</span>
+                    <span class="designacao-funcao">
+                        {% if s.tipo_solicitacao == 'NOVA_MISSAO' %}
+                            {{ s.nome_funcao }}
+                        {% else %}
+                            {{ s.funcao_existente.funcao }}
+                        {% endif %}
+                    </span>
                     <span class="designacao-sei">SEI/BG: {{ s.documento_sei_designacao }}</span>
                 </div>
             </div>
@@ -135,13 +141,19 @@
                     {% endif %}
                     {{ s.get_status_display }}
                 </span>
-                
-                {% if s.status == 'APROVADA' and s.complexidade %}
+
+                {% if s.status == 'APROVADA' %}
                 <div class="complexidade-info">
-                    Complexidade: 
-                    <span class="badge badge-sm badge-{% if s.complexidade == 'ALTA' %}danger{% elif s.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
-                        {{ s.get_complexidade_display }}
+                    Complexidade:
+                    {% if s.tipo_solicitacao == 'NOVA_MISSAO' and s.funcao_criada %}
+                    <span class="badge badge-sm badge-{% if s.funcao_criada.complexidade == 'ALTA' %}danger{% elif s.funcao_criada.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                        {{ s.funcao_criada.get_complexidade_display }}
                     </span>
+                    {% elif s.tipo_solicitacao == 'DESIGNACAO' and s.funcao_existente %}
+                    <span class="badge badge-sm badge-{% if s.funcao_existente.complexidade == 'ALTA' %}danger{% elif s.funcao_existente.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                        {{ s.funcao_existente.get_complexidade_display }}
+                    </span>
+                    {% endif %}
                 </div>
                 {% endif %}
                 

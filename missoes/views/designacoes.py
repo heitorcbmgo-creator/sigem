@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.contrib import messages
 from django.core.paginator import Paginator
 
-from ..models import Designacao, Oficial, Missao
+from ..models import Designacao, Oficial, Missao, Funcao
 
 
 # ============================================================
@@ -18,31 +18,28 @@ from ..models import Designacao, Oficial, Missao
 def htmx_designacoes_lista(request):
     """Retorna a lista de designações com paginação e filtros (para Admin)."""
 
-    designacoes = Designacao.objects.select_related('missao', 'oficial').all()
+    designacoes = Designacao.objects.select_related('missao', 'oficial', 'funcao').all()
 
     # ============================================================
     # FILTROS
     # ============================================================
     busca = request.GET.get('busca', '').strip()
     missao_id = request.GET.get('missao_id', '')
-    funcao = request.GET.get('funcao', '')
-    complexidade = request.GET.get('complexidade', '')
+    funcao_id = request.GET.get('funcao_id', '')
 
     if busca:
         designacoes = designacoes.filter(
             Q(oficial__nome__icontains=busca) |
             Q(oficial__nome_guerra__icontains=busca) |
-            Q(missao__nome__icontains=busca)
+            Q(missao__nome__icontains=busca) |
+            Q(funcao__funcao__icontains=busca)
         )
 
     if missao_id:
         designacoes = designacoes.filter(missao_id=missao_id)
 
-    if funcao:
-        designacoes = designacoes.filter(funcao_na_missao=funcao)
-
-    if complexidade:
-        designacoes = designacoes.filter(complexidade=complexidade)
+    if funcao_id:
+        designacoes = designacoes.filter(funcao_id=funcao_id)
 
     # ============================================================
     # ORDENAÇÃO
@@ -77,8 +74,7 @@ def htmx_designacoes_lista(request):
         'filtros': {
             'busca': busca,
             'missao_id': missao_id,
-            'funcao': funcao,
-            'complexidade': complexidade,
+            'funcao_id': funcao_id,
             'por_pagina': str(por_pagina),
         },
         'ordenacao': {
@@ -86,9 +82,8 @@ def htmx_designacoes_lista(request):
             'direcao': direcao,
         },
         'query_string': query_string,
-        'funcao_choices': Designacao.FUNCAO_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
         'missoes_disponiveis': Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome'),
+        'funcoes_disponiveis': Funcao.objects.select_related('missao').all().order_by('missao__nome', 'funcao'),
         'oficiais_disponiveis': Oficial.objects.filter(ativo=True).order_by('posto', 'nome'),
         'user': request.user,
     }
@@ -107,12 +102,19 @@ def htmx_designacao_criar(request):
     try:
         missao_id = request.POST.get('missao_id')
         oficial_id = request.POST.get('oficial_id')
+        funcao_id = request.POST.get('funcao_id')
+
+        if not missao_id or not oficial_id or not funcao_id:
+            messages.error(request, 'Missão, Oficial e Função são obrigatórios.')
+            return htmx_designacoes_lista(request)
+
+        # Validar que a função pertence à missão
+        funcao = get_object_or_404(Funcao, pk=funcao_id, missao_id=missao_id)
 
         Designacao.objects.create(
             missao_id=missao_id,
             oficial_id=oficial_id,
-            funcao_na_missao=request.POST.get('funcao_na_missao', 'MEMBRO'),
-            complexidade=request.POST.get('complexidade', 'MEDIA'),
+            funcao=funcao,
             observacoes=request.POST.get('observacoes', ''),
         )
         messages.success(request, 'Designação criada!')
@@ -134,8 +136,13 @@ def htmx_designacao_editar(request, pk):
     designacao = get_object_or_404(Designacao, pk=pk)
 
     try:
-        designacao.funcao_na_missao = request.POST.get('funcao_na_missao', designacao.funcao_na_missao)
-        designacao.complexidade = request.POST.get('complexidade', designacao.complexidade)
+        funcao_id = request.POST.get('funcao_id')
+
+        if funcao_id:
+            # Validar que a função pertence à missão da designação
+            funcao = get_object_or_404(Funcao, pk=funcao_id, missao=designacao.missao)
+            designacao.funcao = funcao
+
         designacao.observacoes = request.POST.get('observacoes', designacao.observacoes)
         designacao.save()
         messages.success(request, 'Designação atualizada!')
@@ -156,8 +163,10 @@ def htmx_designacao_dados(request, pk):
         'id': designacao.id,
         'missao_id': designacao.missao_id,
         'oficial_id': designacao.oficial_id,
-        'funcao_na_missao': designacao.funcao_na_missao,
+        'funcao_id': designacao.funcao_id,
+        'funcao_nome': designacao.funcao.funcao,
         'complexidade': designacao.complexidade,
+        'complexidade_display': designacao.get_complexidade_display(),
         'observacoes': designacao.observacoes,
     })
 

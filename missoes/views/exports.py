@@ -87,7 +87,7 @@ def exportar_excel(request, tipo):
 
         for d in designacoes:
             ws.append([d.id, d.missao.id, d.missao.nome, d.oficial.rg, str(d.oficial),
-                      d.funcao_na_missao, d.complexidade, d.observacoes])
+                      d.funcao.funcao, d.complexidade, d.observacoes])
 
     elif tipo == 'unidades':
         ws.title = 'Unidades'
@@ -473,10 +473,14 @@ def exportar_pdf(request, tipo):
     elements.append(Spacer(1, 0.5*cm))
 
     # Resumo
+    from django.db.models import F
     total_ativas = designacoes.filter(missao__status='EM_ANDAMENTO').count()
-    total_baixa = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='BAIXA').count()
-    total_media = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='MEDIA').count()
-    total_alta = designacoes.filter(missao__status='EM_ANDAMENTO', complexidade='ALTA').count()
+    designacoes_ativas_anotadas = designacoes.filter(missao__status='EM_ANDAMENTO').annotate(
+        soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+    )
+    total_baixa = designacoes_ativas_anotadas.filter(soma__gte=4, soma__lte=6).count()
+    total_media = designacoes_ativas_anotadas.filter(soma__gte=7, soma__lte=9).count()
+    total_alta = designacoes_ativas_anotadas.filter(soma__gte=10, soma__lte=12).count()
 
     resumo_data = [
         ['RESUMO DE MISSÕES EM ANDAMENTO', '', '', ''],
@@ -517,7 +521,7 @@ def exportar_pdf(request, tipo):
 
             table_data.append([
                 d.missao.nome[:40] + '...' if len(d.missao.nome) > 40 else d.missao.nome,
-                d.get_funcao_na_missao_display(),
+                d.funcao.funcao,
                 d.get_complexidade_display(),
                 d.missao.get_status_display(),
                 periodo or '-'
@@ -671,15 +675,28 @@ def importar_excel(request, tipo):
                         oficial_rg = str(row[1]).strip()
 
                         # Buscar missão e oficial
+                        from ..models import Funcao
                         missao = Missao.objects.get(id=missao_id)
                         oficial = Oficial.objects.get(rg=oficial_rg)
+
+                        # Buscar ou criar função (usar nome da coluna 2)
+                        funcao_nome = str(row[2]).strip().upper() if row[2] else 'MEMBRO'
+                        funcao, created = Funcao.objects.get_or_create(
+                            missao=missao,
+                            funcao=funcao_nome,
+                            defaults={
+                                'tde': 2,  # Medium default
+                                'nqt': 2,
+                                'grs': 2,
+                                'dec': 2
+                            }
+                        )
 
                         Designacao.objects.update_or_create(
                             missao=missao,
                             oficial=oficial,
                             defaults={
-                                'funcao_na_missao': str(row[2]).strip().upper() if row[2] else 'MEMBRO',
-                                'complexidade': str(row[3]).strip().upper() if row[3] else 'MEDIA',
+                                'funcao': funcao,
                                 'observacoes': str(row[4]).strip() if row[4] else '',
                             }
                         )

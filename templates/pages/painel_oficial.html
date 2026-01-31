@@ -240,22 +240,23 @@
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
-                            <input type="text" class="form-input" name="funcao_na_missao" required 
+                            <label class="form-label">Nome da Função <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="nome_funcao" required
                                    placeholder="Ex: Coordenador, Membro, Fiscal">
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">Nº SEI/BG da Designação <span class="text-danger">*</span></label>
-                            <input type="text" class="form-input" name="documento_sei_designacao" required 
+                            <input type="text" class="form-input" name="documento_sei_designacao" required
                                    placeholder="Ex: BG 001/2025">
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label class="form-label">Complexidade</label>
-                        <input type="text" class="form-input" value="Será definida pela BM/3 na aprovação" disabled 
+                        <label class="form-label">TDE / NQT / GRS / DEC</label>
+                        <input type="text" class="form-input" value="Serão definidos pela BM/3 durante a aprovação" disabled
                                style="background: #f3f4f6; color: #6b7280;">
+                        <small class="form-text text-muted">Os critérios de complexidade (TDE, NQT, GRS, DEC) são preenchidos pelo avaliador</small>
                     </div>
                 </div>
                 
@@ -339,21 +340,34 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
-                            <input type="text" class="form-input" name="funcao_na_missao" required 
-                                   placeholder="Ex: Coordenador, Membro, Fiscal">
+                            <select class="form-select" name="funcao_id" id="select-funcao-desig" required onchange="atualizarComplexidadeDesignacao()">
+                                <option value="">Selecione uma missão primeiro...</option>
+                            </select>
+                            <small class="form-text text-muted">Selecione a missão para carregar as funções</small>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
-                            <input type="text" class="form-input" name="documento_sei_designacao" required 
+                            <input type="text" class="form-input" name="documento_sei_designacao" required
                                    placeholder="Ex: BG 001/2025">
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Complexidade</label>
-                        <input type="text" class="form-input" value="Será definida pela BM/3 na aprovação" disabled 
-                               style="background: #f3f4f6; color: #6b7280;">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Complexidade</label>
+                            <input type="text" class="form-input" id="display-complexidade-desig" value="" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="Automático">
+                            <small class="form-text text-muted">Calculado automaticamente da função</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Soma Critérios</label>
+                            <input type="text" class="form-input" id="display-soma-desig" value="" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="-">
+                            <small class="form-text text-muted">TDE+NQT+GRS+DEC</small>
+                        </div>
+                    </div>
                     </div>
                 </div>
                 
@@ -716,16 +730,90 @@ function buscarMissoes() {
         });
 }
 
+// Armazena funções da missão selecionada
+let funcoesDisponiveisDesig = [];
+
+// Carregar funções quando missão é selecionada (para DESIGNACAO)
+function carregarFuncoesDaMissaoDesignacao() {
+    const missaoRadios = document.querySelectorAll('input[name="missao_id"]');
+    let missaoId = null;
+
+    missaoRadios.forEach(radio => {
+        if (radio.checked) {
+            missaoId = radio.value;
+        }
+    });
+
+    const selectFuncao = document.getElementById('select-funcao-desig');
+
+    if (!missaoId) {
+        selectFuncao.innerHTML = '<option value="">Selecione uma missão primeiro...</option>';
+        document.getElementById('display-complexidade-desig').value = '';
+        document.getElementById('display-soma-desig').value = '';
+        funcoesDisponiveisDesig = [];
+        return;
+    }
+
+    // Buscar funções da missão
+    fetch(`/htmx/funcoes/buscar-por-missao/?missao_id=${missaoId}`)
+        .then(response => response.json())
+        .then(data => {
+            funcoesDisponiveisDesig = data.funcoes;
+
+            if (funcoesDisponiveisDesig.length === 0) {
+                selectFuncao.innerHTML = '<option value="">Nenhuma função cadastrada para esta missão</option>';
+            } else {
+                selectFuncao.innerHTML = '<option value="">Selecione uma função...</option>';
+                funcoesDisponiveisDesig.forEach(funcao => {
+                    const option = document.createElement('option');
+                    option.value = funcao.id;
+                    option.textContent = `${funcao.funcao} (${funcao.complexidade_display})`;
+                    option.dataset.complexidade = funcao.complexidade_display;
+                    option.dataset.soma = funcao.soma_criterios;
+                    selectFuncao.appendChild(option);
+                });
+            }
+
+            // Limpar complexidade
+            document.getElementById('display-complexidade-desig').value = '';
+            document.getElementById('display-soma-desig').value = '';
+        });
+}
+
+// Atualizar complexidade quando função é selecionada
+function atualizarComplexidadeDesignacao() {
+    const selectFuncao = document.getElementById('select-funcao-desig');
+    const selectedOption = selectFuncao.options[selectFuncao.selectedIndex];
+
+    if (selectedOption && selectedOption.value) {
+        document.getElementById('display-complexidade-desig').value = selectedOption.dataset.complexidade || '';
+        document.getElementById('display-soma-desig').value = selectedOption.dataset.soma || '';
+    } else {
+        document.getElementById('display-complexidade-desig').value = '';
+        document.getElementById('display-soma-desig').value = '';
+    }
+}
+
+// Event listener para radio buttons de missão (carregar funções)
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('change', function(e) {
+        if (e.target.name === 'missao_id') {
+            carregarFuncoesDaMissaoDesignacao();
+        }
+    });
+});
+
 // Limpar formulário e voltar ao step 1 após sucesso
 document.body.addEventListener('htmx:afterSwap', function(evt) {
-    if ((evt.detail.target.id === 'feedback-solicitacao' || evt.detail.target.id === 'feedback-solicitacao-desig') 
+    if ((evt.detail.target.id === 'feedback-solicitacao' || evt.detail.target.id === 'feedback-solicitacao-desig')
         && evt.detail.xhr.response.includes('alert-success')) {
-        
+
         setTimeout(() => {
             if (evt.detail.target.id === 'feedback-solicitacao') {
                 document.getElementById('form-nova-missao').reset();
             } else {
                 document.getElementById('form-designacao').reset();
+                funcoesDisponiveisDesig = [];
             }
             backToStep1();
         }, 2000);

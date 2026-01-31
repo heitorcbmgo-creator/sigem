@@ -119,26 +119,32 @@ class Oficial(models.Model):
     @property
     def total_baixa(self):
         """Total de designações de complexidade BAIXA em missões EM_ANDAMENTO."""
+        from django.db.models import F
         return self.designacoes.filter(
-            missao__status='EM_ANDAMENTO',
-            complexidade='BAIXA'
-        ).count()
-    
+            missao__status='EM_ANDAMENTO'
+        ).annotate(
+            soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+        ).filter(soma__gte=4, soma__lte=6).count()
+
     @property
     def total_media(self):
         """Total de designações de complexidade MÉDIA em missões EM_ANDAMENTO."""
+        from django.db.models import F
         return self.designacoes.filter(
-            missao__status='EM_ANDAMENTO',
-            complexidade='MEDIA'
-        ).count()
-    
+            missao__status='EM_ANDAMENTO'
+        ).annotate(
+            soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+        ).filter(soma__gte=7, soma__lte=9).count()
+
     @property
     def total_alta(self):
         """Total de designações de complexidade ALTA em missões EM_ANDAMENTO."""
+        from django.db.models import F
         return self.designacoes.filter(
-            missao__status='EM_ANDAMENTO',
-            complexidade='ALTA'
-        ).count()
+            missao__status='EM_ANDAMENTO'
+        ).annotate(
+            soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+        ).filter(soma__gte=10, soma__lte=12).count()
     
     @property
     def carga_total(self):
@@ -213,59 +219,129 @@ class Missao(models.Model):
 
 
 # ============================================================
-# 🤝 MODELO: DESIGNAÇÃO
+# 🎯 MODELO: FUNÇÃO
 # ============================================================
-class Designacao(models.Model):
-    """Representa a designação de um oficial para uma missão."""
-    
-    FUNCAO_CHOICES = [
-        ('COMANDANTE', 'Comandante'),
-        ('SUBCOMANDANTE', 'Subcomandante'),
-        ('COORDENADOR', 'Coordenador'),
-        ('PRESIDENTE', 'Presidente'),
-        ('MEMBRO', 'Membro'),
-        ('AUXILIAR', 'Auxiliar'),
-        ('INSTRUTOR', 'Instrutor'),
-        ('ENCARREGADO', 'Encarregado'),
-        ('RELATOR', 'Relator'),
-        ('ESCRIVAO', 'Escrivão'),
+class Funcao(models.Model):
+    """Representa uma função dentro de uma missão com sua complexidade calculada."""
+
+    NIVEL_TDE_NQT_GRS_CHOICES = [
+        (1, 'Baixo'),
+        (2, 'Médio'),
+        (3, 'Alto'),
     ]
-    
+
+    NIVEL_DEC_CHOICES = [
+        (1, 'Pequeno'),
+        (2, 'Médio'),
+        (3, 'Grande'),
+    ]
+
     COMPLEXIDADE_CHOICES = [
         ('BAIXA', 'Baixa'),
         ('MEDIA', 'Média'),
         ('ALTA', 'Alta'),
     ]
-    
+
+    missao = models.ForeignKey(
+        'Missao',
+        on_delete=models.CASCADE,
+        related_name='funcoes',
+        verbose_name='Missão'
+    )
+    funcao = models.CharField('Função', max_length=100)
+    tde = models.IntegerField(
+        'TDE (Tempo de Dedicação Exigido)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    nqt = models.IntegerField(
+        'NQT (Nível de Qualificação Técnica Exigido)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    grs = models.IntegerField(
+        'GRS (Grau de Responsabilidade Suportado)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    dec = models.IntegerField(
+        'DEC (Dimensão do Efetivo Comandado)',
+        choices=NIVEL_DEC_CHOICES,
+        default=2
+    )
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Função'
+        verbose_name_plural = 'Funções'
+        ordering = ['missao__nome', 'funcao']
+        unique_together = ['missao', 'funcao']
+
+    def __str__(self):
+        return f"{self.funcao} - {self.missao.nome_completo}"
+
+    @property
+    def soma_criterios(self):
+        """Retorna a soma dos critérios TDE + NQT + GRS + DEC."""
+        return self.tde + self.nqt + self.grs + self.dec
+
+    @property
+    def complexidade(self):
+        """Calcula a complexidade com base na soma dos critérios.
+
+        Baixa: soma 4-6
+        Média: soma 7-9
+        Alta: soma 10-12
+        """
+        soma = self.soma_criterios
+        if 4 <= soma <= 6:
+            return 'BAIXA'
+        elif 7 <= soma <= 9:
+            return 'MEDIA'
+        else:  # 10-12
+            return 'ALTA'
+
+    def get_complexidade_display(self):
+        """Retorna o display da complexidade."""
+        complexidade_map = {
+            'BAIXA': 'Baixa',
+            'MEDIA': 'Média',
+            'ALTA': 'Alta',
+        }
+        return complexidade_map.get(self.complexidade, '')
+
+
+# ============================================================
+# 🤝 MODELO: DESIGNAÇÃO
+# ============================================================
+class Designacao(models.Model):
+    """Representa a designação de um oficial para uma missão em uma função específica."""
+
     STATUS_CHOICES = [
         ('PENDENTE', 'Pendente de Aprovação'),
         ('APROVADA', 'Aprovada'),
         ('RECUSADA', 'Recusada'),
     ]
-    
+
     missao = models.ForeignKey(
-        Missao, 
-        on_delete=models.CASCADE, 
+        Missao,
+        on_delete=models.CASCADE,
         related_name='designacoes',
         verbose_name='Missão'
     )
     oficial = models.ForeignKey(
-        Oficial, 
-        on_delete=models.CASCADE, 
+        Oficial,
+        on_delete=models.CASCADE,
         related_name='designacoes',
         verbose_name='Oficial'
     )
-    funcao_na_missao = models.CharField(
-        'Função na Missão', 
-        max_length=20, 
-        choices=FUNCAO_CHOICES,
-        default='MEMBRO'
-    )
-    complexidade = models.CharField(
-        'Complexidade', 
-        max_length=10, 
-        choices=COMPLEXIDADE_CHOICES,
-        default='MEDIA'
+    funcao = models.ForeignKey(
+        'Funcao',
+        on_delete=models.PROTECT,  # Não permite deletar função se houver designações
+        related_name='designacoes',
+        verbose_name='Função'
     )
     observacoes = models.TextField('Observações', blank=True)
     status = models.CharField(
@@ -276,20 +352,24 @@ class Designacao(models.Model):
     )
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
-    
+
     class Meta:
         verbose_name = 'Designação'
         verbose_name_plural = 'Designações'
         ordering = ['-criado_em']
-        unique_together = ['missao', 'oficial']  # Um oficial só pode ter uma designação por missão
-    
+        unique_together = ['missao', 'oficial', 'funcao']  # Um oficial não pode ter a mesma função duas vezes na mesma missão
+
     def __str__(self):
-        return f"{self.oficial} → {self.missao.nome} ({self.get_funcao_na_missao_display()})"
-    
+        return f"{self.oficial} → {self.missao.nome_completo} ({self.funcao.funcao})"
+
     @property
-    def is_chefia(self):
-        """Verifica se é uma função de chefia/comando."""
-        return self.funcao_na_missao in ['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO']
+    def complexidade(self):
+        """Retorna a complexidade da função."""
+        return self.funcao.complexidade
+
+    def get_complexidade_display(self):
+        """Retorna o display da complexidade."""
+        return self.funcao.get_complexidade_display()
 
 
 # ============================================================
@@ -625,6 +705,33 @@ class Solicitacao(models.Model):
     data_fim = models.DateField('Data de Término', null=True, blank=True)
     documento_sei_missao = models.CharField('Nº SEI da Missão', max_length=100, blank=True)
     
+    # === Campos de FUNÇÃO (para NOVA_MISSAO) ===
+    nome_funcao = models.CharField('Nome da Função', max_length=100, blank=True)
+    tde = models.IntegerField(
+        'TDE',
+        null=True,
+        blank=True,
+        help_text='Preenchido pelo avaliador na aprovação'
+    )
+    nqt = models.IntegerField(
+        'NQT',
+        null=True,
+        blank=True,
+        help_text='Preenchido pelo avaliador na aprovação'
+    )
+    grs = models.IntegerField(
+        'GRS',
+        null=True,
+        blank=True,
+        help_text='Preenchido pelo avaliador na aprovação'
+    )
+    dec = models.IntegerField(
+        'DEC',
+        null=True,
+        blank=True,
+        help_text='Preenchido pelo avaliador na aprovação'
+    )
+
     # === Campos de DESIGNAÇÃO (sempre preenchidos) ===
     missao_existente = models.ForeignKey(
         Missao,
@@ -635,7 +742,15 @@ class Solicitacao(models.Model):
         verbose_name='Missão Existente',
         help_text='Preenchido apenas se tipo=DESIGNACAO'
     )
-    funcao_na_missao = models.CharField('Função na Missão', max_length=100)
+    funcao_existente = models.ForeignKey(
+        'Funcao',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_designacao',
+        verbose_name='Função Existente',
+        help_text='Preenchido apenas se tipo=DESIGNACAO'
+    )
     documento_sei_designacao = models.CharField('Nº SEI/BG da Designação', max_length=100)
     
     # === Controle da Solicitação ===
@@ -644,13 +759,6 @@ class Solicitacao(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default='PENDENTE'
-    )
-    complexidade = models.CharField(
-        'Complexidade',
-        max_length=20,
-        choices=Designacao.COMPLEXIDADE_CHOICES,
-        blank=True,
-        help_text='Definida pelo BM/3 na aprovação'
     )
     avaliado_por = models.ForeignKey(
         'Usuario',
@@ -671,6 +779,15 @@ class Solicitacao(models.Model):
         blank=True,
         related_name='solicitacao_origem_missao',
         verbose_name='Missão Criada',
+        help_text='Preenchido automaticamente na aprovação se tipo=NOVA_MISSAO'
+    )
+    funcao_criada = models.ForeignKey(
+        'Funcao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacao_origem_funcao',
+        verbose_name='Função Criada',
         help_text='Preenchido automaticamente na aprovação se tipo=NOVA_MISSAO'
     )
     designacao_criada = models.ForeignKey(
@@ -716,26 +833,31 @@ class Solicitacao(models.Model):
             return self.missao_criada
         return self.missao_existente
     
-    def aprovar(self, avaliador, complexidade, observacao=''):
+    def aprovar(self, avaliador, observacao=''):
         """
         Aprova a solicitação e cria os registros necessários.
-        
-        Se NOVA_MISSAO: Cria Missão + Designação
-        Se DESIGNACAO: Cria apenas Designação
+
+        Se NOVA_MISSAO: Cria Missão + Função + Designação
+        Se DESIGNACAO: Cria apenas Designação (função já existe)
+
+        Para NOVA_MISSAO, os campos tde, nqt, grs, dec devem já estar preenchidos na solicitação.
         """
         from django.utils import timezone
-        
-        # Definir complexidade
-        self.complexidade = complexidade
+
         self.avaliado_por = avaliador
         self.data_avaliacao = timezone.now()
         self.observacao_avaliador = observacao
         self.status = 'APROVADA'
-        
+
         if self.tipo_solicitacao == 'NOVA_MISSAO':
-            # 1. Criar a Missão
+            # Validar critérios
+            if self.tde is None or self.nqt is None or self.grs is None or self.dec is None:
+                raise ValueError('TDE, NQT, GRS e DEC devem ser informados.')
+
+            # 1. Criar Missão
             missao = Missao.objects.create(
                 nome=self.nome_missao,
+                ano=self.ano_missao,
                 tipo=self.tipo_missao,
                 status=self.status_missao,
                 local=self.local_missao,
@@ -744,30 +866,42 @@ class Solicitacao(models.Model):
                 documento_referencia=self.documento_sei_missao,
             )
             self.missao_criada = missao
-            
-            # 2. Criar a Designação vinculada à nova missão
+
+            # 2. Criar Função
+            funcao = Funcao.objects.create(
+                missao=missao,
+                funcao=self.nome_funcao,
+                tde=self.tde,
+                nqt=self.nqt,
+                grs=self.grs,
+                dec=self.dec
+            )
+            self.funcao_criada = funcao
+
+            # 3. Criar Designação
             designacao = Designacao.objects.create(
                 oficial=self.solicitante,
                 missao=missao,
-                funcao_na_missao=self.funcao_na_missao,
-                complexidade=complexidade,
+                funcao=funcao,
                 observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
             )
             self.designacao_criada = designacao
-            
-        else:  # DESIGNACAO em missão existente
-            # Criar apenas a Designação
+
+        else:  # DESIGNACAO
+            if not self.funcao_existente:
+                raise ValueError('Função deve ser selecionada.')
+
             designacao = Designacao.objects.create(
                 oficial=self.solicitante,
                 missao=self.missao_existente,
-                funcao_na_missao=self.funcao_na_missao,
-                complexidade=complexidade,
+                funcao=self.funcao_existente,
                 observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
             )
             self.designacao_criada = designacao
-        
+
         self.save()
         return True
+
     
     def recusar(self, avaliador, observacao=''):
         """Recusa a solicitação."""

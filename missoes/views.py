@@ -42,7 +42,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 from django.core.paginator import Paginator
 
-from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao, SolicitacaoMissao, Solicitacao
+from .models import Oficial, Missao, Designacao, Unidade, Usuario, SolicitacaoDesignacao, SolicitacaoMissao, Solicitacao, Funcao
 from .decorators import (
     acesso_dashboard, acesso_comparar, acesso_admin_painel,
     permissao_gerenciar_oficiais, permissao_gerenciar_missoes,
@@ -717,7 +717,7 @@ def consultar_oficial(request, oficial_id=None):
         'designacoes': designacoes,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'pode_consultar_outros': pode_consultar_outros,
         'obms_disponiveis': obms_disponiveis,
         'posto_choices': Oficial.POSTO_CHOICES,
@@ -828,7 +828,7 @@ def painel_oficial(request):
         'anos_disponiveis': anos_disponiveis,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
     }
     
@@ -1490,7 +1490,7 @@ def htmx_designacoes_lista(request):
         },
         'query_string': query_string,
         'funcao_choices': Designacao.FUNCAO_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'missoes_disponiveis': Missao.objects.filter(status__in=['PLANEJADA', 'EM_ANDAMENTO']).order_by('nome'),
         'oficiais_disponiveis': Oficial.objects.filter(ativo=True).order_by('posto', 'nome'),
         'user': request.user,
@@ -2032,7 +2032,7 @@ def htmx_solicitacoes_lista(request):
             'tipo_solicitacao': tipo_solicitacao,
         },
         'status_choices': SolicitacaoDesignacao.STATUS_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'user': request.user,
     }
     
@@ -2448,7 +2448,7 @@ def htmx_solicitacoes_unificadas_lista(request):
         'status_filtro': status,
         'tipo_missao_choices': Missao.TIPO_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
     }
     
     return render(request, 'htmx/solicitacoes_unificadas_lista.html', context)
@@ -2471,7 +2471,7 @@ def htmx_solicitacao_dados(request, pk):
         'tipo_missao_choices': Missao.TIPO_CHOICES,
         'status_missao_choices': Missao.STATUS_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
-        'complexidade_choices': Designacao.COMPLEXIDADE_CHOICES,
+        'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'missoes_disponiveis': missoes_disponiveis,
     }
     

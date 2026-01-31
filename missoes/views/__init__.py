@@ -35,6 +35,12 @@ from .designacoes import (
     htmx_designacao_dados, htmx_designacao_excluir
 )
 
+# Funções
+from .funcoes import (
+    htmx_funcoes_tabela, htmx_funcao_criar, htmx_funcao_editar,
+    htmx_funcao_dados, htmx_funcao_excluir, htmx_buscar_funcoes_por_missao
+)
+
 # Unidades
 from .unidades import (
     htmx_unidades_lista, htmx_unidade_criar,
@@ -65,7 +71,7 @@ from .exports import (
     exportar_excel, exportar_pdf, importar_excel, gerar_modelo_importacao
 )
 
-# Explicit __all__ for clarity (55 functions total)
+# Explicit __all__ for clarity (61 functions total)
 __all__ = [
     # Auth (3)
     'login_view', 'logout_view', 'redirecionar_por_perfil',
@@ -83,6 +89,9 @@ __all__ = [
     # Designações (5)
     'htmx_designacoes_lista', 'htmx_designacao_criar', 'htmx_designacao_editar',
     'htmx_designacao_dados', 'htmx_designacao_excluir',
+    # Funções (6)
+    'htmx_funcoes_tabela', 'htmx_funcao_criar', 'htmx_funcao_editar',
+    'htmx_funcao_dados', 'htmx_funcao_excluir', 'htmx_buscar_funcoes_por_missao',
     # Unidades (4)
     'htmx_unidades_lista', 'htmx_unidade_criar', 'htmx_unidade_editar',
     'htmx_unidade_excluir',

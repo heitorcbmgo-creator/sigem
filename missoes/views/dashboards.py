@@ -4,8 +4,10 @@ Dashboard views - Executive dashboard, Officer comparison, and Missions dashboar
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+from django.db.models import Count, Q, F, Case, When, IntegerField
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
+from datetime import timedelta
 
 from ..models import Oficial, Missao, Designacao, Unidade, Solicitacao
 from ..decorators import acesso_dashboard, acesso_comparar
@@ -81,9 +83,14 @@ def dashboard(request):
         carga_media = round(total_designacoes_ativas / oficiais_com_missao, 1) if oficiais_com_missao > 0 else 0
 
         # Designações por complexidade (ativas)
-        designacoes_baixa = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='BAIXA').count() or 0
-        designacoes_media = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='MEDIA').count() or 0
-        designacoes_alta = designacoes_base.filter(missao__status='EM_ANDAMENTO', complexidade='ALTA').count() or 0
+        # Complexidade é calculada a partir da soma dos critérios da função
+        from django.db.models import F
+        designacoes_ativas = designacoes_base.filter(missao__status='EM_ANDAMENTO').annotate(
+            soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+        )
+        designacoes_baixa = designacoes_ativas.filter(soma__gte=4, soma__lte=6).count() or 0
+        designacoes_media = designacoes_ativas.filter(soma__gte=7, soma__lte=9).count() or 0
+        designacoes_alta = designacoes_ativas.filter(soma__gte=10, soma__lte=12).count() or 0
 
         # Índice de complexidade alta
         indice_alta = round((designacoes_alta / total_designacoes_ativas * 100), 1) if total_designacoes_ativas > 0 else 0
@@ -173,21 +180,15 @@ def dashboard(request):
             obm_nome = obm_data['obm']
 
             # Contar designações por complexidade
-            baixa = Designacao.objects.filter(
+            designacoes_obm = Designacao.objects.filter(
                 oficial__obm=obm_nome,
-                missao__status='EM_ANDAMENTO',
-                complexidade='BAIXA'
-            ).count()
-            media = Designacao.objects.filter(
-                oficial__obm=obm_nome,
-                missao__status='EM_ANDAMENTO',
-                complexidade='MEDIA'
-            ).count()
-            alta = Designacao.objects.filter(
-                oficial__obm=obm_nome,
-                missao__status='EM_ANDAMENTO',
-                complexidade='ALTA'
-            ).count()
+                missao__status='EM_ANDAMENTO'
+            ).annotate(
+                soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
+            )
+            baixa = designacoes_obm.filter(soma__gte=4, soma__lte=6).count()
+            media = designacoes_obm.filter(soma__gte=7, soma__lte=9).count()
+            alta = designacoes_obm.filter(soma__gte=10, soma__lte=12).count()
 
             carga_por_obm.append({
                 'obm': obm_nome,
@@ -213,18 +214,39 @@ def dashboard(request):
         # 🏆 TOP 10 OFICIAIS COM MAIOR CARGA
         # ============================================================
 
-        oficiais_top = oficiais_base.annotate(
-            total_missoes=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO')),
-            qtd_baixa=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='BAIXA')),
-            qtd_media=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='MEDIA')),
-            qtd_alta=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='ALTA')),
-            qtd_chefia=Count('designacoes', filter=Q(
-                designacoes__missao__status='EM_ANDAMENTO',
-                designacoes__funcao_na_missao__in=['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO']
-            ))
-        ).annotate(
-            carga_ponderada=F('qtd_baixa') + (F('qtd_media') * 2) + (F('qtd_alta') * 3)
-        ).filter(total_missoes__gt=0).order_by('-carga_ponderada')[:50]
+        # Para oficiais_top, calculamos a carga usando as propriedades do modelo Oficial
+        oficiais_top = []
+        for oficial in oficiais_base:
+            total_missoes = oficial.total_missoes_ativas
+            if total_missoes > 0:
+                qtd_baixa = oficial.total_baixa
+                qtd_media = oficial.total_media
+                qtd_alta = oficial.total_alta
+                carga_ponderada = oficial.carga_total
+
+                # Contar funções de chefia
+                qtd_chefia = oficial.designacoes.filter(
+                    missao__status='EM_ANDAMENTO',
+                    funcao__funcao__in=['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO']
+                ).count()
+
+                oficiais_top.append({
+                    'oficial': oficial,
+                    'total_missoes': total_missoes,
+                    'qtd_baixa': qtd_baixa,
+                    'qtd_media': qtd_media,
+                    'qtd_alta': qtd_alta,
+                    'qtd_chefia': qtd_chefia,
+                    'carga_ponderada': carga_ponderada,
+                    # Campos adicionais para o template
+                    'foto_url': oficial.foto_url,
+                    'posto': oficial.posto,
+                    'nome_guerra': oficial.nome_guerra,
+                    'nome': oficial.nome,
+                    'obm': oficial.obm,
+                })
+
+        oficiais_top = sorted(oficiais_top, key=lambda x: x['carga_ponderada'], reverse=True)[:50]
 
         # ============================================================
         # ⚠️ ALERTAS DO SISTEMA
@@ -233,11 +255,7 @@ def dashboard(request):
         alertas = []
 
         # 🔴 Oficiais com sobrecarga (carga > 20)
-        oficiais_sobrecarga = oficiais_base.annotate(
-            carga=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='BAIXA')) +
-                  Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='MEDIA')) * 2 +
-                  Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO', designacoes__complexidade='ALTA')) * 3
-        ).filter(carga__gt=20).count()
+        oficiais_sobrecarga = sum(1 for oficial in oficiais_base if oficial.carga_total > 20)
 
         if oficiais_sobrecarga > 0:
             alertas.append({
@@ -332,7 +350,7 @@ def dashboard(request):
             total_designacoes=Count('designacoes', filter=Q(designacoes__missao__status='EM_ANDAMENTO')),
             qtd_chefia=Count('designacoes', filter=Q(
                 designacoes__missao__status='EM_ANDAMENTO',
-                designacoes__funcao_na_missao__in=['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO']
+                designacoes__funcao__funcao__in=['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'ENCARREGADO']
             ))
         ).order_by('posto')
 
