@@ -2,7 +2,7 @@
 <label class="missao-item">
     <input type="radio" name="missao_id" value="{{ m.id }}" required>
     <div class="missao-item-content">
-        <strong>{{ m.nome }}</strong>
+        <strong>{{ m.nome_completo }}</strong>
         <span class="missao-item-meta">
             {{ m.get_tipo_display }} • {{ m.get_status_display }}
             {% if m.data_inicio %} • {{ m.data_inicio|date:"d/m/Y" }}{% if m.data_fim %} → {{ m.data_fim|date:"d/m/Y" }}{% endif %}{% endif %}

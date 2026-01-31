@@ -70,7 +70,7 @@
             <select class="form-select" name="missao_id" required>
                 {% for m in missoes_disponiveis %}
                 <option value="{{ m.id }}" {% if solicitacao.missao_existente.id == m.id %}selected{% endif %}>
-                    {{ m.nome }} ({{ m.get_status_display }})
+                    {{ m.nome_completo }} ({{ m.get_status_display }})
                 </option>
                 {% endfor %}
             </select>
@@ -78,7 +78,7 @@
         
         {% if solicitacao.missao_existente %}
         <div class="info-box">
-            <p><strong>Missão atual:</strong> {{ solicitacao.missao_existente.nome }}</p>
+            <p><strong>Missão atual:</strong> {{ solicitacao.missao_existente.nome_completo }}</p>
             <p>{{ solicitacao.missao_existente.get_tipo_display }} • {{ solicitacao.missao_existente.get_status_display }}</p>
         </div>
         {% endif %}

@@ -74,6 +74,7 @@ def htmx_solicitacao_criar(request):
         if tipo_solicitacao == 'NOVA_MISSAO':
             # Validações para nova missão
             nome_missao = request.POST.get('nome_missao', '').strip()
+            ano_missao = request.POST.get('ano_missao') or None
             tipo_missao = request.POST.get('tipo_missao', '')
             status_missao = request.POST.get('status_missao', 'EM_ANDAMENTO')
             local_missao = request.POST.get('local_missao', '')
@@ -94,6 +95,7 @@ def htmx_solicitacao_criar(request):
                 tipo_solicitacao='NOVA_MISSAO',
                 solicitante=request.user.oficial,
                 nome_missao=nome_missao,
+                ano_missao=ano_missao,
                 tipo_missao=tipo_missao,
                 status_missao=status_missao,
                 local_missao=local_missao,
@@ -289,6 +291,7 @@ def htmx_solicitacao_editar(request, pk):
     try:
         if solicitacao.tipo_solicitacao == 'NOVA_MISSAO':
             solicitacao.nome_missao = request.POST.get('nome_missao', solicitacao.nome_missao)
+            solicitacao.ano_missao = request.POST.get('ano_missao') or solicitacao.ano_missao
             solicitacao.tipo_missao = request.POST.get('tipo_missao', solicitacao.tipo_missao)
             solicitacao.status_missao = request.POST.get('status_missao', solicitacao.status_missao)
             solicitacao.local_missao = request.POST.get('local_missao', solicitacao.local_missao)

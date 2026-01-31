@@ -101,7 +101,7 @@ Tabela de missões com paginação e filtros para Admin
             {% for m in page_obj %}
             <tr>
                 <td>
-                    <strong>{{ m.nome }}</strong>
+                    <strong>{{ m.nome_completo }}</strong>
                     {% if m.documento_referencia %}
                     <br><small class="text-muted">{{ m.documento_referencia }}</small>
                     {% endif %}
@@ -137,7 +137,7 @@ Tabela de missões com paginação e filtros para Admin
                         <button class="btn btn-sm btn-ghost text-danger" 
                                 hx-post="{% url 'htmx_missao_excluir' m.id %}"
                                 hx-target="#tab-content"
-                                hx-confirm="Excluir '{{ m.nome }}' e todas as designações vinculadas?"
+                                hx-confirm="Excluir '{{ m.nome_completo }}' e todas as designações vinculadas?"
                                 title="Excluir">
                             <i data-lucide="trash-2"></i>
                         </button>
@@ -225,9 +225,13 @@ Tabela de missões com paginação e filtros para Admin
                 <input type="hidden" name="missao_id" id="missao_id">
                 
                 <div class="form-row">
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-5">
                         <label>Nome da Missão *</label>
                         <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-1">
+                        <label>Ano</label>
+                        <input type="number" name="ano" class="form-control" value="2026" min="2020" max="2099" placeholder="2026">
                     </div>
                     <div class="form-group col-md-3">
                         <label>Tipo *</label>
@@ -301,6 +305,7 @@ function editarMissao(id) {
             document.getElementById('form-missao-titulo').textContent = 'Editar Missão';
             document.getElementById('missao_id').value = id;
             document.querySelector('#missao-form [name=nome]').value = data.nome;
+            document.querySelector('#missao-form [name=ano]').value = data.ano || 2026;
             document.querySelector('#missao-form [name=tipo]').value = data.tipo;
             document.querySelector('#missao-form [name=status]').value = data.status;
             document.querySelector('#missao-form [name=local]').value = data.local || '';

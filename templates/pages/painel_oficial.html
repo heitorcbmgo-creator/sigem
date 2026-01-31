@@ -80,7 +80,7 @@
                 <tbody>
                     {% for d in designacoes %}
                     <tr>
-                        <td><strong>{{ d.missao.nome|truncatechars:40 }}</strong></td>
+                        <td><strong>{{ d.missao.nome_completo|truncatechars:40 }}</strong></td>
                         <td>{{ d.funcao_na_missao }}</td>
                         <td>
                             <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
@@ -170,12 +170,19 @@
                 <div class="form-section">
                     <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
                     
-                    <div class="form-group">
-                        <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
-                        <input type="text" class="form-input" name="nome_missao" required 
-                               placeholder="Ex: Operação Carnaval 2025">
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 4;">
+                            <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="nome_missao" required
+                                   placeholder="Ex: Operação Carnaval">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Ano</label>
+                            <input type="number" class="form-input" name="ano_missao"
+                                   value="2026" min="2020" max="2099" placeholder="2026">
+                        </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Tipo <span class="text-danger">*</span></label>
@@ -313,7 +320,7 @@
                         <label class="missao-item">
                             <input type="radio" name="missao_id" value="{{ m.id }}" required>
                             <div class="missao-item-content">
-                                <strong>{{ m.nome }}</strong>
+                                <strong>{{ m.nome_completo }}</strong>
                                 <span class="missao-item-meta">
                                     {{ m.get_tipo_display }} • {{ m.get_status_display }}
                                     {% if m.data_inicio %} • {{ m.data_inicio|date:"d/m/Y" }}{% if m.data_fim %} → {{ m.data_fim|date:"d/m/Y" }}{% endif %}{% endif %}

@@ -346,7 +346,7 @@
                         <tbody>
                             {% for m in missoes_recentes %}
                             <tr>
-                                <td><strong>{{ m.nome|truncatechars:35 }}</strong></td>
+                                <td><strong>{{ m.nome_completo|truncatechars:35 }}</strong></td>
                                 <td>{{ m.get_tipo_display }}</td>
                                 <td class="text-center">
                                     <span class="badge badge-{% if m.status == 'EM_ANDAMENTO' %}success{% elif m.status == 'PLANEJADA' %}info{% elif m.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">

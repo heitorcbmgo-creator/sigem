@@ -176,6 +176,7 @@ class Missao(models.Model):
     
     tipo = models.CharField('Tipo', max_length=20, choices=TIPO_CHOICES)
     nome = models.CharField('Nome da Missão', max_length=200)
+    ano = models.IntegerField('Ano', null=True, blank=True, default=2026)
     descricao = models.TextField('Descrição', blank=True)
     local = models.CharField('Local', max_length=200, blank=True)
     data_inicio = models.DateField('Data de Início', null=True, blank=True)
@@ -184,20 +185,27 @@ class Missao(models.Model):
     documento_referencia = models.CharField('Documento de Referência (SEI/BG)', max_length=100, blank=True)
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
-    
+
     class Meta:
         verbose_name = 'Missão'
         verbose_name_plural = 'Missões'
         ordering = ['-data_inicio', 'nome']
-    
+
     def __str__(self):
-        return f"{self.nome} ({self.get_tipo_display()})"
-    
+        return self.nome_completo
+
+    @property
+    def nome_completo(self):
+        """Retorna o nome completo da missão com o ano (se houver)."""
+        if self.ano:
+            return f"{self.nome} {self.ano}"
+        return self.nome
+
     @property
     def total_designados(self):
         """Retorna o total de oficiais designados."""
         return self.designacoes.count()
-    
+
     @property
     def esta_ativa(self):
         """Verifica se a missão está em andamento."""
@@ -291,12 +299,15 @@ class Unidade(models.Model):
     """Representa uma unidade/OBM."""
     
     TIPO_CHOICES = [
-        ('COMANDO_GERAL', 'Comando Geral'),
-        ('DIRETORIA', 'Diretoria'),
+        ('COMANDO_GERAL', 'Comando-Geral'),
+        ('ORGAO_DIRECAO', 'Órgão de Direção'),
+        ('ORGAO_APOIO', 'Órgão de Apoio'),
+        ('ORGAO_EXEC', 'Órgão de Execução'),
+        ('SECAO_EMG', 'Seção do EMG'),
         ('BBM', 'Batalhão BM'),
-        ('CIBM', 'Companhia Independente BM'),
-        ('CBM', 'Companhia BM'),
-        ('SECAO', 'Seção'),
+        ('CIBM', 'Cia Independente BM'),
+        ('PBM', 'Pelotão BM'),
+        ('DBM', 'Destacamento BM'),
     ]
     
     nome = models.CharField('Nome', max_length=150)
@@ -590,6 +601,7 @@ class Solicitacao(models.Model):
     
     # === Campos de MISSÃO (preenchidos se tipo='NOVA_MISSAO') ===
     nome_missao = models.CharField('Nome da Missão', max_length=200, blank=True)
+    ano_missao = models.IntegerField('Ano da Missão', null=True, blank=True, default=2026)
     tipo_missao = models.CharField(
         'Tipo da Missão',
         max_length=20,

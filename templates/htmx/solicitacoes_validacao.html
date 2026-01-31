@@ -127,10 +127,10 @@
                 <td>
                     <div class="missao-cell">
                         {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
-                            <strong>{{ sol.nome_missao }}</strong>
+                            <strong>{{ sol.nome_missao }}{% if sol.ano_missao %} {{ sol.ano_missao }}{% endif %}</strong>
                             <small>{{ sol.funcao_na_missao }}</small>
                         {% else %}
-                            <strong>{{ sol.missao_existente.nome }}</strong>
+                            <strong>{{ sol.missao_existente.nome_completo }}</strong>
                             <small>{{ sol.funcao_na_missao }}</small>
                         {% endif %}
                     </div>

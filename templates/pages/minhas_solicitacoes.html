@@ -111,7 +111,7 @@
                     SEI Missão: {{ s.documento_sei_missao }}
                 </p>
                 {% else %}
-                <h3>{{ s.missao_existente.nome }}</h3>
+                <h3>{{ s.missao_existente.nome_completo }}</h3>
                 <p class="solicitacao-meta-text">
                     {{ s.missao_existente.get_tipo_display }} • {{ s.missao_existente.get_status_display }}
                 </p>

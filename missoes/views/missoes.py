@@ -160,6 +160,7 @@ def htmx_missao_criar(request):
         Missao.objects.create(
             tipo=request.POST.get('tipo', ''),
             nome=request.POST.get('nome', ''),
+            ano=request.POST.get('ano', 2026),
             descricao=request.POST.get('descricao', ''),
             local=request.POST.get('local', ''),
             data_inicio=request.POST.get('data_inicio') or None,
@@ -188,6 +189,7 @@ def htmx_missao_editar(request, pk):
     try:
         missao.tipo = request.POST.get('tipo', missao.tipo)
         missao.nome = request.POST.get('nome', missao.nome)
+        missao.ano = request.POST.get('ano', missao.ano)
         missao.descricao = request.POST.get('descricao', missao.descricao)
         missao.local = request.POST.get('local', missao.local)
         missao.status = request.POST.get('status', missao.status)
@@ -218,6 +220,7 @@ def htmx_missao_dados(request, pk):
     return JsonResponse({
         'id': missao.id,
         'nome': missao.nome,
+        'ano': missao.ano,
         'tipo': missao.tipo,
         'status': missao.status,
         'descricao': missao.descricao,

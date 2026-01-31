@@ -74,7 +74,7 @@
             </h4>
             <dl class="detalhes-list">
                 <dt>Nome:</dt>
-                <dd><strong>{{ sol.nome_missao }}</strong></dd>
+                <dd><strong>{{ sol.nome_missao }}{% if sol.ano_missao %} {{ sol.ano_missao }}{% endif %}</strong></dd>
 
                 <dt>Tipo:</dt>
                 <dd>{{ sol.get_tipo_missao_display }}</dd>
@@ -108,7 +108,7 @@
             </h4>
             <dl class="detalhes-list">
                 <dt>Missão:</dt>
-                <dd><strong>{{ sol.missao_existente.nome }}</strong></dd>
+                <dd><strong>{{ sol.missao_existente.nome_completo }}</strong></dd>
 
                 <dt>Tipo:</dt>
                 <dd>{{ sol.missao_existente.get_tipo_display }}</dd>
@@ -178,9 +178,15 @@
         <div class="form-section">
             <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
 
-            <div class="form-group">
-                <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
-                <input type="text" class="form-input" name="nome_missao" value="{{ sol.nome_missao }}" required>
+            <div class="form-row">
+                <div class="form-group" style="flex: 4;">
+                    <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                    <input type="text" class="form-input" name="nome_missao" value="{{ sol.nome_missao }}" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Ano</label>
+                    <input type="number" class="form-input" name="ano_missao" value="{{ sol.ano_missao|default:'2026' }}" min="2020" max="2099" placeholder="2026">
+                </div>
             </div>
 
             <div class="form-row">
@@ -239,7 +245,7 @@
                 <select class="form-select" name="missao_id" required>
                     {% for m in missoes_disponiveis %}
                     <option value="{{ m.id }}" {% if sol.missao_existente.id == m.id %}selected{% endif %}>
-                        {{ m.nome }} ({{ m.get_status_display }})
+                        {{ m.nome_completo }} ({{ m.get_status_display }})
                     </option>
                     {% endfor %}
                 </select>
