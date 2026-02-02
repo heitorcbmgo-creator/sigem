@@ -177,6 +177,7 @@ def htmx_funcao_editar(request, pk):
 @require_POST
 def htmx_funcao_excluir(request, pk):
     """Exclui uma função."""
+    from django.db.models import ProtectedError
 
     # Verificar permissão
     if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
@@ -185,10 +186,28 @@ def htmx_funcao_excluir(request, pk):
     funcao = get_object_or_404(Funcao, pk=pk)
 
     try:
+        # Verificar se há designações vinculadas
+        designacoes_count = funcao.designacoes.count()
+        if designacoes_count > 0:
+            return HttpResponse(
+                f'<div class="alert alert-danger">'
+                f'<strong>Não é possível excluir!</strong><br>'
+                f'A função "{funcao.funcao}" possui {designacoes_count} designação(ões) vinculada(s).<br>'
+                f'Remova as designações primeiro.</div>',
+                status=400
+            )
+
         funcao.delete()
         return htmx_funcoes_tabela(request)
+    except ProtectedError:
+        return HttpResponse(
+            f'<div class="alert alert-danger">'
+            f'<strong>Não é possível excluir!</strong><br>'
+            f'A função possui registros vinculados.</div>',
+            status=400
+        )
     except Exception as e:
-        return HttpResponse(f'<p class="text-danger">Erro ao excluir: {str(e)}</p>', status=400)
+        return HttpResponse(f'<div class="alert alert-danger">Erro ao excluir: {str(e)}</div>', status=400)
 
 
 @login_required
