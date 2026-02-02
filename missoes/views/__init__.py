@@ -41,6 +41,9 @@ from .funcoes import (
     htmx_funcao_dados, htmx_funcao_excluir, htmx_buscar_funcoes_por_missao
 )
 
+# Classificação de Funções
+from .classificacao import classificacao_funcoes
+
 # Unidades
 from .unidades import (
     htmx_unidades_lista, htmx_unidade_criar,
@@ -92,6 +95,8 @@ __all__ = [
     # Funções (6)
     'htmx_funcoes_tabela', 'htmx_funcao_criar', 'htmx_funcao_editar',
     'htmx_funcao_dados', 'htmx_funcao_excluir', 'htmx_buscar_funcoes_por_missao',
+    # Classificação de Funções (1)
+    'classificacao_funcoes',
     # Unidades (4)
     'htmx_unidades_lista', 'htmx_unidade_criar', 'htmx_unidade_editar',
     'htmx_unidade_excluir',

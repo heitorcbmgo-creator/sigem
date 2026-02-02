@@ -1546,3 +1546,125 @@ tr:hover td {
         width: 100%;
     }
 }
+
+/* ============================================================
+   ACCORDION - Classificacao de Funcoes
+   ============================================================ */
+.accordion-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: var(--sigem-gray-50);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-800);
+}
+
+.accordion-icon {
+    transition: transform 0.3s;
+}
+
+.accordion-content {
+    display: none;
+    padding: 1rem 1.5rem;
+}
+
+.accordion-content.open {
+    display: block;
+}
+
+.missao-card {
+    background: var(--sigem-gray-50);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.missao-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.missao-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.missao-icon {
+    margin-left: auto;
+    transition: transform 0.3s;
+}
+
+.missao-content {
+    padding: 1rem;
+    background: white;
+}
+
+.criterios-legenda {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.criterio-item {
+    padding: 0.5rem;
+    background: var(--sigem-gray-50);
+    border-radius: 4px;
+}
+
+.complexidade-legenda {
+    display: flex;
+    gap: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-500);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+/* KPI Mini Cards adjustments */
+.kpi-icon-red {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .criterios-legenda {
+        grid-template-columns: 1fr;
+    }
+
+    .complexidade-legenda {
+        flex-wrap: wrap;
+    }
+}

@@ -102,6 +102,7 @@ urlpatterns = [
     path('htmx/solicitacao/<int:pk>/recusar/', views.htmx_solicitacao_recusar, name='htmx_solicitacao_recusar'),
     path('htmx/missoes/disponiveis/', views.htmx_buscar_missoes_disponiveis, name='htmx_buscar_missoes_disponiveis'),
     path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
+    path('classificacao-funcoes/', views.classificacao_funcoes, name='classificacao_funcoes'),
 
     # Sistema Moderno de Validação
     path('htmx/solicitacoes/validacao/', views.htmx_solicitacoes_validacao, name='htmx_solicitacoes_validacao'),

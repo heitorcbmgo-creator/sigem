@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Classificacao de Funcoes - SIGEM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1 class="page-title">
+            <i data-lucide="list-tree"></i>
+            Classificacao de Funcoes
+        </h1>
+        <p class="page-subtitle">
+            Transparencia na avaliacao de complexidade das funcoes
+        </p>
+    </div>
+</div>
+
+<!-- FILTROS E ESTATISTICAS -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" style="display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+            <div class="form-group" style="margin-bottom: 0; min-width: 180px;">
+                <label class="form-label">Tipo de Missao</label>
+                <select name="tipo" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos os tipos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if filtros.tipo == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0; min-width: 140px;">
+                <label class="form-label">Complexidade</label>
+                <select name="complexidade" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todas</option>
+                    {% for value, label in complexidade_choices %}
+                    <option value="{{ value }}" {% if filtros.complexidade == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label class="form-label">Buscar</label>
+                <input type="text" name="busca" class="form-input"
+                       placeholder="Nome da funcao ou missao..."
+                       value="{{ filtros.busca }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="search"></i> Filtrar
+            </button>
+
+            {% if filtros.tipo or filtros.complexidade or filtros.busca %}
+            <a href="{% url 'classificacao_funcoes' %}" class="btn btn-secondary">
+                <i data-lucide="x"></i> Limpar
+            </a>
+            {% endif %}
+
+            <!-- ESTATISTICAS INLINE -->
+            <div style="display: flex; gap: 0.5rem; margin-left: auto; align-items: center;">
+                <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    Total: <strong>{{ stats.total }}</strong>
+                </span>
+                <span class="badge badge-success" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    Baixa: <strong>{{ stats.baixa }}</strong>
+                </span>
+                <span class="badge badge-warning" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    Media: <strong>{{ stats.media }}</strong>
+                </span>
+                <span class="badge badge-danger" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    Alta: <strong>{{ stats.alta }}</strong>
+                </span>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- LEGENDA DOS CRITERIOS -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i data-lucide="info"></i> Legenda dos Criterios de Avaliacao</h3>
+    </div>
+    <div class="card-body">
+        <div class="criterios-legenda">
+            <div class="criterio-item">
+                <strong>TDE</strong> - Tempo de Dedicacao Exigido
+                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+            </div>
+            <div class="criterio-item">
+                <strong>NQT</strong> - Nivel de Qualificacao Tecnica
+                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+            </div>
+            <div class="criterio-item">
+                <strong>GRS</strong> - Grau de Responsabilidade
+                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+            </div>
+            <div class="criterio-item">
+                <strong>DEC</strong> - Dimensao do Efetivo Comandado
+                <span class="text-muted">(1=Pequeno, 2=Medio, 3=Grande)</span>
+            </div>
+        </div>
+        <div class="complexidade-legenda mt-3">
+            <span class="badge badge-success">Baixa (4-6 pts)</span>
+            <span class="badge badge-warning">Media (7-9 pts)</span>
+            <span class="badge badge-danger">Alta (10-12 pts)</span>
+        </div>
+    </div>
+</div>
+
+<!-- LISTA AGRUPADA -->
+{% for tipo_data in dados_agrupados %}
+<div class="accordion-item mb-3">
+    <button class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title">
+            <i data-lucide="folder"></i>
+            <span>{{ tipo_data.tipo }}</span>
+            <span class="badge badge-secondary">
+                {{ tipo_data.missoes|length }} missoes
+            </span>
+        </div>
+        <i data-lucide="chevron-down" class="accordion-icon"></i>
+    </button>
+
+    <div class="accordion-content">
+        {% for missao_data in tipo_data.missoes %}
+        <div class="missao-card mb-2">
+            <div class="missao-header" onclick="toggleMissao(this)">
+                <i data-lucide="target"></i>
+                <strong>{{ missao_data.nome }}</strong>
+                <span class="badge badge-info">{{ missao_data.funcoes|length }} funcoes</span>
+                <i data-lucide="chevron-right" class="missao-icon"></i>
+            </div>
+
+            <div class="missao-content" style="display: none;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Funcao</th>
+                            <th class="text-center">TDE</th>
+                            <th class="text-center">NQT</th>
+                            <th class="text-center">GRS</th>
+                            <th class="text-center">DEC</th>
+                            <th class="text-center">Soma</th>
+                            <th class="text-center">Complexidade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for funcao in missao_data.funcoes %}
+                        <tr>
+                            <td>{{ funcao.funcao }}</td>
+                            <td class="text-center">{{ funcao.tde }}</td>
+                            <td class="text-center">{{ funcao.nqt }}</td>
+                            <td class="text-center">{{ funcao.grs }}</td>
+                            <td class="text-center">{{ funcao.dec }}</td>
+                            <td class="text-center"><strong>{{ funcao.soma_criterios }}</strong></td>
+                            <td class="text-center">
+                                <span class="badge badge-{% if funcao.complexidade == 'BAIXA' %}success{% elif funcao.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                                    {{ funcao.get_complexidade_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% empty %}
+<div class="empty-state">
+    <i data-lucide="search-x"></i>
+    <p>Nenhuma funcao encontrada com os filtros aplicados.</p>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAccordion(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.accordion-icon');
+
+    content.classList.toggle('open');
+    icon.style.transform = content.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+function toggleMissao(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.missao-icon');
+
+    const isOpen = content.style.display !== 'none';
+    content.style.display = isOpen ? 'none' : 'block';
+    icon.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+// Abrir primeiro accordion por padrao
+document.addEventListener('DOMContentLoaded', function() {
+    const firstAccordion = document.querySelector('.accordion-header');
+    if (firstAccordion) {
+        toggleAccordion(firstAccordion);
+    }
+
+    // Reinicializar icones Lucide
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+</script>
+{% endblock %}
