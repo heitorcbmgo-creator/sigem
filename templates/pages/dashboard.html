@@ -88,7 +88,7 @@
             <i data-lucide="info"></i>
         </button>
         <div class="kpi-tooltip">
-            <strong>Carga Média</strong><br>
+            <strong>Quantidade Média</strong><br>
             Média de missões por oficial (considerando apenas os que têm missão ativa).<br>
             <span style="font-family:monospace;font-size:0.75rem;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;">
                 Total designações ÷ Oficiais com missão
@@ -99,7 +99,7 @@
         </div>
         <div class="kpi-content">
             <span class="kpi-value">{{ carga_media }}</span>
-            <span class="kpi-label">Carga Média</span>
+            <span class="kpi-label">Quantidade Média</span>
         </div>
         <div class="kpi-meta">Missões/Oficial</div>
     </div>
@@ -109,21 +109,22 @@
             <i data-lucide="info"></i>
         </button>
         <div class="kpi-tooltip">
-            <strong>Alta Complexidade</strong><br>
-            Percentual de designações ativas classificadas como alta complexidade.<br>
+            <strong>Carga Média de Trabalho</strong><br>
+            Média da carga ponderada de trabalho de todos os oficiais.<br>
             <span style="font-family:monospace;font-size:0.75rem;background:rgba(255,255,255,0.1);padding:2px 4px;border-radius:3px;">
-                (Designações alta ÷ Total designações) × 100
+                Σ Carga dos oficiais ÷ Total de oficiais
             </span><br>
-            <span style="font-size:0.7rem;color:#9ca3af;">Meta: manter abaixo de 25%</span>
+            <span style="font-size:0.7rem;color:#9ca3af;">Carga = (Baixa×1) + (Média×2) + (Alta×3)</span><br>
+            <span style="font-size:0.7rem;color:#9ca3af;">Meta ideal: entre 3 e 6 pontos</span>
         </div>
-        <div class="kpi-icon {% if indice_alta <= 25 %}kpi-icon-green{% elif indice_alta <= 35 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
-            <i data-lucide="flame"></i>
+        <div class="kpi-icon {% if carga_media_global >= 3 and carga_media_global <= 6 %}kpi-icon-green{% elif carga_media_global < 3 or carga_media_global <= 8 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
+            <i data-lucide="scale"></i>
         </div>
         <div class="kpi-content">
-            <span class="kpi-value">{{ indice_alta }}%</span>
-            <span class="kpi-label">Alta Complexidade</span>
+            <span class="kpi-value">{{ carga_media_global }}</span>
+            <span class="kpi-label">Carga Média</span>
         </div>
-        <div class="kpi-meta">Meta: &lt;25%</div>
+        <div class="kpi-meta">Meta: 3-6 pts</div>
     </div>
     
     {% if not is_comandante %}
@@ -714,11 +715,11 @@
                     </div>
                     
                     <div class="indicador-item">
-                        <span class="indicador-label">Complexidade Alta</span>
+                        <span class="indicador-label">Carga Média</span>
                         <div class="indicador-bar-container">
-                            <div class="indicador-bar {% if indice_alta <= 25 %}indicador-ideal{% elif indice_alta <= 35 %}indicador-medio{% else %}indicador-alto{% endif %}" style="width: {{ indice_alta }}%;"></div>
+                            <div class="indicador-bar {% if carga_media_global >= 3 and carga_media_global <= 6 %}indicador-ideal{% elif carga_media_global < 3 or carga_media_global <= 8 %}indicador-medio{% else %}indicador-alto{% endif %}" style="width: {% widthratio carga_media_global 15 100 %}%;"></div>
                         </div>
-                        <span class="indicador-valor">{{ indice_alta }}%</span>
+                        <span class="indicador-valor">{{ carga_media_global }} pts</span>
                     </div>
                 </div>
             </div>

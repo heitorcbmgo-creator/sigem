@@ -92,8 +92,9 @@ def dashboard(request):
         designacoes_media = designacoes_ativas.filter(soma__gte=7, soma__lte=9).count() or 0
         designacoes_alta = designacoes_ativas.filter(soma__gte=10, soma__lte=12).count() or 0
 
-        # Índice de complexidade alta
-        indice_alta = round((designacoes_alta / total_designacoes_ativas * 100), 1) if total_designacoes_ativas > 0 else 0
+        # Carga média global de trabalho (soma da carga de todos os oficiais / total de oficiais)
+        soma_carga_total = sum(oficial.carga_total for oficial in oficiais_base)
+        carga_media_global = round(soma_carga_total / total_oficiais, 1) if total_oficiais > 0 else 0
 
         # Solicitações pendentes (apenas para não-comandantes)
         if not is_comandante:
@@ -436,7 +437,7 @@ def dashboard(request):
             'perc_baixa': perc_baixa,
             'perc_media': perc_media,
             'perc_alta': perc_alta,
-            'indice_alta': indice_alta,
+            'carga_media_global': carga_media_global,
             'solicitacoes_pendentes': solicitacoes_pendentes,
             'taxa_conclusao': taxa_conclusao,
             'missoes_concluidas': missoes_concluidas,
