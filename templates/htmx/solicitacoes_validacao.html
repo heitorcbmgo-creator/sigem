@@ -1,6 +1,12 @@
 {% load static %}
 
 <div id="validation-content">
+<!-- Toast de Sucesso -->
+<div id="toast-sucesso" class="toast-sucesso" style="display: none;">
+    <i data-lucide="check-circle"></i>
+    <span id="toast-mensagem">Ação realizada com sucesso!</span>
+</div>
+
 <!-- Barra de Filtros -->
 <div class="validation-filters">
     <div class="filters-row">
@@ -59,237 +65,383 @@
                    hx-trigger="keyup changed delay:300ms">
         </div>
     </div>
-
-    <!-- Barra de Ações em Lote -->
-    <div class="batch-actions" id="batch-actions" style="display: none;">
-        <div class="batch-info">
-            <span id="selected-count">0</span> selecionada(s)
-        </div>
-        <div class="batch-buttons">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="selectAll()">
-                <i data-lucide="check-square"></i> Selecionar Todas
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="deselectAll()">
-                <i data-lucide="square"></i> Desmarcar
-            </button>
-            <button type="button" class="btn btn-sm btn-success" onclick="openBatchApproveModal()">
-                <i data-lucide="check-circle"></i> Aprovar Selecionadas
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="openBatchRejectModal()">
-                <i data-lucide="x-circle"></i> Recusar Selecionadas
-            </button>
-        </div>
-    </div>
 </div>
 
-<!-- Tabela Compacta -->
-<div class="validation-table-container">
-    <table class="validation-table">
-        <thead>
-            <tr>
-                <th width="40"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
-                <th width="180">Tipo</th>
-                <th width="180">Solicitante</th>
-                <th>Missão/Função</th>
-                <th width="120">Criado em</th>
-                <th width="100">Status</th>
-                <th width="100">Complex.</th>
-                <th width="120">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for sol in solicitacoes %}
-            <tr class="clickable-row {% if sol.status == 'PENDENTE' %}row-pendente{% elif sol.status == 'APROVADA' %}row-aprovada{% else %}row-recusada{% endif %}"
-                onclick="openDetailModal({{ sol.id }})">
-                <td onclick="event.stopPropagation();">
-                    <input type="checkbox" class="row-checkbox" value="{{ sol.id }}"
-                           onclick="toggleRowSelection(this, {{ sol.id }})">
-                </td>
+<!-- Lista de Solicitações com Expansão Inline -->
+<div class="solicitacoes-lista">
+    {% for sol in solicitacoes %}
+    <div class="solicitacao-row {% if sol.status == 'PENDENTE' %}pendente{% elif sol.status == 'APROVADA' %}aprovada{% else %}recusada{% endif %}"
+         id="row-{{ sol.id }}">
+        <!-- Linha Principal (clicável para expandir) -->
+        <div class="solicitacao-linha-principal" onclick="toggleDetalhes({{ sol.id }})">
+            <div class="sol-col sol-col-tipo">
+                {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                <span class="badge-tipo-mini badge-missao">
+                    <i data-lucide="folder-plus"></i>
+                </span>
+                {% else %}
+                <span class="badge-tipo-mini badge-designacao">
+                    <i data-lucide="user-plus"></i>
+                </span>
+                {% endif %}
+            </div>
 
-                <td>
+            <div class="sol-col sol-col-solicitante">
+                <div class="sol-solicitante-info">
+                    <strong>{{ sol.solicitante.posto }} {{ sol.solicitante.nome_guerra|default:sol.solicitante.nome }}</strong>
+                    <span>{{ sol.solicitante.obm|default:"—" }}</span>
+                </div>
+            </div>
+
+            <div class="sol-col sol-col-missao">
+                {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                    <strong>{{ sol.nome_missao|truncatechars:35 }}</strong>
+                    <span>{{ sol.nome_funcao|truncatechars:25 }}</span>
+                {% else %}
+                    <strong>{{ sol.missao_existente.nome_completo|truncatechars:35 }}</strong>
+                    <span>{{ sol.funcao_existente.funcao|default:"—"|truncatechars:25 }}</span>
+                {% endif %}
+            </div>
+
+            <div class="sol-col sol-col-data">
+                {{ sol.criado_em|date:"d/m/Y H:i" }}
+            </div>
+
+            <div class="sol-col sol-col-status">
+                <span class="badge badge-{% if sol.status == 'PENDENTE' %}warning{% elif sol.status == 'APROVADA' %}success{% else %}danger{% endif %}">
+                    {{ sol.get_status_display }}
+                </span>
+            </div>
+
+            <div class="sol-col sol-col-expand">
+                <i data-lucide="chevron-down" class="expand-icon" id="icon-{{ sol.id }}"></i>
+            </div>
+        </div>
+
+        <!-- Área de Detalhes Expansível (inline) -->
+        <div class="solicitacao-detalhes-inline" id="detalhes-{{ sol.id }}" style="display: none;">
+            <div class="detalhes-container">
+                <!-- Coluna 1: Informações da Missão -->
+                <div class="detalhe-col">
+                    <h5>
+                        <i data-lucide="folder"></i>
+                        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}Missão a Criar{% else %}Missão{% endif %}
+                    </h5>
                     {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
-                    <span class="badge-tipo badge-tipo-missao">
-                        <i data-lucide="folder-plus"></i> Nova Missão
-                    </span>
+                    <div class="detalhe-item">
+                        <label>Nome:</label>
+                        <span>{{ sol.nome_missao }}{% if sol.ano_missao %} {{ sol.ano_missao }}{% endif %}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Tipo:</label>
+                        <span>{{ sol.get_tipo_missao_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Status:</label>
+                        <span>{{ sol.get_status_missao_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Local:</label>
+                        <span>{{ sol.get_local_missao_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Período:</label>
+                        <span>{{ sol.data_inicio|date:"d/m/Y" }}{% if sol.data_fim %} → {{ sol.data_fim|date:"d/m/Y" }}{% endif %}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>SEI Missão:</label>
+                        <span>{{ sol.documento_sei_missao }}</span>
+                    </div>
                     {% else %}
-                    <span class="badge-tipo badge-tipo-designacao">
-                        <i data-lucide="user-plus"></i> Designação
-                    </span>
+                    <div class="detalhe-item">
+                        <label>Missão:</label>
+                        <span>{{ sol.missao_existente.nome_completo }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Tipo:</label>
+                        <span>{{ sol.missao_existente.get_tipo_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Status:</label>
+                        <span>{{ sol.missao_existente.get_status_display }}</span>
+                    </div>
                     {% endif %}
-                </td>
+                </div>
 
-                <td>
-                    <div class="oficial-cell">
-                        <strong>{{ sol.solicitante.posto_abreviado }} {{ sol.solicitante.nome_guerra }}</strong>
-                    </div>
-                </td>
-
-                <td>
-                    <div class="missao-cell">
-                        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
-                            <strong>{{ sol.nome_missao }}{% if sol.ano_missao %} {{ sol.ano_missao }}{% endif %}</strong>
-                            <small>{{ sol.funcao_na_missao }}</small>
-                        {% else %}
-                            <strong>{{ sol.missao_existente.nome_completo }}</strong>
-                            <small>{{ sol.funcao_na_missao }}</small>
-                        {% endif %}
-                    </div>
-                </td>
-
-                <td>{{ sol.criado_em|date:"d/m H:i" }}</td>
-
-                <td>
-                    <span class="badge badge-{% if sol.status == 'PENDENTE' %}warning{% elif sol.status == 'APROVADA' %}success{% else %}danger{% endif %}">
-                        {{ sol.get_status_display }}
-                    </span>
-                </td>
-
-                <td>
-                    {% if sol.complexidade %}
-                        <span class="badge-complexidade badge-complexidade-{{ sol.complexidade|lower }}">
-                            {{ sol.get_complexidade_display }}
+                <!-- Coluna 2: Informações da Designação -->
+                <div class="detalhe-col">
+                    <h5>
+                        <i data-lucide="user"></i>
+                        Designação
+                    </h5>
+                    <div class="detalhe-item">
+                        <label>Função:</label>
+                        <span>
+                            {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                                {{ sol.nome_funcao }}
+                            {% else %}
+                                {{ sol.funcao_existente.funcao|default:"—" }}
+                            {% endif %}
                         </span>
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </td>
-
-                <td onclick="event.stopPropagation();">
-                    {% if sol.status == 'PENDENTE' %}
-                    <button class="btn-quick-approve" onclick="openQuickApproveModal({{ sol.id }})" title="Aprovação rápida">
-                        <i data-lucide="zap"></i>
-                    </button>
-                    {% endif %}
-                    <button class="btn-view" onclick="openDetailModal({{ sol.id }})" title="Ver detalhes">
-                        <i data-lucide="eye"></i>
-                    </button>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" class="empty-state">
-                    <i data-lucide="inbox"></i>
-                    <p>Nenhuma solicitação encontrada.</p>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<!-- Modal: Quick Approve -->
-<div id="modal-quick-approve" class="modal" style="display: none;">
-    <div class="modal-content modal-sm">
-        <div class="modal-header">
-            <h3>Aprovação Rápida</h3>
-            <button class="modal-close" onclick="closeModal('modal-quick-approve')">&times;</button>
-        </div>
-        <div class="modal-body" id="modal-quick-approve-body">
-            <!-- Carregado via JavaScript -->
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Batch Approve -->
-<div id="modal-batch-approve" class="modal" style="display: none;">
-    <div class="modal-content modal-md">
-        <div class="modal-header">
-            <h3>Aprovar em Lote</h3>
-            <button class="modal-close" onclick="closeModal('modal-batch-approve')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p>Aprovar <strong id="batch-approve-count">0</strong> solicitação(ões) selecionada(s).</p>
-
-            <form id="form-batch-approve" onsubmit="event.preventDefault(); submitBatchApprove();">
-                <div class="form-group">
-                    <label class="form-label">Complexidade (aplicada a todas) *</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="complexidade" value="BAIXA"> Baixa
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="complexidade" value="MEDIA" checked> Média
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="complexidade" value="ALTA"> Alta
-                        </label>
                     </div>
+                    <div class="detalhe-item">
+                        <label>SEI/BG:</label>
+                        <span>{{ sol.documento_sei_designacao }}</span>
+                    </div>
+
+                    {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                        {% if sol.tde and sol.nqt and sol.grs and sol.dec %}
+                        <div class="detalhe-item">
+                            <label>Critérios:</label>
+                            <span class="criterios-mini">
+                                TDE:{{ sol.tde }} NQT:{{ sol.nqt }} GRS:{{ sol.grs }} DEC:{{ sol.dec }}
+                            </span>
+                        </div>
+                        <div class="detalhe-item">
+                            <label>Complexidade:</label>
+                            {% with soma=sol.tde|add:sol.nqt|add:sol.grs|add:sol.dec %}
+                            <span class="badge badge-{% if soma <= 6 %}success{% elif soma <= 9 %}warning{% else %}danger{% endif %}">
+                                {% if soma <= 6 %}Baixa{% elif soma <= 9 %}Média{% else %}Alta{% endif %} ({{ soma }}pts)
+                            </span>
+                            {% endwith %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        {% if sol.funcao_existente %}
+                        <div class="detalhe-item">
+                            <label>Complexidade:</label>
+                            <span class="badge badge-{% if sol.funcao_existente.complexidade == 'BAIXA' %}success{% elif sol.funcao_existente.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                                {{ sol.funcao_existente.get_complexidade_display }} ({{ sol.funcao_existente.soma_criterios }}pts)
+                            </span>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if sol.observacao_avaliador %}
+                    <div class="detalhe-item detalhe-observacao">
+                        <label>Observação:</label>
+                        <span>{{ sol.observacao_avaliador }}</span>
+                    </div>
+                    {% endif %}
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Observação (opcional)</label>
-                    <textarea class="form-input" name="observacao" rows="3"
-                              placeholder="Observações sobre a aprovação..."></textarea>
+                <!-- Coluna 3: Ações (se pendente) -->
+                {% if sol.status == 'PENDENTE' %}
+                <div class="detalhe-col detalhe-col-acoes" id="acoes-{{ sol.id }}">
+                    <h5>
+                        <i data-lucide="settings"></i>
+                        Ações
+                    </h5>
+
+                    <!-- Área de formulário de aprovação (para NOVA_MISSAO) -->
+                    {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
+                    <form id="form-aprovar-{{ sol.id }}"
+                          hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
+                          hx-target="#feedback-{{ sol.id }}"
+                          hx-on::after-request="handleAprovarResponse(event, {{ sol.id }})">
+                        {% csrf_token %}
+
+                        <div class="criterios-form-inline">
+                            <div class="criterio-input">
+                                <label>TDE</label>
+                                <select name="tde" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.tde == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.tde == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.tde == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>NQT</label>
+                                <select name="nqt" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.nqt == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.nqt == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.nqt == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>GRS</label>
+                                <select name="grs" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.grs == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.grs == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.grs == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>DEC</label>
+                                <select name="dec" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.dec == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.dec == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.dec == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="complexidade-inline-preview" id="complexidade-{{ sol.id }}">
+                                —
+                            </div>
+                        </div>
+
+                        <div class="observacao-inline">
+                            <input type="text" name="observacao" placeholder="Observação (opcional)" class="form-input-mini">
+                        </div>
+
+                        <div id="feedback-{{ sol.id }}" class="feedback-inline"></div>
+
+                        <div class="acoes-btns">
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i data-lucide="check"></i> Aprovar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="recusarSolicitacao({{ sol.id }})">
+                                <i data-lucide="x"></i> Recusar
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <!-- Para DESIGNACAO: não precisa preencher critérios -->
+                    <form id="form-aprovar-{{ sol.id }}"
+                          hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
+                          hx-target="#feedback-{{ sol.id }}"
+                          hx-on::after-request="handleAprovarResponse(event, {{ sol.id }})">
+                        {% csrf_token %}
+
+                        <div class="info-designacao">
+                            {% if sol.funcao_existente %}
+                            <span class="badge badge-{% if sol.funcao_existente.complexidade == 'BAIXA' %}success{% elif sol.funcao_existente.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                                {{ sol.funcao_existente.get_complexidade_display }}
+                            </span>
+                            <span class="text-muted">{{ sol.funcao_existente.funcao }}</span>
+                            {% else %}
+                            <span class="text-danger">Função não selecionada!</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="observacao-inline">
+                            <input type="text" name="observacao" placeholder="Observação (opcional)" class="form-input-mini">
+                        </div>
+
+                        <div id="feedback-{{ sol.id }}" class="feedback-inline"></div>
+
+                        <div class="acoes-btns">
+                            <button type="submit" class="btn btn-sm btn-success" {% if not sol.funcao_existente %}disabled{% endif %}>
+                                <i data-lucide="check"></i> Aprovar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="recusarSolicitacao({{ sol.id }})">
+                                <i data-lucide="x"></i> Recusar
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
                 </div>
 
-                <div class="alert alert-warning">
-                    <i data-lucide="alert-triangle"></i>
-                    Esta ação criará missões e/ou designações automaticamente
+                <!-- Formulário de Recusa (oculto por padrão) -->
+                <div class="detalhe-col detalhe-col-recusa" id="recusa-{{ sol.id }}" style="display: none;">
+                    <h5>
+                        <i data-lucide="x-circle"></i>
+                        Recusar Solicitação
+                    </h5>
+                    <form hx-post="{% url 'htmx_solicitacao_recusar' sol.id %}"
+                          hx-target="#feedback-recusa-{{ sol.id }}"
+                          hx-on::after-request="handleRecusarResponse(event, {{ sol.id }})">
+                        {% csrf_token %}
+                        <div class="observacao-inline">
+                            <textarea name="observacao" placeholder="Motivo da recusa (opcional)" class="form-input-mini" rows="2"></textarea>
+                        </div>
+                        <div id="feedback-recusa-{{ sol.id }}" class="feedback-inline"></div>
+                        <div class="acoes-btns">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="cancelarRecusa({{ sol.id }})">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i data-lucide="x"></i> Confirmar
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-batch-approve')">Cancelar</button>
-                    <button type="submit" class="btn btn-success">
-                        <i data-lucide="check-circle"></i> Confirmar Aprovação
-                    </button>
+                {% else %}
+                <!-- Coluna 3: Info de avaliação (se já avaliada) -->
+                <div class="detalhe-col">
+                    <h5>
+                        <i data-lucide="check-circle"></i>
+                        Avaliação
+                    </h5>
+                    {% if sol.avaliado_por %}
+                    <div class="detalhe-item">
+                        <label>Avaliado por:</label>
+                        <span>{{ sol.avaliado_por.oficial|default:sol.avaliado_por.cpf }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Data:</label>
+                        <span>{{ sol.data_avaliacao|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if sol.observacao_avaliador %}
+                    <div class="detalhe-item">
+                        <label>Observação:</label>
+                        <span>{{ sol.observacao_avaliador }}</span>
+                    </div>
+                    {% endif %}
                 </div>
-            </form>
+                {% endif %}
+            </div>
         </div>
     </div>
-</div>
-
-<!-- Modal: Batch Reject -->
-<div id="modal-batch-reject" class="modal" style="display: none;">
-    <div class="modal-content modal-md">
-        <div class="modal-header">
-            <h3>Recusar em Lote</h3>
-            <button class="modal-close" onclick="closeModal('modal-batch-reject')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p>Recusar <strong id="batch-reject-count">0</strong> solicitação(ões) selecionada(s).</p>
-
-            <form id="form-batch-reject" onsubmit="event.preventDefault(); submitBatchReject();">
-                <div class="form-group">
-                    <label class="form-label">Justificativa *</label>
-                    <textarea class="form-input" name="observacao" rows="4" required
-                              placeholder="Informe o motivo da recusa..."></textarea>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-batch-reject')">Cancelar</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i data-lucide="x-circle"></i> Confirmar Recusa
-                    </button>
-                </div>
-            </form>
-        </div>
+    {% empty %}
+    <div class="empty-state">
+        <i data-lucide="inbox"></i>
+        <p>Nenhuma solicitação encontrada.</p>
     </div>
-</div>
-
-<!-- Modal: Detalhes (será carregado do próximo template) -->
-<div id="modal-detalhes" class="modal" style="display: none;">
-    <div class="modal-content modal-lg">
-        <div class="modal-body" id="modal-detalhes-body">
-            <!-- Carregado via HTMX -->
-        </div>
-    </div>
+    {% endfor %}
 </div>
 </div> <!-- End validation-content -->
 
 <style>
+/* Toast de Sucesso */
+.toast-sucesso {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #059669;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 9999;
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast-sucesso i {
+    width: 20px;
+    height: 20px;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
 /* Validation Filters */
 .validation-filters {
     background: white;
-    padding: 1.5rem;
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .filters-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
 }
 
 .filter-group-search {
@@ -298,205 +450,360 @@
 
 .filter-group label {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--sigem-gray-600);
     margin-bottom: 0.25rem;
     text-transform: uppercase;
 }
 
-/* Batch Actions */
-.batch-actions {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 2px solid #e5e7eb;
+/* Lista de Solicitações */
+.solicitacoes-lista {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.solicitacao-row {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--sigem-gray-200);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.solicitacao-row:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.solicitacao-row.pendente {
+    border-left: 4px solid #f59e0b;
+}
+
+.solicitacao-row.aprovada {
+    border-left: 4px solid #22c55e;
+}
+
+.solicitacao-row.recusada {
+    border-left: 4px solid #ef4444;
+}
+
+/* Linha Principal */
+.solicitacao-linha-principal {
+    display: grid;
+    grid-template-columns: 40px 180px 1fr 130px 90px 40px;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.solicitacao-linha-principal:hover {
+    background: var(--sigem-gray-50);
+}
+
+.sol-col {
+    display: flex;
     align-items: center;
 }
 
-.batch-info {
-    font-weight: 600;
-    color: var(--sigem-primary);
+.sol-col-tipo {
+    justify-content: center;
 }
 
-.batch-buttons {
+.badge-tipo-mini {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge-tipo-mini i {
+    width: 13px;
+    height: 13px;
+}
+
+.badge-missao {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge-designacao {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.sol-col-solicitante {
     display: flex;
     gap: 0.5rem;
 }
 
-/* Validation Table */
-.validation-table-container {
+.sol-solicitante-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.sol-solicitante-info strong {
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.sol-solicitante-info span {
+    font-size: 0.65rem;
+    color: var(--sigem-gray-500);
+}
+
+.sol-col-missao {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.sol-col-missao strong {
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.sol-col-missao span {
+    font-size: 0.65rem;
+    color: var(--sigem-gray-500);
+}
+
+.sol-col-data {
+    font-size: 0.7rem;
+    color: var(--sigem-gray-500);
+}
+
+.sol-col-expand {
+    justify-content: center;
+}
+
+.expand-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--sigem-gray-400);
+    transition: transform 0.2s;
+}
+
+.expand-icon.rotated {
+    transform: rotate(180deg);
+}
+
+/* Detalhes Inline (Expandido) */
+.solicitacao-detalhes-inline {
+    border-top: 1px solid var(--sigem-gray-100);
+    background: var(--sigem-gray-50);
+    animation: expandDown 0.2s ease-out;
+}
+
+@keyframes expandDown {
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 500px; }
+}
+
+.detalhes-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.detalhe-col {
+    padding: 0.6rem;
     background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 6px;
+    border: 1px solid var(--sigem-gray-200);
 }
 
-.validation-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.validation-table thead {
-    background: #f9fafb;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.validation-table thead th {
-    padding: 0.75rem;
-    text-align: left;
-    font-size: 0.75rem;
+.detalhe-col h5 {
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--sigem-gray-600);
     text-transform: uppercase;
-}
-
-.validation-table tbody td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #f3f4f6;
-    font-size: 0.85rem;
-}
-
-.validation-table tbody tr.clickable-row {
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.validation-table tbody tr.clickable-row:hover {
-    background: #fef2f2;
-}
-
-.validation-table tbody tr.selected {
-    background: #dbeafe !important;
-}
-
-.validation-table tbody tr.row-pendente {
-    border-left: 3px solid #f59e0b;
-}
-
-.validation-table tbody tr.row-aprovada {
-    border-left: 3px solid #22c55e;
-}
-
-.validation-table tbody tr.row-recusada {
-    border-left: 3px solid #ef4444;
-}
-
-/* Badges */
-.badge-tipo {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--sigem-gray-100);
 }
 
-.badge-tipo i {
+.detalhe-col h5 i {
     width: 12px;
     height: 12px;
 }
 
-.badge-tipo-missao {
-    background: #dbeafe;
-    color: #1e40af;
+.detalhe-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.25rem 0;
+    font-size: 0.75rem;
 }
 
-.badge-tipo-designacao {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.badge-complexidade {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.7rem;
+.detalhe-item label {
+    color: var(--sigem-gray-500);
     font-weight: 500;
+    min-width: 70px;
 }
 
-.badge-complexidade-baixa {
-    background: #d1fae5;
-    color: #065f46;
+.detalhe-item span {
+    color: var(--sigem-gray-800);
+    text-align: right;
 }
 
-.badge-complexidade-media {
-    background: #fef3c7;
-    color: #92400e;
+.detalhe-observacao span {
+    background: #fffbeb;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
 }
 
-.badge-complexidade-alta {
+.criterios-mini {
+    font-family: monospace;
+    font-size: 0.65rem;
+    background: #e5e7eb;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+}
+
+/* Ações Inline */
+.detalhe-col-acoes {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.detalhe-col-recusa {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.criterios-form-inline {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.criterio-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.criterio-input label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--sigem-gray-600);
+}
+
+.criterio-input select {
+    width: 48px;
+    padding: 0.3rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--sigem-gray-300);
+    border-radius: 4px;
+}
+
+.complexidade-inline-preview {
+    padding: 0.3rem 0.6rem;
+    background: white;
+    border: 1px solid var(--sigem-gray-300);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 55px;
+    text-align: center;
+    align-self: flex-end;
+}
+
+.complexidade-inline-preview.baixa {
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.complexidade-inline-preview.media {
+    background: #fef9c3;
+    border-color: #eab308;
+    color: #854d0e;
+}
+
+.complexidade-inline-preview.alta {
     background: #fee2e2;
+    border-color: #ef4444;
     color: #991b1b;
 }
 
-/* Cells */
-.oficial-cell strong {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--sigem-gray-800);
+.observacao-inline {
+    margin-bottom: 0.5rem;
 }
 
-.missao-cell strong {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--sigem-gray-800);
-}
-
-.missao-cell small {
-    display: block;
+.form-input-mini {
+    width: 100%;
+    padding: 0.4rem;
     font-size: 0.75rem;
-    color: var(--sigem-gray-500);
-    margin-top: 0.15rem;
+    border: 1px solid var(--sigem-gray-300);
+    border-radius: 4px;
+    resize: none;
 }
 
-/* Action Buttons */
-.btn-quick-approve {
-    background: #16a34a;
-    color: white;
-    border: none;
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s;
+.form-input-mini:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
-.btn-quick-approve:hover {
-    background: #15803d;
+.info-designacao {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    padding: 0.4rem;
+    background: white;
+    border-radius: 4px;
+    font-size: 0.75rem;
 }
 
-.btn-quick-approve i {
-    width: 14px;
-    height: 14px;
+.acoes-btns {
+    display: flex;
+    gap: 0.4rem;
 }
 
-.btn-view {
-    background: #6b7280;
-    color: white;
-    border: none;
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.15s;
-    margin-left: 0.25rem;
+.acoes-btns .btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    padding: 0.4rem;
 }
 
-.btn-view:hover {
-    background: #4b5563;
+.acoes-btns .btn i {
+    width: 12px;
+    height: 12px;
 }
 
-.btn-view i {
-    width: 14px;
-    height: 14px;
+.feedback-inline {
+    margin-bottom: 0.4rem;
+}
+
+.feedback-inline .alert {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
 }
 
 /* Empty State */
 .empty-state {
     text-align: center;
-    padding: 3rem !important;
+    padding: 3rem;
     color: var(--sigem-gray-400);
+    background: white;
+    border-radius: 8px;
 }
 
 .empty-state i {
@@ -505,43 +812,146 @@
     margin-bottom: 1rem;
 }
 
-/* Modal Sizes */
-.modal-sm .modal-content {
-    max-width: 400px;
+/* Responsividade */
+@media (max-width: 1200px) {
+    .solicitacao-linha-principal {
+        grid-template-columns: 40px 150px 1fr 100px 80px 30px;
+    }
 }
 
-.modal-md .modal-content {
-    max-width: 600px;
-}
+@media (max-width: 900px) {
+    .solicitacao-linha-principal {
+        grid-template-columns: 40px 1fr 80px 30px;
+    }
 
-/* Radio Group */
-.radio-group {
-    display: flex;
-    gap: 1rem;
-}
+    .sol-col-missao {
+        display: none;
+    }
 
-.radio-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
+    .detalhes-container {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 
-<script src="{% static 'js/validation.js' %}"></script>
-
 <script>
-// Inicializar ícones após carregar
-document.addEventListener('DOMContentLoaded', function() {
+function toggleDetalhes(id) {
+    const detalhes = document.getElementById(`detalhes-${id}`);
+    const icon = document.getElementById(`icon-${id}`);
+
+    // Fechar outros abertos
+    document.querySelectorAll('.solicitacao-detalhes-inline').forEach(el => {
+        if (el.id !== `detalhes-${id}`) {
+            el.style.display = 'none';
+        }
+    });
+    document.querySelectorAll('.expand-icon').forEach(el => {
+        if (el.id !== `icon-${id}`) {
+            el.classList.remove('rotated');
+        }
+    });
+
+    // Toggle o atual
+    if (detalhes.style.display === 'none') {
+        detalhes.style.display = 'block';
+        icon.classList.add('rotated');
+        lucide.createIcons();
+        calcularComplexidadeInline(id);
+    } else {
+        detalhes.style.display = 'none';
+        icon.classList.remove('rotated');
+    }
+}
+
+function calcularComplexidadeInline(id) {
+    const form = document.getElementById(`form-aprovar-${id}`);
+    if (!form) return;
+
+    const tde = parseInt(form.querySelector('[name="tde"]')?.value) || 0;
+    const nqt = parseInt(form.querySelector('[name="nqt"]')?.value) || 0;
+    const grs = parseInt(form.querySelector('[name="grs"]')?.value) || 0;
+    const dec = parseInt(form.querySelector('[name="dec"]')?.value) || 0;
+
+    const preview = document.getElementById(`complexidade-${id}`);
+    if (!preview) return;
+
+    if (tde && nqt && grs && dec) {
+        const soma = tde + nqt + grs + dec;
+        let texto, classe;
+
+        if (soma <= 6) {
+            texto = 'Baixa';
+            classe = 'baixa';
+        } else if (soma <= 9) {
+            texto = 'Média';
+            classe = 'media';
+        } else {
+            texto = 'Alta';
+            classe = 'alta';
+        }
+
+        preview.textContent = `${texto} (${soma})`;
+        preview.className = `complexidade-inline-preview ${classe}`;
+    } else {
+        preview.textContent = '—';
+        preview.className = 'complexidade-inline-preview';
+    }
+}
+
+function recusarSolicitacao(id) {
+    document.getElementById(`acoes-${id}`).style.display = 'none';
+    document.getElementById(`recusa-${id}`).style.display = 'block';
     lucide.createIcons();
-});
+}
+
+function cancelarRecusa(id) {
+    document.getElementById(`recusa-${id}`).style.display = 'none';
+    document.getElementById(`acoes-${id}`).style.display = 'block';
+}
+
+function mostrarToast(mensagem, tipo = 'sucesso') {
+    const toast = document.getElementById('toast-sucesso');
+    const msgEl = document.getElementById('toast-mensagem');
+
+    msgEl.textContent = mensagem;
+    toast.style.display = 'flex';
+    toast.style.background = tipo === 'sucesso' ? '#059669' : '#dc2626';
+
+    lucide.createIcons();
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => {
+            toast.style.display = 'none';
+            toast.style.animation = 'slideIn 0.3s ease-out';
+        }, 300);
+    }, 3000);
+}
+
+function handleAprovarResponse(event, id) {
+    if (event.detail.successful) {
+        document.getElementById(`detalhes-${id}`).style.display = 'none';
+        document.getElementById(`icon-${id}`).classList.remove('rotated');
+        mostrarToast('Solicitação aprovada com sucesso!');
+        setTimeout(() => {
+            htmx.trigger('#validation-content', 'refresh');
+        }, 500);
+    }
+}
+
+function handleRecusarResponse(event, id) {
+    if (event.detail.successful) {
+        document.getElementById(`detalhes-${id}`).style.display = 'none';
+        document.getElementById(`icon-${id}`).classList.remove('rotated');
+        mostrarToast('Solicitação recusada.', 'erro');
+        setTimeout(() => {
+            htmx.trigger('#validation-content', 'refresh');
+        }, 500);
+    }
+}
+
+// Inicializar ícones
+lucide.createIcons();
 
 // Atualizar ícones após HTMX
 document.body.addEventListener('htmx:afterSwap', function() {

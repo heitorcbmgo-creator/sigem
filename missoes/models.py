@@ -179,12 +179,28 @@ class Missao(models.Model):
         ('CONCLUIDA', 'Concluída'),
         ('CANCELADA', 'Cancelada'),
     ]
-    
+
+    LOCAL_CHOICES = [
+        ('INTERNACIONAL', 'Internacional'),
+        ('NACIONAL', 'Nacional'),
+        ('ESTADUAL', 'Estadual'),
+        ('CAPITAL', 'Capital'),
+        ('1_CRBM', '1º CRBM'),
+        ('2_CRBM', '2º CRBM'),
+        ('3_CRBM', '3º CRBM'),
+        ('4_CRBM', '4º CRBM'),
+        ('5_CRBM', '5º CRBM'),
+        ('6_CRBM', '6º CRBM'),
+        ('7_CRBM', '7º CRBM'),
+        ('8_CRBM', '8º CRBM'),
+        ('9_CRBM', '9º CRBM'),
+    ]
+
     tipo = models.CharField('Tipo', max_length=20, choices=TIPO_CHOICES)
     nome = models.CharField('Nome da Missão', max_length=200)
     ano = models.IntegerField('Ano', null=True, blank=True, default=2026)
     descricao = models.TextField('Descrição', blank=True)
-    local = models.CharField('Local', max_length=200, blank=True)
+    local = models.CharField('Local', max_length=20, choices=LOCAL_CHOICES, blank=True)
     data_inicio = models.DateField('Data de Início', null=True, blank=True)
     data_fim = models.DateField('Data de Término', null=True, blank=True)
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PLANEJADA')

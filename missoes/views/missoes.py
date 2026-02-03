@@ -117,6 +117,7 @@ def htmx_missoes_tabela(request):
         'query_string': query_string,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
+        'local_choices': Missao.LOCAL_CHOICES,
         'user': request.user,
     }
 

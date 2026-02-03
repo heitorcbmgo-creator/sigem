@@ -9,7 +9,7 @@
             {{ missao.get_status_display }}
         </span>
         <span style="color: #6b7280; font-size: 0.85rem; margin-left: 0.5rem;">
-            {{ missao.get_tipo_display }} | {{ missao.local|default:"Local não informado" }}
+            {{ missao.get_tipo_display }} | {{ missao.get_local_display|default:"Local não informado" }}
         </span>
     </div>
     

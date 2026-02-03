@@ -213,7 +213,7 @@ def htmx_solicitacoes_unificadas_lista(request):
 
     # Base query
     solicitacoes = Solicitacao.objects.select_related(
-        'solicitante', 'missao_existente', 'avaliado_por', 'missao_criada', 'designacao_criada'
+        'solicitante', 'missao_existente', 'funcao_existente', 'avaliado_por', 'missao_criada', 'designacao_criada'
     )
 
     if tipo_solicitacao == 'missao':
@@ -417,7 +417,10 @@ def htmx_solicitacao_aprovar(request, pk):
             observacao=observacao
         )
 
-        return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação aprovada com sucesso! Registros criados.</div><script>lucide.createIcons(); setTimeout(() => { document.getElementById("modal-avaliar").style.display="none"; htmx.trigger("#tab-content", "refresh"); }, 1500);</script>')
+        return HttpResponse(
+            '<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação aprovada com sucesso!</div>'
+            '<script>lucide.createIcons();</script>'
+        )
 
     except Exception as e:
         return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao aprovar: {str(e)}</div>')
@@ -444,7 +447,10 @@ def htmx_solicitacao_recusar(request, pk):
             observacao=observacao
         )
 
-        return HttpResponse('<div class="alert alert-info"><i data-lucide="x-circle"></i> Solicitação recusada.</div><script>lucide.createIcons(); setTimeout(() => { document.getElementById("modal-avaliar").style.display="none"; htmx.trigger("#tab-content", "refresh"); }, 1500);</script>')
+        return HttpResponse(
+            '<div class="alert alert-info"><i data-lucide="x-circle"></i> Solicitação recusada.</div>'
+            '<script>lucide.createIcons();</script>'
+        )
 
     except Exception as e:
         return HttpResponse(f'<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Erro ao recusar: {str(e)}</div>')
@@ -474,12 +480,8 @@ def htmx_solicitacoes_validacao(request):
     solicitacoes = Solicitacao.objects.select_related(
         'solicitante',
         'missao_existente',
-        'funcao_existente'
-    ).only(
-        'id', 'tipo_solicitacao', 'status', 'criado_em', 'nome_funcao',
-        'nome_missao', 'tde', 'nqt', 'grs', 'dec',
-        'solicitante__nome', 'solicitante__nome_guerra', 'solicitante__posto',
-        'missao_existente__nome', 'funcao_existente__funcao'
+        'funcao_existente',
+        'avaliado_por'
     )
 
     # Aplicar filtros
@@ -666,7 +668,10 @@ def htmx_solicitacao_detalhes_modal(request, pk):
         return HttpResponse('Sem permissão', status=403)
 
     solicitacao = get_object_or_404(
-        Solicitacao.objects.select_related('solicitante', 'missao_existente', 'avaliado_por', 'missao_criada', 'designacao_criada'),
+        Solicitacao.objects.select_related(
+            'solicitante', 'missao_existente', 'avaliado_por',
+            'missao_criada', 'designacao_criada', 'funcao_existente', 'funcao_criada'
+        ),
         pk=pk
     )
 

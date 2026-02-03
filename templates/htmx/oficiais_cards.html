@@ -310,27 +310,33 @@ function removerCard(oficialId) {
     atualizarCards();
 }
 
-// Calcular alturas proporcionais do gráfico de colunas
+// Calcular alturas proporcionais do gráfico de colunas (harmonizado entre todos os cards)
 function calcularAlturasColunas() {
     const graficos = document.querySelectorAll('.oficial-card-grafico');
     const alturaMaxima = 40; // pixels
 
+    // PASSO 1: Encontrar o valor máximo GLOBAL entre todos os oficiais
+    let maxGlobal = 1; // mínimo 1 para evitar divisão por zero
+    graficos.forEach(grafico => {
+        const baixa = parseInt(grafico.dataset.baixa) || 0;
+        const media = parseInt(grafico.dataset.media) || 0;
+        const alta = parseInt(grafico.dataset.alta) || 0;
+        maxGlobal = Math.max(maxGlobal, baixa, media, alta);
+    });
+
+    // PASSO 2: Aplicar alturas proporcionais usando o máximo global
     graficos.forEach(grafico => {
         const baixa = parseInt(grafico.dataset.baixa) || 0;
         const media = parseInt(grafico.dataset.media) || 0;
         const alta = parseInt(grafico.dataset.alta) || 0;
 
-        // Encontrar o máximo valor para este card
-        const maxValor = Math.max(baixa, media, alta, 1); // mínimo 1 para evitar divisão por zero
-
-        // Aplicar alturas proporcionais
         const colunas = grafico.querySelectorAll('.grafico-coluna-fill');
         const valores = [baixa, media, alta];
 
         colunas.forEach((coluna, index) => {
             const valor = valores[index];
-            // Altura mínima de 4px quando tem valor 0, proporcional quando > 0
-            const altura = valor === 0 ? 4 : Math.max(8, (valor / maxValor) * alturaMaxima);
+            // Altura mínima de 4px quando tem valor 0, proporcional ao máximo global quando > 0
+            const altura = valor === 0 ? 4 : Math.max(8, (valor / maxGlobal) * alturaMaxima);
             coluna.style.height = altura + 'px';
         });
     });

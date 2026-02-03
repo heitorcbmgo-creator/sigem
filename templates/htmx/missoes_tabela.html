@@ -106,7 +106,7 @@ Tabela de missões com paginação e filtros para Admin
                     <br><small class="text-muted">{{ m.documento_referencia }}</small>
                     {% endif %}
                     {% if m.local %}
-                    <br><small class="text-muted"><i data-lucide="map-pin" style="width:12px;height:12px;"></i> {{ m.local|truncatechars:30 }}</small>
+                    <br><small class="text-muted"><i data-lucide="map-pin" style="width:12px;height:12px;"></i> {{ m.get_local_display }}</small>
                     {% endif %}
                 </td>
                 <td>
@@ -254,7 +254,12 @@ Tabela de missões com paginação e filtros para Admin
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Local</label>
-                        <input type="text" name="local" class="form-control">
+                        <select name="local" class="form-control">
+                            <option value="">Selecione...</option>
+                            {% for value, label in local_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-group col-md-3">
                         <label>Data Início</label>

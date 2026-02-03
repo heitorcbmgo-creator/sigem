@@ -87,7 +87,7 @@
                                 {{ d.get_complexidade_display }}
                             </span>
                         </td>
-                        <td>{{ d.missao.local|default:"—" }}</td>
+                        <td>{{ d.missao.get_local_display|default:"—" }}</td>
                         <td>
                             {% if d.missao.data_inicio %}
                                 {{ d.missao.data_inicio|date:"d/m/Y" }}
@@ -367,7 +367,6 @@
                                    style="background: #f3f4f6; color: #6b7280;" placeholder="-">
                             <small class="form-text text-muted">TDE+NQT+GRS+DEC</small>
                         </div>
-                    </div>
                     </div>
                 </div>
                 

@@ -116,6 +116,8 @@
 <style>
 .resultado-busca-container {
     border-top: 1px solid var(--sigem-gray-200);
+
+    
     background: var(--sigem-gray-50);
     min-height: 120px;
 }
@@ -301,7 +303,7 @@ function limparBusca() {
                                 {{ d.get_complexidade_display }}
                             </span>
                         </td>
-                        <td>{{ d.missao.local|default:"—" }}</td>
+                        <td>{{ d.missao.get_local_display|default:"—" }}</td>
                         <td>
                             {% if d.missao.data_inicio %}
                                 {{ d.missao.data_inicio|date:"d/m/Y" }}

@@ -9,7 +9,7 @@
         <h4 style="font-size: 1rem; color: #8b0000; margin-bottom: 0.25rem;">{{ missao.nome_completo }}</h4>
         <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">
             <strong>Tipo:</strong> {{ missao.get_tipo_display }} | 
-            <strong>Local:</strong> {{ missao.local|default:"—" }}
+            <strong>Local:</strong> {{ missao.get_local_display|default:"—" }}
         </p>
         <div class="flex justify-between items-center">
             <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
