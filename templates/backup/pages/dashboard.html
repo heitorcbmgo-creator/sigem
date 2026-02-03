@@ -117,7 +117,7 @@
                     <tbody>
                         {% for missao in missoes_recentes %}
                         <tr>
-                            <td><strong>{{ missao.nome }}</strong></td>
+                            <td><strong>{{ missao.nome_completo }}</strong></td>
                             <td>{{ missao.get_tipo_display }}</td>
                             <td>
                                 <span class="badge badge-{% if missao.status == 'EM_ANDAMENTO' %}success{% elif missao.status == 'PLANEJADA' %}info{% elif missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">

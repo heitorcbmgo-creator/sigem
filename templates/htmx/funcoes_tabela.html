@@ -1,0 +1,321 @@
+<!--
+============================================================
+Template: htmx/funcoes_tabela.html
+Tabela de funções com paginação e filtros para Admin
+============================================================
+-->
+
+<!-- Filtros -->
+<div class="table-filters mb-3">
+    <form hx-get="{% url 'htmx_funcoes_tabela' %}"
+          hx-target="#tab-content"
+          hx-trigger="change, keyup delay:500ms from:input[name=busca]"
+          class="filters-form">
+
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Buscar:</label>
+                <input type="text" name="busca" placeholder="Nome da função ou missão..."
+                       value="{{ filtros.busca|default:'' }}" class="form-control form-control-sm">
+            </div>
+
+            <div class="filter-group">
+                <label>Missão:</label>
+                <select name="missao" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    {% for missao in missoes_disponiveis %}
+                    <option value="{{ missao.id }}" {% if filtros.missao == missao.id|stringformat:"s" %}selected{% endif %}>
+                        {{ missao.nome_completo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Complexidade:</label>
+                <select name="complexidade" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    {% for value, label in complexidade_choices %}
+                    <option value="{{ value }}" {% if filtros.complexidade == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Por página:</label>
+                <select name="por_pagina" class="form-control form-control-sm">
+                    <option value="10" {% if filtros.por_pagina == '10' %}selected{% endif %}>10</option>
+                    <option value="25" {% if filtros.por_pagina == '25' %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.por_pagina == '50' %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.por_pagina == '100' %}selected{% endif %}>100</option>
+                </select>
+            </div>
+
+            <div class="filter-group" style="align-self: flex-end;">
+                <button type="button" class="btn btn-sm btn-secondary"
+                        hx-get="{% url 'htmx_funcoes_tabela' %}"
+                        hx-target="#tab-content">
+                    <i data-lucide="x"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Info de resultados -->
+<div class="table-info mb-2">
+    <span class="text-muted">
+        Exibindo {{ page_obj.start_index|default:0 }}-{{ page_obj.end_index|default:0 }} de {{ page_obj.paginator.count }} registros
+    </span>
+    <button class="btn btn-sm btn-primary" onclick="novaFuncao()">
+        <i data-lucide="plus"></i> Nova Função
+    </button>
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Missão</th>
+                <th style="width: 25%;">Função</th>
+                <th class="text-center">TDE</th>
+                <th class="text-center">NQT</th>
+                <th class="text-center">GRS</th>
+                <th class="text-center">DEC</th>
+                <th class="text-center">Soma</th>
+                <th class="text-center">Complexidade</th>
+                <th class="text-center" style="width: 120px;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in page_obj %}
+            <tr>
+                <td>
+                    <strong>{{ f.missao.nome_completo }}</strong>
+                    <br><small class="text-muted">{{ f.missao.get_tipo_display }}</small>
+                </td>
+                <td>
+                    <strong>{{ f.funcao }}</strong>
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-secondary">{{ f.get_tde_display }}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-secondary">{{ f.get_nqt_display }}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-secondary">{{ f.get_grs_display }}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-secondary">{{ f.get_dec_display }}</span>
+                </td>
+                <td class="text-center">
+                    <strong>{{ f.soma_criterios }}</strong>
+                </td>
+                <td class="text-center">
+                    {% if f.complexidade == 'BAIXA' %}
+                    <span class="badge badge-success">{{ f.get_complexidade_display }}</span>
+                    {% elif f.complexidade == 'MEDIA' %}
+                    <span class="badge badge-warning">{{ f.get_complexidade_display }}</span>
+                    {% else %}
+                    <span class="badge badge-danger">{{ f.get_complexidade_display }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-ghost"
+                                onclick="editarFuncao({{ f.id }})"
+                                title="Editar">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="btn btn-sm btn-ghost text-danger"
+                                hx-post="{% url 'htmx_funcao_excluir' f.id %}"
+                                hx-target="#tab-content"
+                                hx-confirm="Excluir a função '{{ f.funcao }}' da missão '{{ f.missao.nome_completo }}'?"
+                                title="Excluir">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    <i data-lucide="folder-open" style="width:48px;height:48px;opacity:0.3"></i>
+                    <p class="mt-2">Nenhuma função encontrada</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="pagination-container mt-3">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link"
+               hx-get="{% url 'htmx_funcoes_tabela' %}?pagina=1&{{ query_string }}"
+               hx-target="#tab-content">
+                <i data-lucide="chevrons-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link"
+               hx-get="{% url 'htmx_funcoes_tabela' %}?pagina={{ page_obj.previous_page_number }}&{{ query_string }}"
+               hx-target="#tab-content">
+                <i data-lucide="chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link"
+                   hx-get="{% url 'htmx_funcoes_tabela' %}?pagina={{ num }}&{{ query_string }}"
+                   hx-target="#tab-content">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link"
+               hx-get="{% url 'htmx_funcoes_tabela' %}?pagina={{ page_obj.next_page_number }}&{{ query_string }}"
+               hx-target="#tab-content">
+                <i data-lucide="chevron-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link"
+               hx-get="{% url 'htmx_funcoes_tabela' %}?pagina={{ page_obj.paginator.num_pages }}&{{ query_string }}"
+               hx-target="#tab-content">
+                <i data-lucide="chevrons-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Formulário de Criação/Edição -->
+<div id="form-funcao" class="mt-4" style="display: none;">
+    <div class="card card-form">
+        <div class="card-header">
+            <h4 id="form-funcao-titulo">Nova Função</h4>
+        </div>
+        <div class="card-body">
+            <form id="funcao-form" hx-post="{% url 'htmx_funcao_criar' %}" hx-target="#tab-content">
+                {% csrf_token %}
+                <input type="hidden" name="funcao_id" id="funcao_id">
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Missão *</label>
+                        <select name="missao" class="form-control" required>
+                            <option value="">Selecione uma missão</option>
+                            {% for missao in missoes_disponiveis %}
+                            <option value="{{ missao.id }}">{{ missao.nome_completo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>Função *</label>
+                        <input type="text" name="funcao" class="form-control" required placeholder="Ex: Comandante da Operação">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label>TDE - Tempo de Dedicação Exigido *</label>
+                        <select name="tde" class="form-control" required>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if value == 2 %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>NQT - Nível de Qualificação Técnica Exigido *</label>
+                        <select name="nqt" class="form-control" required>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if value == 2 %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>GRS - Grau de Responsabilidade Suportado *</label>
+                        <select name="grs" class="form-control" required>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if value == 2 %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label>DEC - Dimensão do Efetivo Comandado *</label>
+                        <select name="dec" class="form-control" required>
+                            {% for value, label in nivel_dec_choices %}
+                            <option value="{{ value }}" {% if value == 2 %}selected{% endif %}>{{ label }} ({{ value }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Complexidade calculada automaticamente:</strong><br>
+                    Soma 4-6: Baixa | Soma 7-9: Média | Soma 10-12: Alta
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="fecharFormFuncao()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function novaFuncao() {
+    document.getElementById('form-funcao-titulo').textContent = 'Nova Função';
+    document.getElementById('funcao-form').reset();
+    document.getElementById('funcao_id').value = '';
+    document.getElementById('funcao-form').setAttribute('hx-post', '{% url "htmx_funcao_criar" %}');
+    document.getElementById('form-funcao').style.display = 'block';
+    document.getElementById('form-funcao').scrollIntoView({behavior: 'smooth'});
+    htmx.process(document.getElementById('funcao-form'));
+}
+
+function editarFuncao(id) {
+    fetch('/htmx/funcao/' + id + '/dados/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('form-funcao-titulo').textContent = 'Editar Função';
+            document.getElementById('funcao_id').value = id;
+            document.querySelector('#funcao-form [name=missao]').value = data.missao;
+            document.querySelector('#funcao-form [name=funcao]').value = data.funcao;
+            document.querySelector('#funcao-form [name=tde]').value = data.tde;
+            document.querySelector('#funcao-form [name=nqt]').value = data.nqt;
+            document.querySelector('#funcao-form [name=grs]').value = data.grs;
+            document.querySelector('#funcao-form [name=dec]').value = data.dec;
+            document.getElementById('funcao-form').setAttribute('hx-post', '/htmx/funcao/' + id + '/editar/');
+            document.getElementById('form-funcao').style.display = 'block';
+            document.getElementById('form-funcao').scrollIntoView({behavior: 'smooth'});
+            htmx.process(document.getElementById('funcao-form'));
+        });
+}
+
+function fecharFormFuncao() {
+    document.getElementById('form-funcao').style.display = 'none';
+}
+
+// Reinicializar ícones Lucide
+lucide.createIcons();
+</script>

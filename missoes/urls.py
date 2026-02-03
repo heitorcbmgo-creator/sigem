@@ -62,7 +62,17 @@ urlpatterns = [
     path('htmx/designacao/criar/', views.htmx_designacao_criar, name='htmx_designacao_criar'),
     path('htmx/designacao/<int:pk>/editar/', views.htmx_designacao_editar, name='htmx_designacao_editar'),
     path('htmx/designacao/<int:pk>/excluir/', views.htmx_designacao_excluir, name='htmx_designacao_excluir'),
-    
+
+    # ============================================================
+    # 🔄 ENDPOINTS HTMX - FUNÇÕES
+    # ============================================================
+    path('htmx/funcoes/tabela/', views.htmx_funcoes_tabela, name='htmx_funcoes_tabela'),
+    path('htmx/funcao/<int:pk>/dados/', views.htmx_funcao_dados, name='htmx_funcao_dados'),
+    path('htmx/funcao/criar/', views.htmx_funcao_criar, name='htmx_funcao_criar'),
+    path('htmx/funcao/<int:pk>/editar/', views.htmx_funcao_editar, name='htmx_funcao_editar'),
+    path('htmx/funcao/<int:pk>/excluir/', views.htmx_funcao_excluir, name='htmx_funcao_excluir'),
+    path('htmx/funcoes/buscar-por-missao/', views.htmx_buscar_funcoes_por_missao, name='htmx_buscar_funcoes_por_missao'),
+
     # ============================================================
     # 🔄 ENDPOINTS HTMX - UNIDADES
     # ============================================================
@@ -81,12 +91,26 @@ urlpatterns = [
     path('htmx/usuario/<int:pk>/reset-senha/', views.htmx_usuario_reset_senha, name='htmx_usuario_reset_senha'),
     
     # ============================================================
-    # 🔄 ENDPOINTS HTMX - SOLICITAÇÕES
+    # 🔄 ENDPOINTS HTMX - SOLICITAÇÕES (Sistema Unificado)
     # ============================================================
+    # Novas URLs do sistema unificado
     path('htmx/solicitacao/criar/', views.htmx_solicitacao_criar, name='htmx_solicitacao_criar'),
-    path('htmx/solicitacoes/lista/', views.htmx_solicitacoes_lista, name='htmx_solicitacoes_lista'),
-    path('htmx/solicitacao/<int:pk>/avaliar/', views.htmx_solicitacao_avaliar, name='htmx_solicitacao_avaliar'),
-    
+    path('htmx/solicitacoes/unificadas/', views.htmx_solicitacoes_unificadas_lista, name='htmx_solicitacoes_unificadas_lista'),
+    path('htmx/solicitacao/<int:pk>/dados/', views.htmx_solicitacao_dados, name='htmx_solicitacao_dados'),
+    path('htmx/solicitacao/<int:pk>/editar/', views.htmx_solicitacao_editar, name='htmx_solicitacao_editar'),
+    path('htmx/solicitacao/<int:pk>/aprovar/', views.htmx_solicitacao_aprovar, name='htmx_solicitacao_aprovar'),
+    path('htmx/solicitacao/<int:pk>/recusar/', views.htmx_solicitacao_recusar, name='htmx_solicitacao_recusar'),
+    path('htmx/missoes/disponiveis/', views.htmx_buscar_missoes_disponiveis, name='htmx_buscar_missoes_disponiveis'),
+    path('minhas-solicitacoes/', views.minhas_solicitacoes, name='minhas_solicitacoes'),
+    path('classificacao-funcoes/', views.classificacao_funcoes, name='classificacao_funcoes'),
+
+    # Sistema Moderno de Validação
+    path('htmx/solicitacoes/validacao/', views.htmx_solicitacoes_validacao, name='htmx_solicitacoes_validacao'),
+    path('htmx/solicitacao/<int:pk>/quick-approve/', views.htmx_solicitacao_quick_approve, name='htmx_solicitacao_quick_approve'),
+    path('htmx/solicitacao/batch-approve/', views.htmx_solicitacao_batch_approve, name='htmx_solicitacao_batch_approve'),
+    path('htmx/solicitacao/batch-reject/', views.htmx_solicitacao_batch_reject, name='htmx_solicitacao_batch_reject'),
+    path('htmx/solicitacao/<int:pk>/detalhes/', views.htmx_solicitacao_detalhes_modal, name='htmx_solicitacao_detalhes_modal'),
+
     # ============================================================
     # 📥 EXPORTAÇÃO
     # ============================================================

@@ -1,0 +1,3 @@
+"""
+Módulo de Integrações Externas
+"""

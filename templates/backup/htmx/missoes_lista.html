@@ -6,7 +6,7 @@
          hx-get="{% url 'htmx_missao_organograma' missao.id %}"
          hx-target="#organograma-container"
          onclick="this.parentElement.querySelectorAll('.card').forEach(c => c.style.borderColor = '#e5e7eb'); this.style.borderColor = '#8b0000';">
-        <h4 style="font-size: 1rem; color: #8b0000; margin-bottom: 0.25rem;">{{ missao.nome }}</h4>
+        <h4 style="font-size: 1rem; color: #8b0000; margin-bottom: 0.25rem;">{{ missao.nome_completo }}</h4>
         <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">
             <strong>Tipo:</strong> {{ missao.get_tipo_display }} | 
             <strong>Local:</strong> {{ missao.local|default:"—" }}

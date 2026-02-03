@@ -25,7 +25,7 @@ Tabela de designações com paginação e filtros para Admin
                     <option value="">Todas</option>
                     {% for m in missoes_disponiveis %}
                     <option value="{{ m.id }}" {% if filtros.missao_id == m.id|stringformat:"s" %}selected{% endif %}>
-                        {{ m.nome|truncatechars:40 }}
+                        {{ m.nome_completo|truncatechars:40 }}
                     </option>
                     {% endfor %}
                 </select>
@@ -113,7 +113,7 @@ Tabela de designações com paginação e filtros para Admin
                     </div>
                 </td>
                 <td>
-                    <strong>{{ d.missao.nome|truncatechars:35 }}</strong>
+                    <strong>{{ d.missao.nome_completo_completo|truncatechars:35 }}</strong>
                     <br>
                     <span class="badge badge-tipo-{{ d.missao.tipo|lower }}">{{ d.missao.get_tipo_display }}</span>
                     <span class="badge badge-status-{{ d.missao.status|lower }}">{{ d.missao.get_status_display }}</span>
@@ -231,7 +231,7 @@ Tabela de designações com paginação e filtros para Admin
                         <select name="missao_id" id="select-missao" class="form-control" required>
                             <option value="">Selecione...</option>
                             {% for m in missoes_disponiveis %}
-                            <option value="{{ m.id }}">{{ m.nome }}</option>
+                            <option value="{{ m.id }}">{{ m.nome_completo }}</option>
                             {% endfor %}
                         </select>
                     </div>

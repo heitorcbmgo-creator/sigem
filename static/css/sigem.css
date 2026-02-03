@@ -429,6 +429,7 @@ img {
     box-shadow: var(--shadow-sm);
     transition: var(--transition);
     cursor: pointer;
+    position: relative;
 }
 
 .stat-card:hover {
@@ -455,6 +456,22 @@ img {
     font-weight: 700;
     color: var(--sigem-gray-800);
     line-height: 1;
+}
+
+.stat-card-filter-icon {
+    position: absolute !important;
+    bottom: 0.75rem !important;
+    right: 0.75rem !important;
+    width: 14px !important;
+    height: 14px !important;
+    opacity: 0.5 !important;
+    transition: opacity var(--transition-base) !important;
+    pointer-events: none !important;
+    color: var(--sigem-gray-400) !important;
+}
+
+.stat-card:hover .stat-card-filter-icon {
+    opacity: 0.5 !important;
 }
 
 /* ============================================================
@@ -674,7 +691,8 @@ tr:hover td {
 
 .badge-success { background: #dcfce7; color: #166534; }
 .badge-danger { background: #fee2e2; color: #991b1b; }
-.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-warning { background: #ffedd5; color: #c2410c; }
+.badge-yellow { background: #fef9c3; color: #a16207; }
 .badge-info { background: #dbeafe; color: #1e40af; }
 .badge-purple { background: #f3e8ff; color: #7c3aed; }
 
@@ -833,16 +851,194 @@ tr:hover td {
 /* ============================================================
    📱 RESPONSIVO
    ============================================================ */
-@media (max-width: 768px) {
+
+/* Botão Hamburguer */
+.navbar-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 1001;
+}
+
+.navbar-toggle-icon,
+.navbar-toggle-icon::before,
+.navbar-toggle-icon::after {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.navbar-toggle-icon {
+    position: relative;
+}
+
+.navbar-toggle-icon::before,
+.navbar-toggle-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+}
+
+.navbar-toggle-icon::before {
+    top: -7px;
+}
+
+.navbar-toggle-icon::after {
+    top: 7px;
+}
+
+/* Animação X */
+.navbar-toggle.active .navbar-toggle-icon {
+    background-color: transparent;
+}
+
+.navbar-toggle.active .navbar-toggle-icon::before {
+    transform: rotate(45deg);
+    top: 0;
+}
+
+.navbar-toggle.active .navbar-toggle-icon::after {
+    transform: rotate(-45deg);
+    top: 0;
+}
+
+/* Elementos extras do mobile */
+.navbar-mobile-extra {
+    display: none;
+}
+
+.navbar-mobile-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+}
+
+.navbar-mobile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+}
+
+.navbar-mobile-user strong {
+    display: block;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.navbar-mobile-user small {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+}
+
+.navbar-link-logout {
+    background: rgba(220, 38, 38, 0.2);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.navbar-link-logout:hover {
+    background: rgba(220, 38, 38, 0.4) !important;
+}
+
+/* Mobile */
+@media (max-width: 968px) {
+    .navbar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
     .navbar-menu {
+        display: none;
+        position: fixed;
+        top: 64px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #6b0000;
+        flex-direction: column;
+        padding: 1rem;
+        gap: 0.5rem;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+    
+    .navbar-menu.show {
+        display: flex;
+    }
+    
+    .navbar-link {
+        width: 100%;
+        padding: 1rem;
+        justify-content: flex-start;
+        font-size: 1rem;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+    }
+    
+    .navbar-link i {
+        color: #ffffff;
+    }
+    
+    .navbar-link:hover {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+    
+    .navbar-link.active {
+        background: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+    }
+    
+    .navbar-link span {
+        display: inline !important;
+    }
+    
+    .navbar-mobile-extra {
+        display: block;
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .navbar-user {
+        display: none;
+    }
+    
+    .navbar-brand {
+        flex: 1;
+    }
+    
+    .navbar-title-sub {
         display: none;
     }
     
     .page-title {
         font-size: 1.5rem;
     }
-    
+}
+
+/* Tablets */
+@media (max-width: 768px) {
     .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
     }
     
@@ -852,6 +1048,95 @@ tr:hover td {
     
     .filter-bar .form-group {
         width: 100%;
+    }
+    
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .dashboard-tabs {
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+    
+    .tab-btn {
+        white-space: nowrap;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    .tab-btn span {
+        display: none;
+    }
+    
+    .tab-btn i {
+        margin: 0;
+    }
+}
+
+/* Smartphones pequenos */
+@media (max-width: 480px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .kpi-card {
+        padding: 1rem;
+    }
+    
+    .kpi-value {
+        font-size: 1.5rem;
+    }
+    
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .page-header {
+        margin-bottom: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.25rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-group {
+        width: 100% !important;
+    }
+    
+    .ocupacao-bar {
+        width: 80px;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+    }
+    
+    /* Esconder colunas menos importantes em mobile */
+    .table .hide-mobile {
+        display: none;
     }
 }
 
@@ -1259,5 +1544,127 @@ tr:hover td {
     
     .form-actions .btn {
         width: 100%;
+    }
+}
+
+/* ============================================================
+   ACCORDION - Classificacao de Funcoes
+   ============================================================ */
+.accordion-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: var(--sigem-gray-50);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-800);
+}
+
+.accordion-icon {
+    transition: transform 0.3s;
+}
+
+.accordion-content {
+    display: none;
+    padding: 1rem 1.5rem;
+}
+
+.accordion-content.open {
+    display: block;
+}
+
+.missao-card {
+    background: var(--sigem-gray-50);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.missao-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.missao-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.missao-icon {
+    margin-left: auto;
+    transition: transform 0.3s;
+}
+
+.missao-content {
+    padding: 1rem;
+    background: white;
+}
+
+.criterios-legenda {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.criterio-item {
+    padding: 0.5rem;
+    background: var(--sigem-gray-50);
+    border-radius: 4px;
+}
+
+.complexidade-legenda {
+    display: flex;
+    gap: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-500);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+/* KPI Mini Cards adjustments */
+.kpi-icon-red {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .criterios-legenda {
+        grid-template-columns: 1fr;
+    }
+
+    .complexidade-legenda {
+        flex-wrap: wrap;
     }
 }

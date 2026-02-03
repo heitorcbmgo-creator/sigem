@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Erro - Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i data-lucide="alert-circle"></i>
+        Erro no Dashboard
+    </h1>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 2rem auto;">
+    <div class="card-body" style="text-align: center; padding: 3rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">⚠️</div>
+        
+        <h2 style="color: var(--sigem-red); margin-bottom: 1rem;">
+            Ocorreu um erro ao carregar o dashboard
+        </h2>
+        
+        <p style="color: var(--sigem-gray-600); margin-bottom: 2rem;">
+            Isso pode acontecer quando o sistema está sendo configurado pela primeira vez
+            ou quando não há dados cadastrados.
+        </p>
+        
+        {% if error_type %}
+        <div style="background: var(--sigem-gray-100); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: left;">
+            <strong>Tipo do erro:</strong> {{ error_type }}<br>
+            <strong>Mensagem:</strong> {{ error_message }}
+        </div>
+        {% endif %}
+        
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="{% url 'admin_painel' %}" class="btn btn-primary">
+                <i data-lucide="settings"></i>
+                Ir para Administração
+            </a>
+            <a href="{% url 'missoes_dashboard' %}" class="btn btn-secondary">
+                <i data-lucide="list"></i>
+                Ver Missões
+            </a>
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                <i data-lucide="refresh-cw"></i>
+                Tentar Novamente
+            </a>
+        </div>
+        
+        <hr style="margin: 2rem 0;">
+        
+        <p style="color: var(--sigem-gray-500); font-size: 0.9rem;">
+            <strong>💡 Dica:</strong> Cadastre alguns oficiais e missões na página de Administração 
+            para o dashboard funcionar corretamente.
+        </p>
+    </div>
+</div>
+{% endblock %}

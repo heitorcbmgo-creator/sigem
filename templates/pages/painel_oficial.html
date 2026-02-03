@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Consultar Oficial{% endblock %}
+{% block title %}Meu Painel{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">
         <i data-lucide="user-circle"></i>
-        Painel do Oficial
+        Meu Painel
     </h1>
-    <p class="page-subtitle">Suas missões e designações</p>
+    <p class="page-subtitle">Suas missões, designações e solicitações</p>
 </div>
 
 <!-- Card do Perfil -->
 <div class="card mb-4">
     <div class="card-body">
-        <div class="flex items-center gap-4">
+        <div class="perfil-container">
             <img src="{{ oficial.foto_url }}" alt="Foto" class="officer-photo" style="margin: 0;">
-            <div>
+            <div class="perfil-info">
                 <h2 class="text-red font-bold" style="font-size: 1.5rem;">
                     {{ oficial.posto }} {{ oficial.nome_guerra|default:oficial.nome }}
                 </h2>
@@ -25,7 +25,7 @@
                 <p class="text-gray">{{ oficial.obm|default:"Sem lotação definida" }}</p>
                 <p class="text-gray" style="font-style: italic;">{{ oficial.funcao|default:"Função não cadastrada" }}</p>
             </div>
-            <div style="margin-left: auto;" class="text-right">
+            <div class="perfil-stats">
                 <div class="totalizadores-mini">
                     <div class="totalizador-item baixa">
                         <span class="totalizador-valor">{{ oficial.total_baixa }}</span>
@@ -40,13 +40,364 @@
                         <span class="totalizador-label">Alta</span>
                     </div>
                 </div>
-                <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Missões Em Andamento</p>
+                <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem; text-align: center;">Missões Em Andamento</p>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Minhas Designações -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="briefcase"></i>
+            Minhas Designações
+        </h2>
+        <div class="flex gap-1">
+            <a href="{% url 'exportar_excel' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm btn-success">
+                <i data-lucide="file-spreadsheet"></i>
+                Excel
+            </a>
+            <a href="{% url 'exportar_pdf' 'designacoes' %}?oficial_id={{ oficial.id }}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
+                <i data-lucide="file-text"></i>
+                PDF
+            </a>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Missão</th>
+                        <th>Função</th>
+                        <th>Complexidade</th>
+                        <th>Local</th>
+                        <th>Período</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in designacoes %}
+                    <tr>
+                        <td><strong>{{ d.missao.nome_completo|truncatechars:40 }}</strong></td>
+                        <td>{{ d.funcao_na_missao }}</td>
+                        <td>
+                            <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
+                                {{ d.get_complexidade_display }}
+                            </span>
+                        </td>
+                        <td>{{ d.missao.get_local_display|default:"—" }}</td>
+                        <td>
+                            {% if d.missao.data_inicio %}
+                                {{ d.missao.data_inicio|date:"d/m/Y" }}
+                                {% if d.missao.data_fim %} → {{ d.missao.data_fim|date:"d/m/Y" }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-{% if d.missao.status == 'EM_ANDAMENTO' %}success{% elif d.missao.status == 'PLANEJADA' %}info{% elif d.missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
+                                {{ d.missao.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-gray py-4">Você não possui designações no momento.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Nova Solicitação (Wizard) -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i data-lucide="plus-circle"></i>
+            Nova Solicitação
+        </h2>
+    </div>
+    <div class="card-body">
+        <!-- Step 1: Escolha do tipo -->
+        <div id="wizard-step-1">
+            <p class="text-muted mb-4">O que você deseja solicitar?</p>
+            
+            <div class="wizard-options">
+                <div class="wizard-option" onclick="showForm('NOVA_MISSAO')">
+                    <div class="wizard-option-icon">
+                        <i data-lucide="folder-plus"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Criar uma NOVA MISSÃO</h3>
+                        <p>Solicite a criação de uma nova missão no sistema e já se designe para ela.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+                
+                <div class="wizard-option" onclick="showForm('DESIGNACAO')">
+                    <div class="wizard-option-icon">
+                        <i data-lucide="user-plus"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Me designar para uma MISSÃO EXISTENTE</h3>
+                        <p>Solicite sua designação em uma missão já cadastrada no SIGEM.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Formulário Nova Missão -->
+        <div id="wizard-step-nova-missao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="folder-plus"></i> Nova Missão + Designação</h3>
+            </div>
+            
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}" 
+                  hx-target="#feedback-solicitacao" 
+                  hx-swap="innerHTML"
+                  id="form-nova-missao">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="NOVA_MISSAO">
+                
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 4;">
+                            <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="nome_missao" required
+                                   placeholder="Ex: Operação Carnaval">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Ano</label>
+                            <input type="number" class="form-input" name="ano_missao"
+                                   value="2026" min="2020" max="2099" placeholder="2026">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                            <select class="form-select" name="tipo_missao" required>
+                                <option value="">Selecione...</option>
+                                {% for value, label in tipo_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="status_missao" required id="status-missao-select" 
+                                    onchange="toggleDataFim()">
+                                <option value="">Selecione...</option>
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Local <span class="text-danger">*</span></label>
+                        <select class="form-select" name="local_missao" required>
+                            <option value="">Selecione...</option>
+                            {% for value, label in local_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="data_inicio" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Data de Término <span id="label-data-fim-obrig"></span></label>
+                            <input type="date" class="form-input" name="data_fim" id="data-fim-input">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="documento_sei_missao" required 
+                               placeholder="Ex: 202500012345">
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Nome da Função <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="nome_funcao" required
+                                   placeholder="Ex: Coordenador, Membro, Fiscal">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nº SEI/BG da Designação <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="documento_sei_designacao" required
+                                   placeholder="Ex: BG 001/2025">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">TDE / NQT / GRS / DEC</label>
+                        <input type="text" class="form-input" value="Serão definidos pela BM/3 durante a aprovação" disabled
+                               style="background: #f3f4f6; color: #6b7280;">
+                        <small class="form-text text-muted">Os critérios de complexidade (TDE, NQT, GRS, DEC) são preenchidos pelo avaliador</small>
+                    </div>
+                </div>
+                
+                <div id="feedback-solicitacao"></div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação
+                </button>
+            </form>
+        </div>
+        
+        <!-- Step 2: Formulário Designação Existente -->
+        <div id="wizard-step-designacao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="user-plus"></i> Designação em Missão Existente</h3>
+            </div>
+            
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}" 
+                  hx-target="#feedback-solicitacao-desig" 
+                  hx-swap="innerHTML"
+                  id="form-designacao">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="DESIGNACAO">
+                
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="search"></i> Buscar Missão</h4>
+                    
+                    <div class="form-row form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="filtro-tipo" onchange="buscarMissoes()">
+                                <option value="">Todos</option>
+                                {% for value, label in tipo_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Ano</label>
+                            <select class="form-select" id="filtro-ano" onchange="buscarMissoes()">
+                                <option value="">Todos</option>
+                                {% for ano in anos_disponiveis %}
+                                <option value="{{ ano }}">{{ ano }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" class="form-input" id="filtro-busca" 
+                                   placeholder="Nome ou SEI..." onkeyup="debounce(buscarMissoes, 300)()">
+                        </div>
+                    </div>
+                    
+                    <div class="missoes-lista" id="missoes-lista">
+                        {% for m in missoes_disponiveis %}
+                        <label class="missao-item">
+                            <input type="radio" name="missao_id" value="{{ m.id }}" required>
+                            <div class="missao-item-content">
+                                <strong>{{ m.nome_completo }}</strong>
+                                <span class="missao-item-meta">
+                                    {{ m.get_tipo_display }} • {{ m.get_status_display }}
+                                    {% if m.data_inicio %} • {{ m.data_inicio|date:"d/m/Y" }}{% if m.data_fim %} → {{ m.data_fim|date:"d/m/Y" }}{% endif %}{% endif %}
+                                </span>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">Nenhuma missão disponível para designação.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
+                            <select class="form-select" name="funcao_id" id="select-funcao-desig" required onchange="atualizarComplexidadeDesignacao()">
+                                <option value="">Selecione uma missão primeiro...</option>
+                            </select>
+                            <small class="form-text text-muted">Selecione a missão para carregar as funções</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="documento_sei_designacao" required
+                                   placeholder="Ex: BG 001/2025">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Complexidade</label>
+                            <input type="text" class="form-input" id="display-complexidade-desig" value="" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="Automático">
+                            <small class="form-text text-muted">Calculado automaticamente da função</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Soma Critérios</label>
+                            <input type="text" class="form-input" id="display-soma-desig" value="" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="-">
+                            <small class="form-text text-muted">TDE+NQT+GRS+DEC</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="feedback-solicitacao-desig"></div>
+                
+                <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-designacao">
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
+.perfil-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.perfil-info {
+    flex: 1;
+    min-width: 200px;
+}
+
+.perfil-stats {
+    text-align: right;
+}
+
 .totalizadores-mini {
     display: flex;
     gap: 0.75rem;
@@ -79,200 +430,394 @@
     text-transform: uppercase;
     color: #6b7280;
 }
+
+/* Wizard Styles */
+.wizard-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wizard-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 2px solid var(--sigem-gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wizard-option:hover {
+    border-color: var(--sigem-red);
+    background: #fef2f2;
+}
+
+.wizard-option-icon {
+    width: 50px;
+    height: 50px;
+    background: var(--sigem-red);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.wizard-option-icon i {
+    width: 24px;
+    height: 24px;
+}
+
+.wizard-option-content {
+    flex: 1;
+}
+
+.wizard-option-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--sigem-gray-900);
+    margin-bottom: 0.25rem;
+}
+
+.wizard-option-content p {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-500);
+    margin: 0;
+}
+
+.wizard-option-arrow {
+    color: var(--sigem-gray-400);
+    width: 20px;
+    height: 20px;
+}
+
+.wizard-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.wizard-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.form-section {
+    background: var(--sigem-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sigem-gray-700);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.form-section-title i {
+    width: 16px;
+    height: 16px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-row-3 {
+    grid-template-columns: 1fr 1fr 2fr;
+}
+
+@media (max-width: 600px) {
+    .form-row, .form-row-3 {
+        grid-template-columns: 1fr;
+    }
+    
+    .perfil-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .perfil-stats {
+        text-align: center;
+    }
+    
+    .totalizadores-mini {
+        justify-content: center;
+    }
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+/* Lista de Missões */
+.missoes-lista {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    background: white;
+}
+
+.missao-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sigem-gray-100);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.missao-item:hover {
+    background: var(--sigem-gray-50);
+}
+
+.missao-item:last-child {
+    border-bottom: none;
+}
+
+.missao-item input[type="radio"] {
+    margin-top: 4px;
+    accent-color: var(--sigem-red);
+}
+
+.missao-item-content {
+    flex: 1;
+}
+
+.missao-item-content strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--sigem-gray-800);
+}
+
+.missao-item-meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.25rem;
+}
+
+/* Alerts */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.alert i {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
 </style>
 
-<!-- Filtros -->
-<div class="filter-bar">
-    <div class="form-group">
-        <label class="form-label">Tipo</label>
-        <select class="form-select" name="tipo" onchange="this.form.submit()">
-            <option value="">Todos os tipos</option>
-            {% for value, label in tipo_choices %}
-            <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
+<script>
+function showForm(tipo) {
+    document.getElementById('wizard-step-1').style.display = 'none';
     
-    <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-select" name="status" onchange="this.form.submit()">
-            <option value="">Todos os status</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    if (tipo === 'NOVA_MISSAO') {
+        document.getElementById('wizard-step-nova-missao').style.display = 'block';
+    } else {
+        document.getElementById('wizard-step-designacao').style.display = 'block';
+    }
     
-    <div class="form-group">
-        <label class="form-label">Complexidade</label>
-        <select class="form-select" name="complexidade" onchange="this.form.submit()">
-            <option value="">Todas</option>
-            {% for value, label in complexidade_choices %}
-            <option value="{{ value }}" {% if request.GET.complexidade == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-</div>
+    lucide.createIcons();
+}
 
-<!-- Tabela de Designações -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="briefcase"></i>
-            Minhas Designações
-        </h2>
-        <div class="flex gap-1">
-            <a href="{% url 'exportar_excel' 'designacoes' %}" class="btn btn-sm btn-success">
-                <i data-lucide="file-spreadsheet"></i>
-                Exportar Excel
-            </a>
-            <a href="{% url 'exportar_pdf' 'designacoes' %}" class="btn btn-sm" style="background: #2563eb; color: #fff;">
-                <i data-lucide="file-text"></i>
-                Gerar PDF
-            </a>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Função</th>
-                        <th>Complexidade</th>
-                        <th>Local</th>
-                        <th>Período</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in designacoes %}
-                    <tr>
-                        <td><strong>{{ d.missao.nome }}</strong></td>
-                        <td>{{ d.get_funcao_na_missao_display }}</td>
-                        <td>
-                            <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
-                                {{ d.get_complexidade_display }}
-                            </span>
-                        </td>
-                        <td>{{ d.missao.local|default:"—" }}</td>
-                        <td>
-                            {% if d.missao.data_inicio %}
-                                {{ d.missao.data_inicio|date:"d/m/Y" }}
-                                {% if d.missao.data_fim %} → {{ d.missao.data_fim|date:"d/m/Y" }}{% endif %}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge badge-{% if d.missao.status == 'EM_ANDAMENTO' %}success{% elif d.missao.status == 'PLANEJADA' %}info{% elif d.missao.status == 'CONCLUIDA' %}purple{% else %}danger{% endif %}">
-                                {{ d.missao.get_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center text-gray">Nenhuma designação encontrada.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+function backToStep1() {
+    document.getElementById('wizard-step-1').style.display = 'block';
+    document.getElementById('wizard-step-nova-missao').style.display = 'none';
+    document.getElementById('wizard-step-designacao').style.display = 'none';
+    lucide.createIcons();
+}
 
-<!-- Formulário de Solicitação -->
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="plus-circle"></i>
-            Solicitar Inclusão de Designação
-        </h2>
-    </div>
-    <div class="card-body">
-        <form hx-post="{% url 'htmx_solicitacao_criar' %}" hx-target="#solicitacao-feedback" hx-swap="innerHTML">
-            {% csrf_token %}
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Nome da Missão</label>
-                    <input type="text" class="form-input" name="nome_missao" required placeholder="Ex: Operação Verão 2024">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Função na Missão</label>
-                    <input type="text" class="form-input" name="funcao_na_missao" required placeholder="Ex: Coordenador">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Complexidade</label>
-                    <select class="form-select" name="complexidade" required>
-                        <option value="">Selecione...</option>
-                        <option value="BAIXA">Baixa</option>
-                        <option value="MEDIA">Média</option>
-                        <option value="ALTA">Alta</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;">
-                    <label class="form-label">Nº SEI / BG (referência)</label>
-                    <input type="text" class="form-input" name="documento_referencia" placeholder="Ex: SEI 202400012345">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Justificativa (opcional)</label>
-                <textarea class="form-input" name="justificativa" rows="2" placeholder="Descreva o motivo da solicitação..."></textarea>
-            </div>
-            
-            <div id="solicitacao-feedback"></div>
-            
-            <button type="submit" class="btn btn-primary">
-                <i data-lucide="send"></i>
-                Enviar Solicitação
-            </button>
-        </form>
-    </div>
-</div>
+function toggleDataFim() {
+    const statusSelect = document.getElementById('status-missao-select');
+    const dataFimInput = document.getElementById('data-fim-input');
+    const labelObrig = document.getElementById('label-data-fim-obrig');
+    
+    if (statusSelect.value === 'CONCLUIDA') {
+        dataFimInput.disabled = false;
+        dataFimInput.required = true;
+        labelObrig.innerHTML = '<span class="text-danger">*</span>';
+    } else if (statusSelect.value === 'EM_ANDAMENTO') {
+        dataFimInput.disabled = true;
+        dataFimInput.required = false;
+        dataFimInput.value = '';
+        labelObrig.innerHTML = '';
+    } else {
+        dataFimInput.disabled = false;
+        dataFimInput.required = false;
+        labelObrig.innerHTML = '';
+    }
+}
 
-<!-- Solicitações Anteriores -->
-{% if solicitacoes %}
-<div class="card mt-4">
-    <div class="card-header">
-        <h2 class="card-title">
-            <i data-lucide="history"></i>
-            Minhas Solicitações Recentes
-        </h2>
-    </div>
-    <div class="card-body">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Missão</th>
-                        <th>Função</th>
-                        <th>Data</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in solicitacoes %}
-                    <tr>
-                        <td>{{ s.nome_missao }}</td>
-                        <td>{{ s.funcao_na_missao }}</td>
-                        <td>{{ s.criado_em|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <span class="badge badge-{% if s.status == 'APROVADA' %}success{% elif s.status == 'RECUSADA' %}danger{% else %}warning{% endif %}">
-                                {{ s.get_status_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-{% endif %}
+// Debounce para busca
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function buscarMissoes() {
+    const tipo = document.getElementById('filtro-tipo').value;
+    const ano = document.getElementById('filtro-ano').value;
+    const busca = document.getElementById('filtro-busca').value;
+    
+    const params = new URLSearchParams();
+    if (tipo) params.append('tipo', tipo);
+    if (ano) params.append('ano', ano);
+    if (busca) params.append('busca', busca);
+    
+    fetch(`{% url 'htmx_buscar_missoes_disponiveis' %}?${params.toString()}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('missoes-lista').innerHTML = html;
+        });
+}
+
+// Armazena funções da missão selecionada
+let funcoesDisponiveisDesig = [];
+
+// Carregar funções quando missão é selecionada (para DESIGNACAO)
+function carregarFuncoesDaMissaoDesignacao() {
+    const missaoRadios = document.querySelectorAll('input[name="missao_id"]');
+    let missaoId = null;
+
+    missaoRadios.forEach(radio => {
+        if (radio.checked) {
+            missaoId = radio.value;
+        }
+    });
+
+    const selectFuncao = document.getElementById('select-funcao-desig');
+
+    if (!missaoId) {
+        selectFuncao.innerHTML = '<option value="">Selecione uma missão primeiro...</option>';
+        document.getElementById('display-complexidade-desig').value = '';
+        document.getElementById('display-soma-desig').value = '';
+        funcoesDisponiveisDesig = [];
+        return;
+    }
+
+    // Buscar funções da missão
+    fetch(`/htmx/funcoes/buscar-por-missao/?missao_id=${missaoId}`)
+        .then(response => response.json())
+        .then(data => {
+            funcoesDisponiveisDesig = data.funcoes;
+
+            if (funcoesDisponiveisDesig.length === 0) {
+                selectFuncao.innerHTML = '<option value="">Nenhuma função cadastrada para esta missão</option>';
+            } else {
+                selectFuncao.innerHTML = '<option value="">Selecione uma função...</option>';
+                funcoesDisponiveisDesig.forEach(funcao => {
+                    const option = document.createElement('option');
+                    option.value = funcao.id;
+                    option.textContent = `${funcao.funcao} (${funcao.complexidade_display})`;
+                    option.dataset.complexidade = funcao.complexidade_display;
+                    option.dataset.soma = funcao.soma_criterios;
+                    selectFuncao.appendChild(option);
+                });
+            }
+
+            // Limpar complexidade
+            document.getElementById('display-complexidade-desig').value = '';
+            document.getElementById('display-soma-desig').value = '';
+        });
+}
+
+// Atualizar complexidade quando função é selecionada
+function atualizarComplexidadeDesignacao() {
+    const selectFuncao = document.getElementById('select-funcao-desig');
+    const selectedOption = selectFuncao.options[selectFuncao.selectedIndex];
+
+    if (selectedOption && selectedOption.value) {
+        document.getElementById('display-complexidade-desig').value = selectedOption.dataset.complexidade || '';
+        document.getElementById('display-soma-desig').value = selectedOption.dataset.soma || '';
+    } else {
+        document.getElementById('display-complexidade-desig').value = '';
+        document.getElementById('display-soma-desig').value = '';
+    }
+}
+
+// Event listener para radio buttons de missão (carregar funções)
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('change', function(e) {
+        if (e.target.name === 'missao_id') {
+            carregarFuncoesDaMissaoDesignacao();
+        }
+    });
+});
+
+// Limpar formulário e voltar ao step 1 após sucesso
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if ((evt.detail.target.id === 'feedback-solicitacao' || evt.detail.target.id === 'feedback-solicitacao-desig')
+        && evt.detail.xhr.response.includes('alert-success')) {
+
+        setTimeout(() => {
+            if (evt.detail.target.id === 'feedback-solicitacao') {
+                document.getElementById('form-nova-missao').reset();
+            } else {
+                document.getElementById('form-designacao').reset();
+                funcoesDisponiveisDesig = [];
+            }
+            backToStep1();
+        }, 2000);
+    }
+    lucide.createIcons();
+});
+</script>
 {% endblock %}
