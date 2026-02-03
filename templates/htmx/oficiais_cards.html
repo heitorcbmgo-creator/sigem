@@ -21,20 +21,26 @@ Cards de comparação de oficiais com mini-gráfico de barras
             </button>
         </div>
         
-        <!-- Mini Gráfico de Barras -->
-        <div class="oficial-card-grafico">
-            <div class="grafico-barra">
-                <div class="grafico-barra-fill baixa" style="height: {{ data.total_baixa|default:0 }}0%;"></div>
+        <!-- Mini Gráfico de Colunas -->
+        <div class="oficial-card-grafico" data-baixa="{{ data.total_baixa|default:0 }}" data-media="{{ data.total_media|default:0 }}" data-alta="{{ data.total_alta|default:0 }}">
+            <div class="grafico-coluna">
+                <div class="grafico-coluna-container">
+                    <div class="grafico-coluna-fill baixa" data-value="{{ data.total_baixa|default:0 }}"></div>
+                </div>
                 <span class="grafico-valor">{{ data.total_baixa }}</span>
                 <span class="grafico-label">Baixa</span>
             </div>
-            <div class="grafico-barra">
-                <div class="grafico-barra-fill media" style="height: {{ data.total_media|default:0 }}0%;"></div>
+            <div class="grafico-coluna">
+                <div class="grafico-coluna-container">
+                    <div class="grafico-coluna-fill media" data-value="{{ data.total_media|default:0 }}"></div>
+                </div>
                 <span class="grafico-valor">{{ data.total_media }}</span>
                 <span class="grafico-label">Média</span>
             </div>
-            <div class="grafico-barra">
-                <div class="grafico-barra-fill alta" style="height: {{ data.total_alta|default:0 }}0%;"></div>
+            <div class="grafico-coluna">
+                <div class="grafico-coluna-container">
+                    <div class="grafico-coluna-fill alta" data-value="{{ data.total_alta|default:0 }}"></div>
+                </div>
                 <span class="grafico-valor">{{ data.total_alta }}</span>
                 <span class="grafico-label">Alta</span>
             </div>
@@ -156,45 +162,64 @@ Cards de comparação de oficiais com mini-gráfico de barras
     height: 14px;
 }
 
-/* Mini Gráfico de Barras */
+/* Mini Gráfico de Colunas */
 .oficial-card-grafico {
     display: flex;
     justify-content: center;
-    gap: 1.5rem;
-    padding: 1.25rem 1rem;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 1rem;
     background: #f9fafb;
 }
 
-.grafico-barra {
+.grafico-coluna {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-    width: 50px;
+    width: 55px;
 }
 
-.grafico-barra-fill {
+.grafico-coluna-container {
     width: 100%;
-    min-height: 10px;
-    max-height: 80px;
-    border-radius: 4px 4px 0 0;
-    transition: height 0.3s ease;
+    height: 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 0.25rem;
 }
 
-.grafico-barra-fill.baixa { background: #16a34a; }
-.grafico-barra-fill.media { background: #eab308; }
-.grafico-barra-fill.alta { background: #dc2626; }
+.grafico-coluna-fill {
+    width: 100%;
+    min-height: 4px;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.4s ease-out;
+}
+
+.grafico-coluna-fill.baixa {
+    background: linear-gradient(to top, #16a34a, #22c55e);
+    box-shadow: 0 -2px 4px rgba(22, 163, 74, 0.3);
+}
+.grafico-coluna-fill.media {
+    background: linear-gradient(to top, #ca8a04, #eab308);
+    box-shadow: 0 -2px 4px rgba(234, 179, 8, 0.3);
+}
+.grafico-coluna-fill.alta {
+    background: linear-gradient(to top, #b91c1c, #dc2626);
+    box-shadow: 0 -2px 4px rgba(220, 38, 38, 0.3);
+}
 
 .grafico-valor {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #1f2937;
+    line-height: 1;
 }
 
 .grafico-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #6b7280;
     text-transform: uppercase;
+    margin-top: 0.15rem;
 }
 
 /* Carga Total */
@@ -285,5 +310,33 @@ function removerCard(oficialId) {
     atualizarCards();
 }
 
+// Calcular alturas proporcionais do gráfico de colunas
+function calcularAlturasColunas() {
+    const graficos = document.querySelectorAll('.oficial-card-grafico');
+    const alturaMaxima = 40; // pixels
+
+    graficos.forEach(grafico => {
+        const baixa = parseInt(grafico.dataset.baixa) || 0;
+        const media = parseInt(grafico.dataset.media) || 0;
+        const alta = parseInt(grafico.dataset.alta) || 0;
+
+        // Encontrar o máximo valor para este card
+        const maxValor = Math.max(baixa, media, alta, 1); // mínimo 1 para evitar divisão por zero
+
+        // Aplicar alturas proporcionais
+        const colunas = grafico.querySelectorAll('.grafico-coluna-fill');
+        const valores = [baixa, media, alta];
+
+        colunas.forEach((coluna, index) => {
+            const valor = valores[index];
+            // Altura mínima de 4px quando tem valor 0, proporcional quando > 0
+            const altura = valor === 0 ? 4 : Math.max(8, (valor / maxValor) * alturaMaxima);
+            coluna.style.height = altura + 'px';
+        });
+    });
+}
+
+// Executar após carregamento
+calcularAlturasColunas();
 lucide.createIcons();
 </script>
