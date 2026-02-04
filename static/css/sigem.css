@@ -458,13 +458,19 @@ img {
     line-height: 1;
 }
 
-.stat-card-filter-icon,
-.stat-card-filter-icon svg {
+/* Ícone de filtro nos stat-cards - sobrescreve Lucide SVG */
+.stat-card svg.stat-card-filter-icon,
+.stat-card svg.lucide.stat-card-filter-icon,
+svg.lucide.lucide-filter.stat-card-filter-icon {
     position: absolute !important;
     bottom: 0.75rem !important;
     right: 0.75rem !important;
     width: 14px !important;
     height: 14px !important;
+    min-width: 14px !important;
+    max-width: 14px !important;
+    min-height: 14px !important;
+    max-height: 14px !important;
     opacity: 0.3 !important;
     transition: opacity var(--transition-base) !important;
     pointer-events: none !important;
@@ -473,13 +479,8 @@ img {
     fill: none !important;
 }
 
-/* Garantir que o SVG do Lucide herde posição do pai */
-.stat-card-filter-icon svg {
-    position: static !important;
-}
-
-.stat-card:hover .stat-card-filter-icon,
-.stat-card:hover .stat-card-filter-icon svg {
+.stat-card:hover svg.stat-card-filter-icon,
+.stat-card:hover svg.lucide.stat-card-filter-icon {
     opacity: 0.5 !important;
 }
 
