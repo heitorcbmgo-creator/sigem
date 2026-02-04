@@ -130,7 +130,7 @@ def htmx_missao_organograma(request, pk):
 
     missao = get_object_or_404(Missao, pk=pk)
 
-    designacoes = missao.designacoes.select_related('oficial').all()
+    designacoes = missao.designacoes.select_related('oficial', 'funcao').all()
 
     # Separar por hierarquia
     superiores = designacoes.filter(

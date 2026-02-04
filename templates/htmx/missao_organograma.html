@@ -21,7 +21,7 @@
             <img src="{{ d.oficial.foto_url }}" alt="Foto">
             <h4>{{ d.oficial.nome_guerra|default:d.oficial.nome }}</h4>
             <p>{{ d.oficial.posto }} — {{ d.oficial.quadro }}</p>
-            <span class="organograma-funcao">{{ d.get_funcao_na_missao_display }}</span>
+            <span class="organograma-funcao">{{ d.funcao.funcao }}</span>
         </div>
         {% endfor %}
     </div>
@@ -39,7 +39,7 @@
             <img src="{{ d.oficial.foto_url }}" alt="Foto">
             <h4>{{ d.oficial.nome_guerra|default:d.oficial.nome }}</h4>
             <p>{{ d.oficial.posto }} — {{ d.oficial.quadro }}</p>
-            <span class="organograma-funcao" style="background: #6b7280;">{{ d.get_funcao_na_missao_display }}</span>
+            <span class="organograma-funcao" style="background: #6b7280;">{{ d.funcao.funcao }}</span>
         </div>
         {% endfor %}
     </div>

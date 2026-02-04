@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 
-from ..models import Oficial, Missao, Designacao, Usuario, Unidade
+from ..models import Oficial, Missao, Designacao, Usuario, Unidade, Funcao
 
 
 def exportar_excel(request, tipo):
@@ -96,6 +96,14 @@ def exportar_excel(request, tipo):
         for u in Unidade.objects.all():
             ws.append([u.id, u.nome, u.sigla, u.tipo, u.comando_superior_id or ''])
 
+    elif tipo == 'funcoes':
+        ws.title = 'Funções'
+        ws.append(['ID', 'ID Missão', 'Nome Missão', 'Função', 'TDE', 'NQT', 'GRS', 'DEC', 'Soma', 'Complexidade'])
+        style_header(ws, 10)
+        for f in Funcao.objects.select_related('missao').all():
+            ws.append([f.id, f.missao.id, f.missao.nome, f.funcao, f.tde, f.nqt, f.grs, f.dec,
+                      f.soma_criterios, f.complexidade])
+
     elif tipo == 'usuarios':
         ws.title = 'Usuários'
         ws.append(['ID', 'CPF', 'Perfil', 'RG Oficial', 'Nome Oficial', 'Ativo'])
@@ -137,15 +145,22 @@ def gerar_modelo_importacao():
     header_fill = PatternFill('solid', fgColor='8B0000')
     info_font = Font(bold=True, color='8B0000')
 
-    def setup_sheet(sheet, headers, widths, example, info_col, info_data):
+    def setup_sheet(sheet, headers, widths, examples, info_col, info_data):
+        """Configura uma aba do Excel com headers, exemplos e informações."""
         for col, header in enumerate(headers, 1):
             cell = sheet.cell(row=1, column=col, value=header)
             cell.font = header_font
             cell.fill = header_fill
             sheet.column_dimensions[get_column_letter(col)].width = widths[col-1]
 
-        for col, value in enumerate(example, 1):
-            sheet.cell(row=2, column=col, value=value)
+        # Suporta múltiplas linhas de exemplo
+        if examples and isinstance(examples[0], (list, tuple)):
+            for row_idx, example in enumerate(examples, 2):
+                for col, value in enumerate(example, 1):
+                    sheet.cell(row=row_idx, column=col, value=value)
+        else:
+            for col, value in enumerate(examples, 1):
+                sheet.cell(row=2, column=col, value=value)
 
         if info_data:
             for row, (title, values) in enumerate(info_data.items(), 1):
@@ -155,11 +170,26 @@ def gerar_modelo_importacao():
 
         sheet.freeze_panes = 'A2'
 
-    # Aba Oficiais
+    # ========================================
+    # Aba 1: Unidades (deve ser importada primeiro)
+    # ========================================
     ws = wb.active
-    ws.title = 'Oficiais'
+    ws.title = 'Unidades'
     setup_sheet(ws,
-        ['CPF*', 'RG*', 'Nome Completo*', 'Nome de Guerra', 'Posto*', 'Quadro*', 'OBM', 'Função', 'Email', 'Telefone'],
+        ['Nome*', 'Sigla', 'Tipo*', 'ID Cmd Superior'],
+        [40, 15, 18, 18],
+        ['1º Batalhão BM', '1º BBM', 'BBM', ''],
+        6,
+        {'TIPOS:': ['COMANDO_GERAL', 'DIRETORIA', 'BBM', 'CIBM', 'CBM', 'SECAO'],
+         'NOTA:': ['Importar unidades superiores', 'antes das subordinadas']}
+    )
+
+    # ========================================
+    # Aba 2: Oficiais
+    # ========================================
+    ws2 = wb.create_sheet('Oficiais')
+    setup_sheet(ws2,
+        ['CPF*', 'RG*', 'Nome Completo*', 'Nome de Guerra', 'Posto*', 'Quadro*', 'OBM', 'Função OBM', 'Email', 'Telefone'],
         [15, 15, 35, 20, 12, 15, 25, 25, 30, 18],
         ['12345678901', 'RG123456', 'JOÃO DA SILVA', 'SILVA', 'Cap', 'QOC', '1º BBM', 'Cmt Cia', 'joao@email.com', '62999999999'],
         12,
@@ -167,47 +197,66 @@ def gerar_modelo_importacao():
          'QUADROS:': ['QOC', 'QOA/Adm', 'QOA/Mús', 'QOM/Médico', 'QOM/Dentista']}
     )
 
-    # Aba Missões
-    ws2 = wb.create_sheet('Missoes')
-    setup_sheet(ws2,
+    # ========================================
+    # Aba 3: Missões
+    # ========================================
+    ws3 = wb.create_sheet('Missoes')
+    setup_sheet(ws3,
         ['Tipo*', 'Nome*', 'Descrição', 'Local', 'Data Início', 'Data Fim', 'Status*', 'Documento'],
-        [18, 35, 40, 25, 15, 15, 18, 20],
-        ['OPERACIONAL', 'Operação Exemplo', 'Descrição da missão', 'Goiânia-GO', '2024-01-15', '2024-01-20', 'EM_ANDAMENTO', 'SEI-123'],
+        [18, 35, 40, 20, 15, 15, 18, 20],
+        ['OPERACIONAL', 'Operação Exemplo', 'Descrição da missão', 'CAPITAL', '2024-01-15', '2024-01-20', 'EM_ANDAMENTO', 'SEI-123'],
         10,
         {'TIPOS:': ['OPERACIONAL', 'ADMINISTRATIVA', 'ENSINO', 'CORREICIONAL', 'COMISSAO', 'ACAO_SOCIAL'],
-         'STATUS:': ['PLANEJADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA']}
+         'STATUS:': ['PLANEJADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA'],
+         'LOCAIS:': ['INTERNACIONAL', 'NACIONAL', 'ESTADUAL', 'CAPITAL', '1_CRBM', '2_CRBM', '3_CRBM', '4_CRBM', '5_CRBM', '6_CRBM', '7_CRBM', '8_CRBM', '9_CRBM']}
     )
 
-    # Aba Designações
-    ws3 = wb.create_sheet('Designacoes')
-    setup_sheet(ws3,
-        ['ID Missão*', 'RG Oficial*', 'Função*', 'Complexidade*', 'Observações'],
-        [15, 18, 20, 15, 40],
-        [1, 'RG123456', 'COMANDANTE', 'ALTA', 'Observação opcional'],
-        7,
-        {'FUNÇÕES:': ['COMANDANTE', 'SUBCOMANDANTE', 'COORDENADOR', 'PRESIDENTE', 'MEMBRO', 'AUXILIAR', 'INSTRUTOR', 'ENCARREGADO', 'RELATOR', 'ESCRIVAO'],
-         'COMPLEXIDADE:': ['BAIXA', 'MEDIA', 'ALTA']}
-    )
-
-    # Aba Unidades
-    ws4 = wb.create_sheet('Unidades')
+    # ========================================
+    # Aba 4: Funções (NOVA - matriz de complexidade)
+    # ========================================
+    ws4 = wb.create_sheet('Funcoes')
     setup_sheet(ws4,
-        ['Nome*', 'Sigla', 'Tipo*', 'ID Cmd Superior'],
-        [40, 15, 18, 18],
-        ['1º Batalhão BM', '1º BBM', 'BBM', ''],
-        6,
-        {'TIPOS:': ['COMANDO_GERAL', 'DIRETORIA', 'BBM', 'CIBM', 'CBM', 'SECAO']}
+        ['ID Missão*', 'Função*', 'TDE*', 'NQT*', 'GRS*', 'DEC*'],
+        [15, 25, 10, 10, 10, 10],
+        [
+            [1, 'COMANDANTE', 3, 3, 3, 3],
+            [1, 'SUBCOMANDANTE', 2, 2, 3, 2],
+            [1, 'MEMBRO', 1, 1, 1, 1],
+        ],
+        8,
+        {'TDE:': ['Tempo de Dedicação Exigido', '1=Baixo, 2=Médio, 3=Alto'],
+         'NQT:': ['Nível de Qualificação Técnica', '1=Baixo, 2=Médio, 3=Alto'],
+         'GRS:': ['Grau de Responsabilidade', '1=Baixo, 2=Médio, 3=Alto'],
+         'DEC:': ['Dimensão Efetivo Comandado', '1=Pequeno, 2=Médio, 3=Grande'],
+         'COMPLEXIDADE:': ['Soma 4-6 = BAIXA', 'Soma 7-9 = MÉDIA', 'Soma 10-12 = ALTA']}
     )
 
-    # Aba Usuários
-    ws5 = wb.create_sheet('Usuarios')
+    # ========================================
+    # Aba 5: Designações
+    # ========================================
+    ws5 = wb.create_sheet('Designacoes')
     setup_sheet(ws5,
+        ['ID Missão*', 'RG Oficial*', 'Função*', 'Observações'],
+        [15, 18, 25, 45],
+        [
+            [1, 'RG123456', 'COMANDANTE', 'Observação opcional'],
+            [1, 'RG789012', 'MEMBRO', ''],
+        ],
+        6,
+        {'NOTA:': ['A função deve existir na aba', 'Funcoes para a mesma missão.', 'A complexidade é calculada', 'automaticamente pelos critérios', 'TDE+NQT+GRS+DEC da função.']}
+    )
+
+    # ========================================
+    # Aba 6: Usuários
+    # ========================================
+    ws6 = wb.create_sheet('Usuarios')
+    setup_sheet(ws6,
         ['CPF*', 'Perfil*', 'RG Oficial Vinculado'],
         [18, 15, 22],
         ['12345678901', 'oficial', 'RG123456'],
         5,
         {'PERFIS:': ['admin', 'gestor', 'comandante', 'oficial'],
-         'NOTA:': ['Senha padrão: 123456']}
+         'NOTA:': ['Senha padrão: 123456', 'Usuários de oficiais são', 'criados automaticamente', 'ao importar Oficiais.']}
     )
 
     response = HR(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -665,6 +714,46 @@ def importar_excel(request, tipo):
                         errors.append(f'Linha {row_num}: {str(e)}')
 
         # ============================================================
+        # IMPORTAR FUNÇÕES (matriz de complexidade)
+        # ============================================================
+        elif tipo == 'funcoes':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0] and row[1]:  # Se tem missao_id e funcao
+                    try:
+                        missao_id = int(row[0])
+                        funcao_nome = str(row[1]).strip().upper()
+
+                        missao = Missao.objects.get(id=missao_id)
+
+                        # Validar valores TDE, NQT, GRS, DEC (1, 2 ou 3)
+                        tde = int(row[2]) if row[2] else 2
+                        nqt = int(row[3]) if row[3] else 2
+                        grs = int(row[4]) if row[4] else 2
+                        dec = int(row[5]) if row[5] else 2
+
+                        # Garantir que estão no range válido
+                        tde = max(1, min(3, tde))
+                        nqt = max(1, min(3, nqt))
+                        grs = max(1, min(3, grs))
+                        dec = max(1, min(3, dec))
+
+                        Funcao.objects.update_or_create(
+                            missao=missao,
+                            funcao=funcao_nome,
+                            defaults={
+                                'tde': tde,
+                                'nqt': nqt,
+                                'grs': grs,
+                                'dec': dec,
+                            }
+                        )
+                        count += 1
+                    except Missao.DoesNotExist:
+                        errors.append(f'Linha {row_num}: Missão ID {row[0]} não encontrada')
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+
+        # ============================================================
         # IMPORTAR DESIGNAÇÕES
         # ============================================================
         elif tipo == 'designacoes':
@@ -674,8 +763,6 @@ def importar_excel(request, tipo):
                         missao_id = int(row[0])
                         oficial_rg = str(row[1]).strip()
 
-                        # Buscar missão e oficial
-                        from ..models import Funcao
                         missao = Missao.objects.get(id=missao_id)
                         oficial = Oficial.objects.get(rg=oficial_rg)
 
@@ -695,9 +782,9 @@ def importar_excel(request, tipo):
                         Designacao.objects.update_or_create(
                             missao=missao,
                             oficial=oficial,
+                            funcao=funcao,
                             defaults={
-                                'funcao': funcao,
-                                'observacoes': str(row[4]).strip() if row[4] else '',
+                                'observacoes': str(row[3]).strip() if len(row) > 3 and row[3] else '',
                             }
                         )
                         count += 1
