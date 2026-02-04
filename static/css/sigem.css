@@ -458,30 +458,32 @@ img {
     line-height: 1;
 }
 
-/* Ícone de filtro nos stat-cards - sobrescreve Lucide SVG */
-.stat-card svg.stat-card-filter-icon,
-.stat-card svg.lucide.stat-card-filter-icon,
-svg.lucide.lucide-filter.stat-card-filter-icon {
-    position: absolute !important;
-    bottom: 0.75rem !important;
-    right: 0.75rem !important;
-    width: 14px !important;
-    height: 14px !important;
-    min-width: 14px !important;
-    max-width: 14px !important;
-    min-height: 14px !important;
-    max-height: 14px !important;
-    opacity: 0.3 !important;
-    transition: opacity var(--transition-base) !important;
-    pointer-events: none !important;
-    color: var(--sigem-gray-400) !important;
-    stroke: var(--sigem-gray-400) !important;
-    fill: none !important;
+/* Ícone de filtro nos stat-cards - wrapper approach */
+.stat-card-filter-icon {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+    transition: opacity var(--transition-base);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
-.stat-card:hover svg.stat-card-filter-icon,
-.stat-card:hover svg.lucide.stat-card-filter-icon {
-    opacity: 0.5 !important;
+.stat-card-filter-icon svg,
+.stat-card-filter-icon .lucide {
+    width: 100%;
+    height: 100%;
+    color: var(--sigem-gray-400);
+    stroke: var(--sigem-gray-400);
+}
+
+.stat-card:hover .stat-card-filter-icon {
+    opacity: 0.5;
 }
 
 /* ============================================================
