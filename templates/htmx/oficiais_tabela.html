@@ -307,9 +307,7 @@ function editarOficial(id) {
             document.getElementById('form-oficial-titulo').textContent = 'Editar Oficial';
             document.getElementById('oficial_id').value = id;
             document.getElementById('of-cpf').value = data.cpf;
-            document.getElementById('of-cpf').readOnly = true; // CPF não pode ser alterado
             document.getElementById('of-rg').value = data.rg;
-            document.getElementById('of-rg').readOnly = true; // RG não pode ser alterado
             document.getElementById('of-nome').value = data.nome;
             document.getElementById('of-nome_guerra').value = data.nome_guerra || '';
             document.getElementById('of-posto').value = data.posto;

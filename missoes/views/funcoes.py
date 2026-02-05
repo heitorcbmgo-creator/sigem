@@ -19,7 +19,7 @@ def htmx_funcoes_tabela(request):
     """Retorna tabela de funções com paginação e filtros (para Admin)."""
 
     # Verificar permissão: apenas Administrador e Comando-Geral
-    if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
+    if not (request.user.is_superuser or request.user.is_admin or request.user.is_comando_geral):
         return HttpResponse('<p class="text-danger">Acesso negado.</p>', status=403)
 
     funcoes = Funcao.objects.select_related('missao').all()
@@ -86,7 +86,7 @@ def htmx_funcao_criar(request):
     """Cria uma nova função."""
 
     # Verificar permissão
-    if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
+    if not (request.user.is_superuser or request.user.is_admin or request.user.is_comando_geral):
         return HttpResponse('<p class="text-danger">Acesso negado.</p>', status=403)
 
     try:
@@ -133,7 +133,7 @@ def htmx_funcao_editar(request, pk):
     """Edita uma função existente."""
 
     # Verificar permissão
-    if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
+    if not (request.user.is_superuser or request.user.is_admin or request.user.is_comando_geral):
         return HttpResponse('<p class="text-danger">Acesso negado.</p>', status=403)
 
     funcao = get_object_or_404(Funcao, pk=pk)
@@ -180,7 +180,7 @@ def htmx_funcao_excluir(request, pk):
     from django.db.models import ProtectedError
 
     # Verificar permissão
-    if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
+    if not (request.user.is_superuser or request.user.is_admin or request.user.is_comando_geral):
         return HttpResponse('<p class="text-danger">Acesso negado.</p>', status=403)
 
     funcao = get_object_or_404(Funcao, pk=pk)
@@ -215,7 +215,7 @@ def htmx_funcao_dados(request, pk):
     """Retorna dados de uma função em JSON para edição."""
 
     # Verificar permissão
-    if not (request.user.is_superuser or request.user.unidade.tipo == 'COMANDO_GERAL'):
+    if not (request.user.is_superuser or request.user.is_admin or request.user.is_comando_geral):
         return JsonResponse({'error': 'Acesso negado'}, status=403)
 
     funcao = get_object_or_404(Funcao, pk=pk)

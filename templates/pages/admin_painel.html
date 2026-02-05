@@ -34,7 +34,7 @@
     </button>
     {% endif %}
 
-    {% if user.is_superuser or user.unidade.tipo == 'COMANDO_GERAL' %}
+    {% if user.is_superuser or user.is_admin or user.is_comando_geral %}
     <button class="tab {% if aba_ativa == 'funcoes' %}active{% endif %}"
             data-tipo="funcoes"
             hx-get="{% url 'htmx_funcoes_tabela' %}"

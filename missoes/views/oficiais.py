@@ -461,6 +461,17 @@ def htmx_oficial_editar(request, pk):
     oficial = get_object_or_404(Oficial, pk=pk)
 
     try:
+        # CPF e RG podem ser editados
+        novo_cpf = request.POST.get('cpf', oficial.cpf)
+        novo_rg = request.POST.get('rg', oficial.rg)
+
+        # Se CPF mudou e oficial tem usuário vinculado, atualizar o usuário também
+        if novo_cpf != oficial.cpf and hasattr(oficial, 'usuario'):
+            oficial.usuario.cpf = novo_cpf
+            oficial.usuario.save(update_fields=['cpf'])
+
+        oficial.cpf = novo_cpf
+        oficial.rg = novo_rg
         oficial.nome = request.POST.get('nome', oficial.nome)
         oficial.nome_guerra = request.POST.get('nome_guerra', oficial.nome_guerra)
         oficial.posto = request.POST.get('posto', oficial.posto)
