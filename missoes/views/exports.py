@@ -568,8 +568,9 @@ def exportar_pdf(request, tipo):
                 if d.missao.data_fim:
                     periodo += f" - {d.missao.data_fim.strftime('%d/%m/%Y')}"
 
+            nome_missao = d.missao.nome_completo
             table_data.append([
-                d.missao.nome[:35] + '...' if len(d.missao.nome) > 35 else d.missao.nome,
+                nome_missao[:35] + '...' if len(nome_missao) > 35 else nome_missao,
                 d.funcao.funcao,
                 d.get_complexidade_display(),
                 d.missao.get_status_display(),
@@ -577,7 +578,7 @@ def exportar_pdf(request, tipo):
                 periodo or '-'
             ])
 
-        designacoes_table = Table(table_data, colWidths=[5.5*cm, 2.5*cm, 2.2*cm, 2.2*cm, 2.2*cm, 2.4*cm])
+        designacoes_table = Table(table_data, colWidths=[5.0*cm, 2.2*cm, 2.0*cm, 2.0*cm, 2.0*cm, 3.8*cm])
         designacoes_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B0000')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -596,10 +597,14 @@ def exportar_pdf(request, tipo):
     else:
         elements.append(Paragraph("Nenhuma designação encontrada.", info_style))
 
-    # Rodapé
+    # Rodapé com nome do usuário
     elements.append(Spacer(1, 1*cm))
+    if request.user.oficial:
+        usuario_nome = f"{request.user.oficial.posto} {request.user.oficial.nome}"
+    else:
+        usuario_nome = request.user.cpf
     elements.append(Paragraph(
-        f"Documento gerado pelo SIGEM em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+        f"Documento gerado pelo SIGEM em {datetime.now().strftime('%d/%m/%Y às %H:%M')} por {usuario_nome}",
         ParagraphStyle('Footer', fontSize=8, textColor=colors.gray, alignment=TA_CENTER)
     ))
 
