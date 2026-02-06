@@ -146,6 +146,41 @@ def htmx_solicitacao_criar(request):
 
             return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de designação enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
 
+        elif tipo_solicitacao == 'PRORROGACAO_PRAZO':
+            # Validações para prorrogação de prazo
+            missao_id = request.POST.get('missao_id')
+            nova_data_fim = request.POST.get('nova_data_fim')
+            documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+
+            if not all([missao_id, nova_data_fim, documento_sei_designacao]):
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
+
+            missao = Missao.objects.get(id=missao_id)
+
+            # Verificar se o oficial está designado nesta missão
+            if not Designacao.objects.filter(oficial=request.user.oficial, missao=missao).exists():
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Você não está designado nesta missão.</div>')
+
+            # Verificar se já existe solicitação de prorrogação pendente para esta missão
+            if Solicitacao.objects.filter(
+                solicitante=request.user.oficial,
+                missao_existente=missao,
+                tipo_solicitacao='PRORROGACAO_PRAZO',
+                status='PENDENTE'
+            ).exists():
+                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação de prorrogação pendente para esta missão.</div>')
+
+            # Criar solicitação de prorrogação
+            Solicitacao.objects.create(
+                tipo_solicitacao='PRORROGACAO_PRAZO',
+                solicitante=request.user.oficial,
+                missao_existente=missao,
+                nova_data_fim=nova_data_fim,
+                documento_sei_designacao=documento_sei_designacao,
+            )
+
+            return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de prorrogação enviada com sucesso! Aguarde avaliação.</div><script>lucide.createIcons();</script>')
+
         else:
             return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Tipo de solicitação inválido.</div>')
 
@@ -366,6 +401,9 @@ def htmx_solicitacao_aprovar(request, pk):
 
         if not all([tde, nqt, grs, dec]):
             return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha TDE, NQT, GRS e DEC para aprovar nova missão.</div>')
+    elif solicitacao.tipo_solicitacao == 'PRORROGACAO_PRAZO':
+        # Para prorrogação, apenas a nova data é necessária (já está na solicitação)
+        tde = nqt = grs = dec = None
     else:
         # Para designação, complexidade virá da função selecionada
         tde = nqt = grs = dec = None
@@ -395,6 +433,9 @@ def htmx_solicitacao_aprovar(request, pk):
             solicitacao.nqt = int(nqt)
             solicitacao.grs = int(grs)
             solicitacao.dec = int(dec)
+        elif solicitacao.tipo_solicitacao == 'PRORROGACAO_PRAZO':
+            # Para prorrogação, não há campos adicionais a editar
+            pass
         else:
             missao_id = request.POST.get('missao_id')
             if missao_id:
@@ -518,6 +559,7 @@ def htmx_solicitacoes_validacao(request):
         'pendentes': Solicitacao.objects.filter(status='PENDENTE').count(),
         'count_missao': Solicitacao.objects.filter(tipo_solicitacao='NOVA_MISSAO').count(),
         'count_designacao': Solicitacao.objects.filter(tipo_solicitacao='DESIGNACAO').count(),
+        'count_prorrogacao': Solicitacao.objects.filter(tipo_solicitacao='PRORROGACAO_PRAZO').count(),
     }
 
     context = {

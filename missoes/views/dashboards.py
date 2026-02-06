@@ -96,11 +96,10 @@ def dashboard(request):
         soma_carga_total = sum(oficial.carga_total for oficial in oficiais_base)
         carga_media_global = round(soma_carga_total / total_oficiais, 1) if total_oficiais > 0 else 0
 
-        # Solicitações pendentes (apenas para não-comandantes)
-        if not is_comandante:
-            solicitacoes_pendentes = Solicitacao.objects.filter(status='PENDENTE').count() or 0
-        else:
-            solicitacoes_pendentes = 0
+        # Missões atrasadas (respeitando nível de acesso)
+        # Para comandante: apenas missões onde há oficiais da sua OBM designados
+        # Para admin/comando-geral: todas as missões
+        missoes_atrasadas = missoes_base.filter(status='ATRASADA').count() or 0
 
         # Taxa de conclusão (missões concluídas / total não canceladas)
         total_missoes_nao_canceladas = missoes_base.exclude(status='CANCELADA').count() or 0
@@ -438,7 +437,7 @@ def dashboard(request):
             'perc_media': perc_media,
             'perc_alta': perc_alta,
             'carga_media_global': carga_media_global,
-            'solicitacoes_pendentes': solicitacoes_pendentes,
+            'missoes_atrasadas': missoes_atrasadas,
             'taxa_conclusao': taxa_conclusao,
             'missoes_concluidas': missoes_concluidas,
 

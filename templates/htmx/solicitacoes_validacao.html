@@ -20,6 +20,7 @@
                 <option value="" {% if not filtros.tipo %}selected{% endif %}>Todas ({{ stats.total }})</option>
                 <option value="NOVA_MISSAO" {% if filtros.tipo == 'NOVA_MISSAO' %}selected{% endif %}>Nova Missão ({{ stats.count_missao }})</option>
                 <option value="DESIGNACAO" {% if filtros.tipo == 'DESIGNACAO' %}selected{% endif %}>Designação ({{ stats.count_designacao }})</option>
+                <option value="PRORROGACAO_PRAZO" {% if filtros.tipo == 'PRORROGACAO_PRAZO' %}selected{% endif %}>Prorrogação ({{ stats.count_prorrogacao }})</option>
             </select>
         </div>
 
@@ -79,6 +80,10 @@
                 <span class="badge-tipo-mini badge-missao">
                     <i data-lucide="folder-plus"></i>
                 </span>
+                {% elif sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}
+                <span class="badge-tipo-mini badge-prorrogacao">
+                    <i data-lucide="calendar-plus"></i>
+                </span>
                 {% else %}
                 <span class="badge-tipo-mini badge-designacao">
                     <i data-lucide="user-plus"></i>
@@ -97,6 +102,9 @@
                 {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
                     <strong>{{ sol.nome_missao|truncatechars:35 }}</strong>
                     <span>{{ sol.nome_funcao|truncatechars:25 }}</span>
+                {% elif sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}
+                    <strong>{{ sol.missao_existente.nome_completo|truncatechars:35 }}</strong>
+                    <span>Prorrogar até {{ sol.nova_data_fim|date:"d/m/Y" }}</span>
                 {% else %}
                     <strong>{{ sol.missao_existente.nome_completo|truncatechars:35 }}</strong>
                     <span>{{ sol.funcao_existente.funcao|default:"—"|truncatechars:25 }}</span>
@@ -125,7 +133,7 @@
                 <div class="detalhe-col">
                     <h5>
                         <i data-lucide="folder"></i>
-                        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}Missão a Criar{% else %}Missão{% endif %}
+                        {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}Missão a Criar{% elif sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}Missão a Prorrogar{% else %}Missão{% endif %}
                     </h5>
                     {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
                     <div class="detalhe-item">
@@ -152,6 +160,31 @@
                         <label>SEI Missão:</label>
                         <span>{{ sol.documento_sei_missao }}</span>
                     </div>
+                    {% elif sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}
+                    <div class="detalhe-item">
+                        <label>Missão:</label>
+                        <span>{{ sol.missao_existente.nome_completo }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Tipo:</label>
+                        <span>{{ sol.missao_existente.get_tipo_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Status:</label>
+                        <span>{{ sol.missao_existente.get_status_display }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Data Fim Atual:</label>
+                        <span><strong>{{ sol.missao_existente.data_fim|date:"d/m/Y" }}</strong></span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Nova Data Fim:</label>
+                        <span class="text-primary"><strong>{{ sol.nova_data_fim|date:"d/m/Y" }}</strong></span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Doc. SEI/BG:</label>
+                        <span>{{ sol.documento_sei_designacao }}</span>
+                    </div>
                     {% else %}
                     <div class="detalhe-item">
                         <label>Missão:</label>
@@ -168,8 +201,25 @@
                     {% endif %}
                 </div>
 
-                <!-- Coluna 2: Informações da Designação -->
+                <!-- Coluna 2: Informações da Designação / Prorrogação -->
                 <div class="detalhe-col">
+                    {% if sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}
+                    <h5>
+                        <i data-lucide="calendar"></i>
+                        Prorrogação
+                    </h5>
+                    <div class="detalhe-item">
+                        <label>Solicitante:</label>
+                        <span>{{ sol.solicitante.posto }} {{ sol.solicitante.nome_guerra|default:sol.solicitante.nome }}</span>
+                    </div>
+                    <div class="detalhe-item">
+                        <label>Alteração:</label>
+                        <span>
+                            {{ sol.missao_existente.data_fim|date:"d/m/Y" }} →
+                            <strong class="text-primary">{{ sol.nova_data_fim|date:"d/m/Y" }}</strong>
+                        </span>
+                    </div>
+                    {% else %}
                     <h5>
                         <i data-lucide="user"></i>
                         Designação
@@ -206,7 +256,7 @@
                             {% endwith %}
                         </div>
                         {% endif %}
-                    {% else %}
+                    {% elif sol.tipo_solicitacao == 'DESIGNACAO' %}
                         {% if sol.funcao_existente %}
                         <div class="detalhe-item">
                             <label>Complexidade:</label>
@@ -215,6 +265,7 @@
                             </span>
                         </div>
                         {% endif %}
+                    {% endif %}
                     {% endif %}
 
                     {% if sol.observacao_avaliador %}
@@ -292,6 +343,34 @@
                         <div class="acoes-btns">
                             <button type="submit" class="btn btn-sm btn-success">
                                 <i data-lucide="check"></i> Aprovar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="recusarSolicitacao({{ sol.id }})">
+                                <i data-lucide="x"></i> Recusar
+                            </button>
+                        </div>
+                    </form>
+                    {% elif sol.tipo_solicitacao == 'PRORROGACAO_PRAZO' %}
+                    <!-- Para PRORROGACAO_PRAZO: aprova alteração de data_fim -->
+                    <form id="form-aprovar-{{ sol.id }}"
+                          hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
+                          hx-target="#feedback-{{ sol.id }}"
+                          hx-on::after-request="handleAprovarResponse(event, {{ sol.id }})">
+                        {% csrf_token %}
+
+                        <div class="info-prorrogacao">
+                            <p class="text-muted mb-2">Ao aprovar, a data de término da missão será alterada para:</p>
+                            <p class="text-primary"><strong>{{ sol.nova_data_fim|date:"d/m/Y" }}</strong></p>
+                        </div>
+
+                        <div class="observacao-inline">
+                            <input type="text" name="observacao" placeholder="Observação (opcional)" class="form-input-mini">
+                        </div>
+
+                        <div id="feedback-{{ sol.id }}" class="feedback-inline"></div>
+
+                        <div class="acoes-btns">
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i data-lucide="check"></i> Aprovar Prorrogação
                             </button>
                             <button type="button" class="btn btn-sm btn-danger" onclick="recusarSolicitacao({{ sol.id }})">
                                 <i data-lucide="x"></i> Recusar
@@ -533,6 +612,11 @@
 .badge-designacao {
     background: #f3e8ff;
     color: #7c3aed;
+}
+
+.badge-prorrogacao {
+    background: #fef3c7;
+    color: #d97706;
 }
 
 .sol-col-solicitante {

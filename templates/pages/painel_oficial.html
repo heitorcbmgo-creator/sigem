@@ -148,6 +148,17 @@
                     </div>
                     <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
                 </div>
+
+                <div class="wizard-option" onclick="showForm('PRORROGACAO_PRAZO')">
+                    <div class="wizard-option-icon">
+                        <i data-lucide="calendar-plus"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Informar PRORROGAÇÃO DE PRAZO</h3>
+                        <p>Solicite a alteração da data de término de uma missão em que você está designado.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
             </div>
         </div>
         
@@ -375,6 +386,88 @@
                 <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-designacao">
                     <i data-lucide="send"></i>
                     Enviar Solicitação
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2: Formulário Prorrogação de Prazo -->
+        <div id="wizard-step-prorrogacao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="calendar-plus"></i> Prorrogação de Prazo</h3>
+            </div>
+
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}"
+                  hx-target="#feedback-solicitacao-prorrog"
+                  hx-swap="innerHTML"
+                  id="form-prorrogacao">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="PRORROGACAO_PRAZO">
+
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="folder-check"></i> Selecione a Missão</h4>
+                    <p class="text-muted mb-3">Apenas missões em que você está designado são exibidas.</p>
+
+                    <div class="missoes-lista" id="missoes-lista-prorrog">
+                        {% for d in minhas_designacoes %}
+                        {% if d.missao.status == 'EM_ANDAMENTO' or d.missao.status == 'PLANEJADA' or d.missao.status == 'ATRASADA' %}
+                        <label class="missao-item">
+                            <input type="radio" name="missao_id" value="{{ d.missao.id }}" required
+                                   onchange="selecionarMissaoProrrogacao({{ d.missao.id }}, '{{ d.missao.data_fim|date:'Y-m-d' }}')">
+                            <div class="missao-item-content">
+                                <strong>{{ d.missao.nome_completo }}</strong>
+                                <span class="missao-item-meta">
+                                    {{ d.funcao.funcao }} •
+                                    {{ d.missao.get_tipo_display }} •
+                                    {{ d.missao.get_status_display }}
+                                    {% if d.missao.data_fim %}
+                                    • <strong>Término atual: {{ d.missao.data_fim|date:"d/m/Y" }}</strong>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </label>
+                        {% endif %}
+                        {% empty %}
+                        <p class="text-muted text-center py-4">Você não está designado em nenhuma missão ativa.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="calendar"></i> Nova Data de Término</h4>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data Fim Atual</label>
+                            <input type="date" class="form-input" id="data-fim-atual-prorrog" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;">
+                            <small class="form-text text-muted">Data atual registrada na missão</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nova Data Fim <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="nova_data_fim" id="nova-data-fim-prorrog" required>
+                            <small class="form-text text-muted">Nova data de término solicitada</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Nº do Doc. SEI/BG <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="documento_sei_designacao" required
+                                   placeholder="Ex: SEI 00000.000000/2025-00 ou BG 001/2025">
+                            <small class="form-text text-muted">Documento que autoriza a prorrogação</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="feedback-solicitacao-prorrog"></div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-prorrogacao">
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação de Prorrogação
                 </button>
             </form>
         </div>
@@ -661,13 +754,15 @@
 <script>
 function showForm(tipo) {
     document.getElementById('wizard-step-1').style.display = 'none';
-    
+
     if (tipo === 'NOVA_MISSAO') {
         document.getElementById('wizard-step-nova-missao').style.display = 'block';
+    } else if (tipo === 'PRORROGACAO_PRAZO') {
+        document.getElementById('wizard-step-prorrogacao').style.display = 'block';
     } else {
         document.getElementById('wizard-step-designacao').style.display = 'block';
     }
-    
+
     lucide.createIcons();
 }
 
@@ -675,7 +770,19 @@ function backToStep1() {
     document.getElementById('wizard-step-1').style.display = 'block';
     document.getElementById('wizard-step-nova-missao').style.display = 'none';
     document.getElementById('wizard-step-designacao').style.display = 'none';
+    document.getElementById('wizard-step-prorrogacao').style.display = 'none';
     lucide.createIcons();
+}
+
+function selecionarMissaoProrrogacao(missaoId, dataFimAtual) {
+    // Preenche a data fim atual no campo readonly
+    document.getElementById('data-fim-atual-prorrog').value = dataFimAtual || '';
+
+    // Define a data mínima da nova data como o dia seguinte à data atual
+    const novaDataInput = document.getElementById('nova-data-fim-prorrog');
+    if (dataFimAtual) {
+        novaDataInput.min = dataFimAtual;
+    }
 }
 
 function toggleDataFim() {

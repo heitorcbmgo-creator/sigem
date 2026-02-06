@@ -127,24 +127,23 @@
         <div class="kpi-meta">Meta: 3-6 pts</div>
     </div>
     
-    {% if not is_comandante %}
     <div class="kpi-card">
         <button class="kpi-info-btn" type="button">
             <i data-lucide="info"></i>
         </button>
         <div class="kpi-tooltip">
-            <strong>Solicitações Pendentes</strong><br>
-            Quantidade de solicitações de designação aguardando análise pela BM/3.
+            <strong>Missões Atrasadas</strong><br>
+            Quantidade de missões com prazo expirado (data fim ultrapassada).
+            {% if is_comandante %}Filtrado para oficiais da sua OBM e subordinadas.{% endif %}
         </div>
-        <div class="kpi-icon {% if solicitacoes_pendentes == 0 %}kpi-icon-green{% elif solicitacoes_pendentes <= 5 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
-            <i data-lucide="inbox"></i>
+        <div class="kpi-icon {% if missoes_atrasadas == 0 %}kpi-icon-green{% elif missoes_atrasadas <= 3 %}kpi-icon-yellow{% else %}kpi-icon-red{% endif %}">
+            <i data-lucide="clock-alert"></i>
         </div>
         <div class="kpi-content">
-            <span class="kpi-value">{{ solicitacoes_pendentes }}</span>
-            <span class="kpi-label">Solicitações Pendentes</span>
+            <span class="kpi-value">{{ missoes_atrasadas }}</span>
+            <span class="kpi-label">Missões Atrasadas</span>
         </div>
     </div>
-    {% endif %}
 </div>
 
 <!-- ============================================================

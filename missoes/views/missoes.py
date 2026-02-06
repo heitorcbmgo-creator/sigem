@@ -117,6 +117,7 @@ def htmx_missoes_tabela(request):
         'query_string': query_string,
         'tipo_choices': Missao.TIPO_CHOICES,
         'status_choices': Missao.STATUS_CHOICES,
+        'finalizacao_choices': Missao.FINALIZACAO_CHOICES,
         'local_choices': Missao.LOCAL_CHOICES,
         'user': request.user,
     }
@@ -164,9 +165,9 @@ def htmx_missao_criar(request):
             ano=request.POST.get('ano', 2026),
             descricao=request.POST.get('descricao', ''),
             local=request.POST.get('local', ''),
-            data_inicio=request.POST.get('data_inicio') or None,
-            data_fim=request.POST.get('data_fim') or None,
-            status=request.POST.get('status', 'PLANEJADA'),
+            data_inicio=request.POST.get('data_inicio'),
+            data_fim=request.POST.get('data_fim'),
+            finalizacao=request.POST.get('finalizacao', ''),
             documento_referencia=request.POST.get('documento_referencia', ''),
         )
         messages.success(request, 'Missão criada com sucesso!')
@@ -174,6 +175,10 @@ def htmx_missao_criar(request):
     except Exception as e:
         messages.error(request, f'Erro ao criar missão: {str(e)}')
 
+    # Retorna a tabela (Admin-Painel) ou lista (página Missões) conforme o referer
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'admin' in referer or 'painel' in referer:
+        return htmx_missoes_tabela(request)
     return htmx_missoes_lista(request)
 
 
@@ -193,7 +198,7 @@ def htmx_missao_editar(request, pk):
         missao.ano = request.POST.get('ano', missao.ano)
         missao.descricao = request.POST.get('descricao', missao.descricao)
         missao.local = request.POST.get('local', missao.local)
-        missao.status = request.POST.get('status', missao.status)
+        missao.finalizacao = request.POST.get('finalizacao', missao.finalizacao)
         missao.documento_referencia = request.POST.get('documento_referencia', missao.documento_referencia)
 
         data_inicio = request.POST.get('data_inicio')
@@ -203,12 +208,17 @@ def htmx_missao_editar(request, pk):
         if data_fim:
             missao.data_fim = data_fim
 
+        # O status é calculado automaticamente no model.save()
         missao.save()
         messages.success(request, 'Missão atualizada!')
 
     except Exception as e:
         messages.error(request, f'Erro ao atualizar: {str(e)}')
 
+    # Retorna a tabela (Admin-Painel) ou lista (página Missões) conforme o referer
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'admin' in referer or 'painel' in referer:
+        return htmx_missoes_tabela(request)
     return htmx_missoes_lista(request)
 
 
@@ -224,6 +234,7 @@ def htmx_missao_dados(request, pk):
         'ano': missao.ano,
         'tipo': missao.tipo,
         'status': missao.status,
+        'finalizacao': missao.finalizacao,
         'descricao': missao.descricao,
         'local': missao.local,
         'data_inicio': missao.data_inicio.strftime('%Y-%m-%d') if missao.data_inicio else '',
@@ -249,4 +260,8 @@ def htmx_missao_excluir(request, pk):
     except Exception as e:
         messages.error(request, f'Erro ao excluir: {str(e)}')
 
+    # Retorna a tabela (Admin-Painel) ou lista (página Missões) conforme o referer
+    referer = request.META.get('HTTP_REFERER', '')
+    if 'admin' in referer or 'painel' in referer:
+        return htmx_missoes_tabela(request)
     return htmx_missoes_lista(request)

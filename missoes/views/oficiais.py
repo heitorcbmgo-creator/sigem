@@ -166,7 +166,7 @@ def painel_oficial(request):
     oficial = usuario.oficial
 
     # Designações do oficial
-    designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao').order_by('-criado_em')
+    designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao', 'funcao').order_by('-criado_em')
 
     # Filtros
     tipo = request.GET.get('tipo', '')
@@ -190,9 +190,13 @@ def painel_oficial(request):
     ano_atual = datetime.now().year
     anos_disponiveis = list(range(ano_atual, ano_atual - 5, -1))
 
+    # Designações para o formulário de prorrogação (sem filtros aplicados)
+    minhas_designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao', 'funcao')
+
     context = {
         'oficial': oficial,
         'designacoes': designacoes,
+        'minhas_designacoes': minhas_designacoes,
         'missoes_disponiveis': missoes_disponiveis,
         'anos_disponiveis': anos_disponiveis,
         'tipo_choices': Missao.TIPO_CHOICES,

@@ -163,7 +163,7 @@ class Oficial(models.Model):
 # ============================================================
 class Missao(models.Model):
     """Representa uma missão/operação."""
-    
+
     TIPO_CHOICES = [
         ('OPERACIONAL', 'Operacional'),
         ('ADMINISTRATIVA', 'Administrativa'),
@@ -172,12 +172,21 @@ class Missao(models.Model):
         ('COMISSAO', 'Comissão'),
         ('ACAO_SOCIAL', 'Ação Social'),
     ]
-    
+
     STATUS_CHOICES = [
         ('PLANEJADA', 'Planejada'),
         ('EM_ANDAMENTO', 'Em andamento'),
+        ('ATRASADA', 'Atrasada'),
         ('CONCLUIDA', 'Concluída'),
         ('CANCELADA', 'Cancelada'),
+        ('SUSPENSA', 'Suspensa'),
+    ]
+
+    FINALIZACAO_CHOICES = [
+        ('', '-'),
+        ('CONCLUIDA', 'Concluída'),
+        ('CANCELADA', 'Cancelada'),
+        ('SUSPENSA', 'Suspensa'),
     ]
 
     LOCAL_CHOICES = [
@@ -201,8 +210,9 @@ class Missao(models.Model):
     ano = models.IntegerField('Ano', null=True, blank=True, default=2026)
     descricao = models.TextField('Descrição', blank=True)
     local = models.CharField('Local', max_length=20, choices=LOCAL_CHOICES, blank=True)
-    data_inicio = models.DateField('Data de Início', null=True, blank=True)
-    data_fim = models.DateField('Data de Término', null=True, blank=True)
+    data_inicio = models.DateField('Data de Início')
+    data_fim = models.DateField('Data de Término')
+    finalizacao = models.CharField('Finalização', max_length=20, choices=FINALIZACAO_CHOICES, blank=True, default='')
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PLANEJADA')
     documento_referencia = models.CharField('Documento de Referência (SEI/BG)', max_length=100, blank=True)
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
@@ -215,6 +225,52 @@ class Missao(models.Model):
 
     def __str__(self):
         return self.nome_completo
+
+    def save(self, *args, **kwargs):
+        """Calcula o status automaticamente antes de salvar."""
+        self.status = self._calcular_status()
+        super().save(*args, **kwargs)
+
+    def _calcular_status(self):
+        """
+        Calcula o status baseado nas regras:
+        - Concluída: finalizacao == CONCLUIDA
+        - Cancelada: finalizacao == CANCELADA
+        - Suspensa: finalizacao == SUSPENSA e data atual > data_inicio
+        - Planejada: data_inicio > hoje
+        - Em andamento: hoje entre data_inicio e data_fim
+        - Atrasada: hoje > data_fim e finalizacao em branco
+        """
+        from datetime import date, datetime
+
+        hoje = date.today()
+
+        # Converter datas se vierem como string
+        data_inicio = self.data_inicio
+        data_fim = self.data_fim
+
+        if isinstance(data_inicio, str) and data_inicio:
+            data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+        if isinstance(data_fim, str) and data_fim:
+            data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+
+        # Prioridade 1: Finalização definida
+        if self.finalizacao == 'CONCLUIDA':
+            return 'CONCLUIDA'
+        if self.finalizacao == 'CANCELADA':
+            return 'CANCELADA'
+        if self.finalizacao == 'SUSPENSA' and data_inicio and hoje > data_inicio:
+            return 'SUSPENSA'
+
+        # Prioridade 2: Baseado nas datas
+        if data_inicio and hoje < data_inicio:
+            return 'PLANEJADA'
+        if data_fim and hoje > data_fim:
+            return 'ATRASADA'
+        if data_inicio and data_fim and data_inicio <= hoje <= data_fim:
+            return 'EM_ANDAMENTO'
+
+        return 'PLANEJADA'
 
     @property
     def nome_completo(self):
@@ -658,6 +714,7 @@ class Solicitacao(models.Model):
     TIPO_SOLICITACAO_CHOICES = [
         ('NOVA_MISSAO', 'Nova Missão + Designação'),
         ('DESIGNACAO', 'Designação em Missão Existente'),
+        ('PRORROGACAO_PRAZO', 'Prorrogação de Prazo'),
     ]
     
     STATUS_CHOICES = [
@@ -768,7 +825,15 @@ class Solicitacao(models.Model):
         help_text='Preenchido apenas se tipo=DESIGNACAO'
     )
     documento_sei_designacao = models.CharField('Nº SEI/BG da Designação', max_length=100)
-    
+
+    # === Campos de PRORROGAÇÃO (preenchidos se tipo='PRORROGACAO_PRAZO') ===
+    nova_data_fim = models.DateField(
+        'Nova Data de Término',
+        null=True,
+        blank=True,
+        help_text='Preenchido apenas se tipo=PRORROGACAO_PRAZO'
+    )
+
     # === Controle da Solicitação ===
     status = models.CharField(
         'Status',
@@ -828,19 +893,27 @@ class Solicitacao(models.Model):
     def __str__(self):
         if self.tipo_solicitacao == 'NOVA_MISSAO':
             return f"{self.solicitante} - Nova: {self.nome_missao} ({self.get_status_display()})"
+        elif self.tipo_solicitacao == 'PRORROGACAO_PRAZO':
+            missao_nome = self.missao_existente.nome if self.missao_existente else '?'
+            return f"{self.solicitante} - Prorrogação: {missao_nome} ({self.get_status_display()})"
         else:
             missao_nome = self.missao_existente.nome if self.missao_existente else '?'
             return f"{self.solicitante} - Designação em: {missao_nome} ({self.get_status_display()})"
-    
+
     @property
     def is_nova_missao(self):
         """Verifica se é solicitação de nova missão."""
         return self.tipo_solicitacao == 'NOVA_MISSAO'
-    
+
     @property
     def is_designacao(self):
         """Verifica se é solicitação de designação em missão existente."""
         return self.tipo_solicitacao == 'DESIGNACAO'
+
+    @property
+    def is_prorrogacao_prazo(self):
+        """Verifica se é solicitação de prorrogação de prazo."""
+        return self.tipo_solicitacao == 'PRORROGACAO_PRAZO'
     
     @property
     def missao_referencia(self):
@@ -903,7 +976,7 @@ class Solicitacao(models.Model):
             )
             self.designacao_criada = designacao
 
-        else:  # DESIGNACAO
+        elif self.tipo_solicitacao == 'DESIGNACAO':
             if not self.funcao_existente:
                 raise ValueError('Função deve ser selecionada.')
 
@@ -914,6 +987,21 @@ class Solicitacao(models.Model):
                 observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
             )
             self.designacao_criada = designacao
+
+        elif self.tipo_solicitacao == 'PRORROGACAO_PRAZO':
+            if not self.missao_existente:
+                raise ValueError('Missão deve ser selecionada.')
+            if not self.nova_data_fim:
+                raise ValueError('Nova data de término deve ser informada.')
+
+            # Atualizar a data_fim da missão
+            missao = self.missao_existente
+            data_anterior = missao.data_fim
+            missao.data_fim = self.nova_data_fim
+            missao.save()
+
+            # Registrar a prorrogação nas observações (histórico)
+            # Não cria designação, apenas atualiza a missão
 
         self.save()
         return True

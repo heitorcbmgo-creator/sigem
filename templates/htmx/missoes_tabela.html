@@ -87,9 +87,10 @@ Tabela de missões com paginação e filtros para Admin
     <table class="table table-hover">
         <thead>
             <tr>
-                <th style="width: 40%;">Nome</th>
+                <th style="width: 35%;">Nome</th>
                 <th>Tipo</th>
                 <th>Status</th>
+                <th>Finalização</th>
                 <th>Período</th>
                 <th class="text-center">Oficiais</th>
                 {% if user.pode_gerenciar_missoes %}
@@ -114,6 +115,13 @@ Tabela de missões com paginação e filtros para Admin
                 </td>
                 <td>
                     <span class="badge badge-status-{{ m.status|lower }}">{{ m.get_status_display }}</span>
+                </td>
+                <td>
+                    {% if m.finalizacao %}
+                    <span class="badge badge-finalizacao-{{ m.finalizacao|lower }}">{{ m.get_finalizacao_display }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
                 </td>
                 <td style="white-space: nowrap;">
                     {% if m.data_inicio %}
@@ -242,15 +250,15 @@ Tabela de missões com paginação e filtros para Admin
                         </select>
                     </div>
                     <div class="form-group col-md-3">
-                        <label>Status *</label>
-                        <select name="status" class="form-control" required>
-                            {% for value, label in status_choices %}
+                        <label>Finalização</label>
+                        <select name="finalizacao" class="form-control">
+                            {% for value, label in finalizacao_choices %}
                             <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Local</label>
@@ -262,12 +270,12 @@ Tabela de missões com paginação e filtros para Admin
                         </select>
                     </div>
                     <div class="form-group col-md-3">
-                        <label>Data Início</label>
-                        <input type="date" name="data_inicio" class="form-control">
+                        <label>Data Início *</label>
+                        <input type="date" name="data_inicio" class="form-control" required>
                     </div>
                     <div class="form-group col-md-3">
-                        <label>Data Fim</label>
-                        <input type="date" name="data_fim" class="form-control">
+                        <label>Data Fim *</label>
+                        <input type="date" name="data_fim" class="form-control" required>
                     </div>
                 </div>
                 
@@ -312,7 +320,7 @@ function editarMissao(id) {
             document.querySelector('#missao-form [name=nome]').value = data.nome;
             document.querySelector('#missao-form [name=ano]').value = data.ano || 2026;
             document.querySelector('#missao-form [name=tipo]').value = data.tipo;
-            document.querySelector('#missao-form [name=status]').value = data.status;
+            document.querySelector('#missao-form [name=finalizacao]').value = data.finalizacao || '';
             document.querySelector('#missao-form [name=local]').value = data.local || '';
             document.querySelector('#missao-form [name=data_inicio]').value = data.data_inicio || '';
             document.querySelector('#missao-form [name=data_fim]').value = data.data_fim || '';
