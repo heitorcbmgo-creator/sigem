@@ -113,36 +113,38 @@ class Oficial(models.Model):
 
     @property
     def total_missoes_ativas(self):
-        """Retorna o total de missões ativas do oficial."""
-        return self.designacoes.filter(missao__status='EM_ANDAMENTO').count()
+        """Retorna o total de missões ativas do oficial (exclui substituídos)."""
+        return self.designacoes.filter(
+            missao__status='EM_ANDAMENTO'
+        ).exclude(resultado='SUBSTITUIDO').count()
     
     @property
     def total_baixa(self):
-        """Total de designações de complexidade BAIXA em missões EM_ANDAMENTO."""
+        """Total de designações de complexidade BAIXA em missões EM_ANDAMENTO (exclui substituídos)."""
         from django.db.models import F
         return self.designacoes.filter(
             missao__status='EM_ANDAMENTO'
-        ).annotate(
+        ).exclude(resultado='SUBSTITUIDO').annotate(
             soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
         ).filter(soma__gte=4, soma__lte=6).count()
 
     @property
     def total_media(self):
-        """Total de designações de complexidade MÉDIA em missões EM_ANDAMENTO."""
+        """Total de designações de complexidade MÉDIA em missões EM_ANDAMENTO (exclui substituídos)."""
         from django.db.models import F
         return self.designacoes.filter(
             missao__status='EM_ANDAMENTO'
-        ).annotate(
+        ).exclude(resultado='SUBSTITUIDO').annotate(
             soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
         ).filter(soma__gte=7, soma__lte=9).count()
 
     @property
     def total_alta(self):
-        """Total de designações de complexidade ALTA em missões EM_ANDAMENTO."""
+        """Total de designações de complexidade ALTA em missões EM_ANDAMENTO (exclui substituídos)."""
         from django.db.models import F
         return self.designacoes.filter(
             missao__status='EM_ANDAMENTO'
-        ).annotate(
+        ).exclude(resultado='SUBSTITUIDO').annotate(
             soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
         ).filter(soma__gte=10, soma__lte=12).count()
     
@@ -152,10 +154,10 @@ class Oficial(models.Model):
         return self.total_baixa + (self.total_media * 2) + (self.total_alta * 3)
     
     def get_ultimas_missoes(self, limit=5):
-        """Retorna as últimas missões do oficial."""
+        """Retorna as últimas missões do oficial (exclui substituídos)."""
         return self.designacoes.select_related('missao').filter(
             missao__status='EM_ANDAMENTO'
-        ).order_by('-criado_em')[:limit]
+        ).exclude(resultado='SUBSTITUIDO').order_by('-criado_em')[:limit]
 
 
 # ============================================================

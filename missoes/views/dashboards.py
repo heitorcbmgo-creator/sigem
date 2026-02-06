@@ -76,16 +76,20 @@ def dashboard(request):
         # Total de missões ativas (com oficiais da OBM para comandante)
         total_missoes_ativas = missoes_base.filter(status='EM_ANDAMENTO').count() or 0
 
-        # Total de designações ativas
-        total_designacoes_ativas = designacoes_base.filter(missao__status='EM_ANDAMENTO').count() or 0
+        # Total de designações ativas (exclui substituídos)
+        total_designacoes_ativas = designacoes_base.filter(
+            missao__status='EM_ANDAMENTO'
+        ).exclude(resultado='SUBSTITUIDO').count() or 0
 
         # Carga média por oficial (apenas os que têm missão)
         carga_media = round(total_designacoes_ativas / oficiais_com_missao, 1) if oficiais_com_missao > 0 else 0
 
-        # Designações por complexidade (ativas)
+        # Designações por complexidade (ativas, exclui substituídos)
         # Complexidade é calculada a partir da soma dos critérios da função
         from django.db.models import F
-        designacoes_ativas = designacoes_base.filter(missao__status='EM_ANDAMENTO').annotate(
+        designacoes_ativas = designacoes_base.filter(
+            missao__status='EM_ANDAMENTO'
+        ).exclude(resultado='SUBSTITUIDO').annotate(
             soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
         )
         designacoes_baixa = designacoes_ativas.filter(soma__gte=4, soma__lte=6).count() or 0

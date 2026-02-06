@@ -210,7 +210,7 @@ def htmx_designacao_resultado(request, pk):
         resultado = request.POST.get('resultado', '')
 
         # Validar valor
-        valores_validos = ['', 'CUMPRIDA', 'DESCUMPRIDA', 'SUBSTITUIDO']
+        valores_validos = ['', 'CUMPRIDA', 'NAO_CUMPRIDA', 'SUBSTITUIDO']
         if resultado not in valores_validos:
             return JsonResponse({
                 'success': False,

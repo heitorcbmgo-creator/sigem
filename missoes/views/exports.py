@@ -521,10 +521,14 @@ def exportar_pdf(request, tipo):
 
     elements.append(Spacer(1, 0.5*cm))
 
-    # Resumo
+    # Resumo (exclui substituídos das estatísticas)
     from django.db.models import F
-    total_ativas = designacoes.filter(missao__status='EM_ANDAMENTO').count()
-    designacoes_ativas_anotadas = designacoes.filter(missao__status='EM_ANDAMENTO').annotate(
+    total_ativas = designacoes.filter(
+        missao__status='EM_ANDAMENTO'
+    ).exclude(resultado='SUBSTITUIDO').count()
+    designacoes_ativas_anotadas = designacoes.filter(
+        missao__status='EM_ANDAMENTO'
+    ).exclude(resultado='SUBSTITUIDO').annotate(
         soma=F('funcao__tde') + F('funcao__nqt') + F('funcao__grs') + F('funcao__dec')
     )
     total_baixa = designacoes_ativas_anotadas.filter(soma__gte=4, soma__lte=6).count()
