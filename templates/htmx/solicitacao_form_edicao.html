@@ -14,24 +14,13 @@
             <input type="text" class="form-input" name="nome_missao" value="{{ solicitacao.nome_missao }}" required>
         </div>
         
-        <div class="form-row">
-            <div class="form-group">
-                <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                <select class="form-select" name="tipo_missao" required>
-                    {% for value, label in tipo_missao_choices %}
-                    <option value="{{ value }}" {% if solicitacao.tipo_missao == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Status <span class="text-danger">*</span></label>
-                <select class="form-select" name="status_missao" required>
-                    {% for value, label in status_missao_choices %}
-                    <option value="{{ value }}" {% if solicitacao.status_missao == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+        <div class="form-group">
+            <label class="form-label">Tipo <span class="text-danger">*</span></label>
+            <select class="form-select" name="tipo_missao" required>
+                {% for value, label in tipo_missao_choices %}
+                <option value="{{ value }}" {% if solicitacao.tipo_missao == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
         
         <div class="form-group">
@@ -50,8 +39,8 @@
             </div>
             
             <div class="form-group">
-                <label class="form-label">Data de Término</label>
-                <input type="date" class="form-input" name="data_fim" value="{{ solicitacao.data_fim|date:'Y-m-d' }}">
+                <label class="form-label">Data de Término <span class="text-danger">*</span></label>
+                <input type="date" class="form-input" name="data_fim" value="{{ solicitacao.data_fim|date:'Y-m-d' }}" required>
             </div>
         </div>
         

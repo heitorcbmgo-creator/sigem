@@ -429,6 +429,7 @@ img {
     box-shadow: var(--shadow-sm);
     transition: var(--transition);
     cursor: pointer;
+    position: relative;
 }
 
 .stat-card:hover {
@@ -455,6 +456,34 @@ img {
     font-weight: 700;
     color: var(--sigem-gray-800);
     line-height: 1;
+}
+
+/* Ícone de filtro nos stat-cards - wrapper approach */
+.stat-card-filter-icon {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+    transition: opacity var(--transition-base);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.stat-card-filter-icon svg,
+.stat-card-filter-icon .lucide {
+    width: 100%;
+    height: 100%;
+    color: var(--sigem-gray-400);
+    stroke: var(--sigem-gray-400);
+}
+
+.stat-card:hover .stat-card-filter-icon {
+    opacity: 0.5;
 }
 
 /* ============================================================
@@ -566,6 +595,44 @@ td {
 
 tr:hover td {
     background: var(--sigem-red-light);
+}
+
+/* Select inline em tabelas (ex: Resultado) */
+table select.resultado-select,
+.table select.resultado-select,
+select.resultado-select {
+    padding: 0.4rem 1.8rem 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    background-color: #fff !important;
+    color: #374151 !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.5rem center !important;
+    min-width: 130px;
+    height: 32px;
+    line-height: 1.2;
+}
+
+table select.resultado-select:hover,
+.table select.resultado-select:hover,
+select.resultado-select:hover {
+    border-color: #9ca3af !important;
+    background-color: #f9fafb !important;
+}
+
+table select.resultado-select:focus,
+.table select.resultado-select:focus,
+select.resultado-select:focus {
+    outline: none !important;
+    border-color: #8B0000 !important;
+    box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.15) !important;
 }
 
 /* ============================================================
@@ -1431,8 +1498,14 @@ tr:hover td {
 
 .badge-status-planejada { background: #fbbf24; color: #1f2937; }
 .badge-status-em_andamento { background: #0891b2; color: white; }
+.badge-status-atrasada { background: #f97316; color: white; }
 .badge-status-concluida { background: #16a34a; color: white; }
 .badge-status-cancelada { background: #dc2626; color: white; }
+.badge-status-suspensa { background: #6b7280; color: white; }
+
+.badge-finalizacao-concluida { background: #16a34a; color: white; }
+.badge-finalizacao-cancelada { background: #dc2626; color: white; }
+.badge-finalizacao-suspensa { background: #6b7280; color: white; }
 
 .badge-complexidade-baixa { background: #16a34a; color: white; }
 .badge-complexidade-media { background: #fbbf24; color: #1f2937; }
@@ -1527,5 +1600,127 @@ tr:hover td {
     
     .form-actions .btn {
         width: 100%;
+    }
+}
+
+/* ============================================================
+   ACCORDION - Classificacao de Funcoes
+   ============================================================ */
+.accordion-item {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: var(--sigem-gray-50);
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.accordion-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: var(--sigem-gray-800);
+}
+
+.accordion-icon {
+    transition: transform 0.3s;
+}
+
+.accordion-content {
+    display: none;
+    padding: 1rem 1.5rem;
+}
+
+.accordion-content.open {
+    display: block;
+}
+
+.missao-card {
+    background: var(--sigem-gray-50);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.missao-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.missao-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.missao-icon {
+    margin-left: auto;
+    transition: transform 0.3s;
+}
+
+.missao-content {
+    padding: 1rem;
+    background: white;
+}
+
+.criterios-legenda {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.criterio-item {
+    padding: 0.5rem;
+    background: var(--sigem-gray-50);
+    border-radius: 4px;
+}
+
+.complexidade-legenda {
+    display: flex;
+    gap: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-500);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+/* KPI Mini Cards adjustments */
+.kpi-icon-red {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #dc2626;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .criterios-legenda {
+        grid-template-columns: 1fr;
+    }
+
+    .complexidade-legenda {
+        flex-wrap: wrap;
     }
 }

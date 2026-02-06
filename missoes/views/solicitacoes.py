@@ -76,28 +76,24 @@ def htmx_solicitacao_criar(request):
             nome_missao = request.POST.get('nome_missao', '').strip()
             ano_missao = request.POST.get('ano_missao') or None
             tipo_missao = request.POST.get('tipo_missao', '')
-            status_missao = request.POST.get('status_missao', 'EM_ANDAMENTO')
             local_missao = request.POST.get('local_missao', '')
             data_inicio = request.POST.get('data_inicio')
-            data_fim = request.POST.get('data_fim') or None
+            data_fim = request.POST.get('data_fim')
             documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
             nome_funcao = request.POST.get('nome_funcao', '').strip()
             documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
 
-            if not all([nome_missao, tipo_missao, local_missao, data_inicio, documento_sei_missao, nome_funcao, documento_sei_designacao]):
+            # Data de término agora é obrigatória (status é calculado automaticamente)
+            if not all([nome_missao, tipo_missao, local_missao, data_inicio, data_fim, documento_sei_missao, nome_funcao, documento_sei_designacao]):
                 return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
-            if status_missao == 'CONCLUIDA' and not data_fim:
-                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Data de término é obrigatória para missões concluídas.</div>')
-
-            # Criar solicitação
+            # Criar solicitação (status será calculado automaticamente na aprovação)
             Solicitacao.objects.create(
                 tipo_solicitacao='NOVA_MISSAO',
                 solicitante=request.user.oficial,
                 nome_missao=nome_missao,
                 ano_missao=ano_missao,
                 tipo_missao=tipo_missao,
-                status_missao=status_missao,
                 local_missao=local_missao,
                 data_inicio=data_inicio,
                 data_fim=data_fim,

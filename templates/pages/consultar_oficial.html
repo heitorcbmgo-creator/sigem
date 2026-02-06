@@ -291,6 +291,7 @@ function limparBusca() {
                         <th>Local</th>
                         <th>Período</th>
                         <th>Status</th>
+                        <th>Resultado</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -317,10 +318,19 @@ function limparBusca() {
                                 {{ d.missao.get_status_display }}
                             </span>
                         </td>
+                        <td>
+                            {% if d.resultado %}
+                            <span class="badge badge-{% if d.resultado == 'CUMPRIDA' %}success{% elif d.resultado == 'DESCUMPRIDA' %}danger{% else %}warning{% endif %}">
+                                {{ d.get_resultado_display }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-gray">Nenhuma designação encontrada.</td>
+                        <td colspan="7" class="text-center text-gray">Nenhuma designação encontrada.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

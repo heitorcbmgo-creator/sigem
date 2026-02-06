@@ -58,8 +58,8 @@ def exportar_excel(request, tipo):
 
     elif tipo == 'designacoes':
         ws.title = 'Designações'
-        ws.append(['ID', 'ID Missão', 'Nome Missão', 'RG Oficial', 'Nome Oficial', 'Função', 'Complexidade', 'Observações'])
-        style_header(ws, 8)
+        ws.append(['ID', 'ID Missão', 'Nome Missão', 'RG Oficial', 'Nome Oficial', 'Função', 'Complexidade', 'Resultado', 'Observações'])
+        style_header(ws, 9)
 
         # Verificar se está consultando outro oficial
         oficial_id = request.GET.get('oficial_id')
@@ -69,7 +69,7 @@ def exportar_excel(request, tipo):
             try:
                 oficial_consulta = Oficial.objects.get(pk=oficial_id)
                 if request.user.pode_ver_oficial(oficial_consulta):
-                    designacoes = Designacao.objects.select_related('missao', 'oficial').filter(
+                    designacoes = Designacao.objects.select_related('missao', 'oficial', 'funcao').filter(
                         oficial=oficial_consulta
                     )
                 else:
@@ -78,16 +78,16 @@ def exportar_excel(request, tipo):
                 designacoes = Designacao.objects.none()
         elif request.user.oficial and not request.user.is_admin:
             # Próprio oficial (não admin)
-            designacoes = Designacao.objects.select_related('missao', 'oficial').filter(
+            designacoes = Designacao.objects.select_related('missao', 'oficial', 'funcao').filter(
                 oficial=request.user.oficial
             )
         else:
             # Admin vê todos
-            designacoes = Designacao.objects.select_related('missao', 'oficial').all()
+            designacoes = Designacao.objects.select_related('missao', 'oficial', 'funcao').all()
 
         for d in designacoes:
             ws.append([d.id, d.missao.id, d.missao.nome, d.oficial.rg, str(d.oficial),
-                      d.funcao.funcao, d.complexidade, d.observacoes])
+                      d.funcao.funcao, d.complexidade, d.get_resultado_display() or '-', d.observacoes])
 
     elif tipo == 'unidades':
         ws.title = 'Unidades'
@@ -559,7 +559,7 @@ def exportar_pdf(request, tipo):
     if designacoes.exists():
         elements.append(Paragraph("<b>DETALHAMENTO DAS DESIGNAÇÕES</b>", ParagraphStyle('Heading', fontSize=11, spaceAfter=10)))
 
-        table_data = [['Missão', 'Função', 'Complexidade', 'Status', 'Período']]
+        table_data = [['Missão', 'Função', 'Complexidade', 'Status', 'Resultado', 'Período']]
 
         for d in designacoes:
             periodo = ''
@@ -569,14 +569,15 @@ def exportar_pdf(request, tipo):
                     periodo += f" - {d.missao.data_fim.strftime('%d/%m/%Y')}"
 
             table_data.append([
-                d.missao.nome[:40] + '...' if len(d.missao.nome) > 40 else d.missao.nome,
+                d.missao.nome[:35] + '...' if len(d.missao.nome) > 35 else d.missao.nome,
                 d.funcao.funcao,
                 d.get_complexidade_display(),
                 d.missao.get_status_display(),
+                d.get_resultado_display() or '-',
                 periodo or '-'
             ])
 
-        designacoes_table = Table(table_data, colWidths=[6*cm, 3*cm, 2.5*cm, 2.5*cm, 3*cm])
+        designacoes_table = Table(table_data, colWidths=[5.5*cm, 2.5*cm, 2.2*cm, 2.2*cm, 2.2*cm, 2.4*cm])
         designacoes_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B0000')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),

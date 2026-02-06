@@ -69,10 +69,11 @@ Tabela de designações com paginação e filtros para Admin
     <table class="table table-hover">
         <thead>
             <tr>
-                <th style="width: 25%;">Oficial</th>
-                <th style="width: 30%;">Missão</th>
+                <th style="width: 22%;">Oficial</th>
+                <th style="width: 25%;">Missão</th>
                 <th>Função</th>
                 <th>Complexidade</th>
+                <th>Resultado</th>
                 <th>Data</th>
                 {% if user.pode_gerenciar_designacoes %}
                 <th class="text-center" style="width: 100px;">Ações</th>
@@ -109,6 +110,26 @@ Tabela de designações com paginação e filtros para Admin
                     <span class="badge badge-warning">{{ d.get_complexidade_display }}</span>
                     {% else %}
                     <span class="badge badge-danger">{{ d.get_complexidade_display }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.pode_gerenciar_designacoes %}
+                    <select class="resultado-select"
+                            data-designacao-id="{{ d.id }}"
+                            onchange="atualizarResultado(this)">
+                        <option value="" {% if not d.resultado %}selected{% endif %}>-</option>
+                        <option value="CUMPRIDA" {% if d.resultado == 'CUMPRIDA' %}selected{% endif %}>Cumprida</option>
+                        <option value="NAO_CUMPRIDA" {% if d.resultado == 'NAO_CUMPRIDA' %}selected{% endif %}>Não cumprida</option>
+                        <option value="SUBSTITUIDO" {% if d.resultado == 'SUBSTITUIDO' %}selected{% endif %}>Substituído(a)</option>
+                    </select>
+                    {% else %}
+                    {% if d.resultado %}
+                    <span class="badge {% if d.resultado == 'CUMPRIDA' %}badge-success{% elif d.resultado == 'NAO_CUMPRIDA' %}badge-danger{% else %}badge-warning{% endif %}">
+                        {{ d.get_resultado_display }}
+                    </span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
                     {% endif %}
                 </td>
                 <td style="white-space: nowrap;">{{ d.criado_em|date:"d/m/Y" }}</td>
@@ -253,9 +274,21 @@ Tabela de designações com paginação e filtros para Admin
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Observações</label>
-                    <textarea name="observacoes" id="input-observacoes" class="form-control" rows="2"></textarea>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label>Observações</label>
+                        <textarea name="observacoes" id="input-observacoes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label>Resultado</label>
+                        <select name="resultado" id="select-resultado" class="form-control">
+                            <option value="">-</option>
+                            <option value="CUMPRIDA">Cumprida</option>
+                            <option value="NAO_CUMPRIDA">Não cumprida</option>
+                            <option value="SUBSTITUIDO">Substituído(a)</option>
+                        </select>
+                        <small class="form-text text-muted">Preenchido após conclusão da missão</small>
+                    </div>
                 </div>
 
                 <div class="form-actions">
@@ -279,11 +312,45 @@ function novaDesignacao() {
     document.getElementById('select-funcao').innerHTML = '<option value="">Selecione uma missão primeiro...</option>';
     document.getElementById('display-complexidade').value = '';
     document.getElementById('display-soma').value = '';
+    document.getElementById('select-resultado').value = '';
     funcoesDisponiveis = [];
     document.getElementById('designacao-form').setAttribute('hx-post', '{% url "htmx_designacao_criar" %}');
     document.getElementById('form-designacao').style.display = 'block';
     document.getElementById('form-designacao').scrollIntoView({behavior: 'smooth'});
     htmx.process(document.getElementById('designacao-form'));
+}
+
+// Atualizar resultado inline (sem recarregar a página)
+function atualizarResultado(select) {
+    const designacaoId = select.dataset.designacaoId;
+    const resultado = select.value;
+
+    fetch(`/htmx/designacao/${designacaoId}/resultado/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: `resultado=${resultado}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Feedback visual temporário
+            select.style.backgroundColor = '#d4edda';
+            setTimeout(() => {
+                select.style.backgroundColor = '';
+            }, 1000);
+        } else {
+            alert('Erro ao atualizar resultado: ' + data.error);
+            // Reverter seleção
+            select.value = data.valor_anterior || '';
+        }
+    })
+    .catch(error => {
+        alert('Erro ao atualizar resultado');
+        console.error(error);
+    });
 }
 
 function carregarFuncoesDaMissao() {
@@ -346,6 +413,7 @@ function editarDesignacao(id) {
             document.getElementById('select-missao').value = data.missao_id;
             document.getElementById('select-oficial').value = data.oficial_id;
             document.getElementById('input-observacoes').value = data.observacoes || '';
+            document.getElementById('select-resultado').value = data.resultado || '';
 
             // Carregar funções da missão e selecionar a função atual
             const missaoId = data.missao_id;

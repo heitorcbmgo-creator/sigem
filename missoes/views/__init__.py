@@ -32,7 +32,7 @@ from .missoes import (
 # Designações
 from .designacoes import (
     htmx_designacoes_lista, htmx_designacao_criar, htmx_designacao_editar,
-    htmx_designacao_dados, htmx_designacao_excluir
+    htmx_designacao_dados, htmx_designacao_excluir, htmx_designacao_resultado
 )
 
 # Funções
@@ -89,9 +89,9 @@ __all__ = [
     'htmx_missoes_lista', 'htmx_missoes_tabela', 'htmx_missao_organograma',
     'htmx_missao_criar', 'htmx_missao_editar', 'htmx_missao_dados',
     'htmx_missao_excluir',
-    # Designações (5)
+    # Designações (6)
     'htmx_designacoes_lista', 'htmx_designacao_criar', 'htmx_designacao_editar',
-    'htmx_designacao_dados', 'htmx_designacao_excluir',
+    'htmx_designacao_dados', 'htmx_designacao_excluir', 'htmx_designacao_resultado',
     # Funções (6)
     'htmx_funcoes_tabela', 'htmx_funcao_criar', 'htmx_funcao_editar',
     'htmx_funcao_dados', 'htmx_funcao_excluir', 'htmx_buscar_funcoes_por_missao',

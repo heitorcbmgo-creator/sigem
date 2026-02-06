@@ -75,6 +75,7 @@
                         <th>Local</th>
                         <th>Período</th>
                         <th>Status</th>
+                        <th>Resultado</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -101,10 +102,19 @@
                                 {{ d.missao.get_status_display }}
                             </span>
                         </td>
+                        <td>
+                            {% if d.resultado %}
+                            <span class="badge badge-{% if d.resultado == 'CUMPRIDA' %}success{% elif d.resultado == 'DESCUMPRIDA' %}danger{% else %}warning{% endif %}">
+                                {{ d.get_resultado_display }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-gray py-4">Você não possui designações no momento.</td>
+                        <td colspan="7" class="text-center text-gray py-4">Você não possui designações no momento.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -194,27 +204,14 @@
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                            <select class="form-select" name="tipo_missao" required>
-                                <option value="">Selecione...</option>
-                                {% for value, label in tipo_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="status_missao" required id="status-missao-select" 
-                                    onchange="toggleDataFim()">
-                                <option value="">Selecione...</option>
-                                {% for value, label in status_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                        <select class="form-select" name="tipo_missao" required>
+                            <option value="">Selecione...</option>
+                            {% for value, label in tipo_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     
                     <div class="form-group">
@@ -234,8 +231,8 @@
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label">Data de Término <span id="label-data-fim-obrig"></span></label>
-                            <input type="date" class="form-input" name="data_fim" id="data-fim-input">
+                            <label class="form-label">Data de Término <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="data_fim" required>
                         </div>
                     </div>
                     
@@ -782,27 +779,6 @@ function selecionarMissaoProrrogacao(missaoId, dataFimAtual) {
     const novaDataInput = document.getElementById('nova-data-fim-prorrog');
     if (dataFimAtual) {
         novaDataInput.min = dataFimAtual;
-    }
-}
-
-function toggleDataFim() {
-    const statusSelect = document.getElementById('status-missao-select');
-    const dataFimInput = document.getElementById('data-fim-input');
-    const labelObrig = document.getElementById('label-data-fim-obrig');
-    
-    if (statusSelect.value === 'CONCLUIDA') {
-        dataFimInput.disabled = false;
-        dataFimInput.required = true;
-        labelObrig.innerHTML = '<span class="text-danger">*</span>';
-    } else if (statusSelect.value === 'EM_ANDAMENTO') {
-        dataFimInput.disabled = true;
-        dataFimInput.required = false;
-        dataFimInput.value = '';
-        labelObrig.innerHTML = '';
-    } else {
-        dataFimInput.disabled = false;
-        dataFimInput.required = false;
-        labelObrig.innerHTML = '';
     }
 }
 

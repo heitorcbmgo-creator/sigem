@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Classificacao de Funcoes - SIGEM{% endblock %}
+{% block title %}Classificação de Funções - SIGEM{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-content">
         <h1 class="page-title">
             <i data-lucide="list-tree"></i>
-            Classificacao de Funcoes
+            Classificação de Funções
         </h1>
         <p class="page-subtitle">
-            Transparencia na avaliacao de complexidade das funcoes
+            Transparência na avaliação de complexidade das funções
         </p>
     </div>
 </div>
@@ -70,7 +70,7 @@
                     Baixa: <strong>{{ stats.baixa }}</strong>
                 </span>
                 <span class="badge badge-warning" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
-                    Media: <strong>{{ stats.media }}</strong>
+                    Média: <strong>{{ stats.media }}</strong>
                 </span>
                 <span class="badge badge-danger" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
                     Alta: <strong>{{ stats.alta }}</strong>
@@ -83,30 +83,30 @@
 <!-- LEGENDA DOS CRITERIOS -->
 <div class="card mb-4">
     <div class="card-header">
-        <h3><i data-lucide="info"></i> Legenda dos Criterios de Avaliacao</h3>
+        <h3><i data-lucide="info"></i> Legenda dos Critérios de Avaliação</h3>
     </div>
     <div class="card-body">
         <div class="criterios-legenda">
             <div class="criterio-item">
-                <strong>TDE</strong> - Tempo de Dedicacao Exigido
-                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+                <strong>TDE</strong> - Tempo de Dedicação Exigido
+                <span class="text-muted">(1=Baixo, 2=Médio, 3=Alto)</span>
             </div>
             <div class="criterio-item">
-                <strong>NQT</strong> - Nivel de Qualificacao Tecnica
-                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+                <strong>NQT</strong> - Nivel de Qualificação Técnica
+                <span class="text-muted">(1=Baixo, 2=Médio, 3=Alto)</span>
             </div>
             <div class="criterio-item">
                 <strong>GRS</strong> - Grau de Responsabilidade
-                <span class="text-muted">(1=Baixo, 2=Medio, 3=Alto)</span>
+                <span class="text-muted">(1=Baixo, 2=Médio, 3=Alto)</span>
             </div>
             <div class="criterio-item">
-                <strong>DEC</strong> - Dimensao do Efetivo Comandado
-                <span class="text-muted">(1=Pequeno, 2=Medio, 3=Grande)</span>
+                <strong>DEC</strong> - Dimensão do Efetivo Comandado
+                <span class="text-muted">(1=Pequeno, 2=Médio, 3=Grande)</span>
             </div>
         </div>
         <div class="complexidade-legenda mt-3">
             <span class="badge badge-success">Baixa (4-6 pts)</span>
-            <span class="badge badge-warning">Media (7-9 pts)</span>
+            <span class="badge badge-warning">Média (7-9 pts)</span>
             <span class="badge badge-danger">Alta (10-12 pts)</span>
         </div>
     </div>
@@ -120,7 +120,7 @@
             <i data-lucide="folder"></i>
             <span>{{ tipo_data.tipo }}</span>
             <span class="badge badge-secondary">
-                {{ tipo_data.missoes|length }} missoes
+                {{ tipo_data.missoes|length }} missões
             </span>
         </div>
         <i data-lucide="chevron-down" class="accordion-icon"></i>
@@ -132,7 +132,7 @@
             <div class="missao-header" onclick="toggleMissao(this)">
                 <i data-lucide="target"></i>
                 <strong>{{ missao_data.nome }}</strong>
-                <span class="badge badge-info">{{ missao_data.funcoes|length }} funcoes</span>
+                <span class="badge badge-info">{{ missao_data.funcoes|length }} funções</span>
                 <i data-lucide="chevron-right" class="missao-icon"></i>
             </div>
 
@@ -175,7 +175,7 @@
 {% empty %}
 <div class="empty-state">
     <i data-lucide="search-x"></i>
-    <p>Nenhuma funcao encontrada com os filtros aplicados.</p>
+    <p>Nenhuma função encontrada com os filtros aplicados.</p>
 </div>
 {% endfor %}
 

@@ -62,6 +62,7 @@ urlpatterns = [
     path('htmx/designacao/criar/', views.htmx_designacao_criar, name='htmx_designacao_criar'),
     path('htmx/designacao/<int:pk>/editar/', views.htmx_designacao_editar, name='htmx_designacao_editar'),
     path('htmx/designacao/<int:pk>/excluir/', views.htmx_designacao_excluir, name='htmx_designacao_excluir'),
+    path('htmx/designacao/<int:pk>/resultado/', views.htmx_designacao_resultado, name='htmx_designacao_resultado'),
 
     # ============================================================
     # 🔄 ENDPOINTS HTMX - FUNÇÕES

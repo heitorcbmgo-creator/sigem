@@ -397,6 +397,13 @@ class Designacao(models.Model):
         ('RECUSADA', 'Recusada'),
     ]
 
+    RESULTADO_CHOICES = [
+        ('', '-'),
+        ('CUMPRIDA', 'Cumprida'),
+        ('NAO_CUMPRIDA', 'Não cumprida'),
+        ('SUBSTITUIDO', 'Substituído(a)'),
+    ]
+
     missao = models.ForeignKey(
         Missao,
         on_delete=models.CASCADE,
@@ -421,6 +428,14 @@ class Designacao(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default='APROVADA'
+    )
+    resultado = models.CharField(
+        'Resultado',
+        max_length=20,
+        choices=RESULTADO_CHOICES,
+        blank=True,
+        default='',
+        help_text='Preenchido apenas pelo administrador após conclusão da missão'
     )
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
     atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)

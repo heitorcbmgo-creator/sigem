@@ -144,6 +144,7 @@ def htmx_designacao_editar(request, pk):
             designacao.funcao = funcao
 
         designacao.observacoes = request.POST.get('observacoes', designacao.observacoes)
+        designacao.resultado = request.POST.get('resultado', designacao.resultado)
         designacao.save()
         messages.success(request, 'Designação atualizada!')
 
@@ -165,9 +166,13 @@ def htmx_designacao_dados(request, pk):
         'oficial_id': designacao.oficial_id,
         'funcao_id': designacao.funcao_id,
         'funcao_nome': designacao.funcao.funcao,
+        'funcao': {
+            'soma_criterios': designacao.funcao.soma_criterios,
+        },
         'complexidade': designacao.complexidade,
         'complexidade_display': designacao.get_complexidade_display(),
         'observacoes': designacao.observacoes,
+        'resultado': designacao.resultado,
     })
 
 
@@ -188,3 +193,43 @@ def htmx_designacao_excluir(request, pk):
         messages.error(request, f'Erro ao excluir: {str(e)}')
 
     return htmx_designacoes_lista(request)
+
+
+@login_required
+@require_POST
+def htmx_designacao_resultado(request, pk):
+    """Atualiza apenas o resultado de uma designação via AJAX."""
+
+    if not request.user.pode_gerenciar_designacoes:
+        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+
+    designacao = get_object_or_404(Designacao, pk=pk)
+    valor_anterior = designacao.resultado
+
+    try:
+        resultado = request.POST.get('resultado', '')
+
+        # Validar valor
+        valores_validos = ['', 'CUMPRIDA', 'DESCUMPRIDA', 'SUBSTITUIDO']
+        if resultado not in valores_validos:
+            return JsonResponse({
+                'success': False,
+                'error': 'Valor inválido',
+                'valor_anterior': valor_anterior
+            })
+
+        designacao.resultado = resultado
+        designacao.save()
+
+        return JsonResponse({
+            'success': True,
+            'resultado': resultado,
+            'resultado_display': designacao.get_resultado_display() if resultado else '-'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'valor_anterior': valor_anterior
+        })
