@@ -801,6 +801,152 @@
 </div>
 
 <!-- ============================================================
+     SEÇÃO: GERAR RELATÓRIOS
+     ============================================================ -->
+<div class="relatorios-section mt-5">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i data-lucide="file-text"></i>
+                Gerar Relatórios
+            </h2>
+        </div>
+        <div class="card-body">
+            <!-- Abas de Relatórios -->
+            <div class="relatorio-tabs">
+                <button class="relatorio-tab-btn active" data-relatorio-tab="missoes">
+                    <i data-lucide="folder-kanban"></i>
+                    Relatório de Missões
+                </button>
+                <button class="relatorio-tab-btn" data-relatorio-tab="oficiais">
+                    <i data-lucide="users"></i>
+                    Relatório de Oficiais
+                </button>
+            </div>
+
+            <!-- Conteúdo: Relatório de Missões -->
+            <div class="relatorio-tab-content active" id="relatorio-tab-missoes">
+                <form id="form-relatorio-missoes" action="{% url 'relatorio_missoes_pdf' %}" method="get" target="_blank">
+                    <div class="relatorio-filtros">
+                        <div class="filtro-group">
+                            <label class="form-label">Tipo</label>
+                            <select name="tipo" class="form-select">
+                                <option value="">Todos os tipos</option>
+                                {% for value, label in tipo_labels_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos os status</option>
+                                <option value="EM_ANDAMENTO">Em Andamento</option>
+                                <option value="PLANEJADA">Planejada</option>
+                                <option value="CONCLUIDA">Concluída</option>
+                                <option value="CANCELADA">Cancelada</option>
+                                <option value="ATRASADA">Atrasada</option>
+                            </select>
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Local</label>
+                            <input type="text" name="local" class="form-input" placeholder="Buscar por local...">
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" name="data_inicio" class="form-input">
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" name="data_fim" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="relatorio-acoes">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="file-down"></i>
+                            Gerar PDF de Missões
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            <i data-lucide="x"></i>
+                            Limpar Filtros
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Conteúdo: Relatório de Oficiais -->
+            <div class="relatorio-tab-content" id="relatorio-tab-oficiais">
+                <form id="form-relatorio-oficiais" action="{% url 'relatorio_oficiais_pdf' %}" method="get" target="_blank">
+                    <div class="relatorio-filtros">
+                        <div class="filtro-group" style="max-width: 120px;">
+                            <label class="form-label">RG</label>
+                            <input type="text" name="rg" class="form-input" placeholder="Ex: 12345">
+                        </div>
+
+                        <div class="filtro-group" style="flex: 2;">
+                            <label class="form-label">Nome</label>
+                            <input type="text" name="nome" class="form-input" placeholder="Nome ou nome de guerra...">
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">OBM</label>
+                            <select name="obm" class="form-select">
+                                <option value="">Todas</option>
+                                {% for obm_item in obm_list %}
+                                <option value="{{ obm_item }}">{{ obm_item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Posto</label>
+                            <select name="posto" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="Cel">Cel</option>
+                                <option value="TC">TC</option>
+                                <option value="Maj">Maj</option>
+                                <option value="Cap">Cap</option>
+                                <option value="1º Ten">1º Ten</option>
+                                <option value="2º Ten">2º Ten</option>
+                                <option value="Asp">Asp</option>
+                            </select>
+                        </div>
+
+                        <div class="filtro-group">
+                            <label class="form-label">Quadro</label>
+                            <select name="quadro" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="QOC">QOC</option>
+                                <option value="QOA/Adm">QOA/Adm</option>
+                                <option value="QOA/Mús">QOA/Mús</option>
+                                <option value="QOM/Médico">QOM/Médico</option>
+                                <option value="QOM/Dentista">QOM/Dentista</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="relatorio-acoes">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="file-down"></i>
+                            Gerar PDF de Oficiais
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            <i data-lucide="x"></i>
+                            Limpar Filtros
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
      ESTILOS DO DASHBOARD
      ============================================================ -->
 <style>
@@ -1240,18 +1386,143 @@
     .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .dashboard-tabs {
         flex-wrap: wrap;
     }
-    
+
     .tab-btn {
         padding: 0.5rem 0.75rem;
         font-size: 0.8rem;
     }
-    
+
     .metricas-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Seção de Relatórios */
+.relatorios-section {
+    margin-top: 2rem;
+}
+
+.relatorio-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--sigem-gray-200);
+    padding-bottom: 0;
+}
+
+.relatorio-tab-btn {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--sigem-gray-500);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: var(--transition);
+}
+
+.relatorio-tab-btn:hover {
+    color: var(--sigem-red);
+}
+
+.relatorio-tab-btn.active {
+    color: var(--sigem-red);
+    border-bottom-color: var(--sigem-red);
+}
+
+.relatorio-tab-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.relatorio-tab-content {
+    display: none;
+}
+
+.relatorio-tab-content.active {
+    display: block;
+}
+
+.relatorio-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--sigem-gray-50);
+    border-radius: var(--radius-md);
+}
+
+.filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 150px;
+}
+
+.filtro-group .form-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--sigem-gray-600);
+}
+
+.filtro-group .form-input,
+.filtro-group .form-select {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--sigem-gray-300);
+    border-radius: var(--radius-sm);
+    background: white;
+}
+
+.filtro-group .form-input:focus,
+.filtro-group .form-select:focus {
+    outline: none;
+    border-color: var(--sigem-red);
+    box-shadow: 0 0 0 2px rgba(139, 0, 0, 0.1);
+}
+
+.relatorio-acoes {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+    .relatorio-tabs {
+        flex-wrap: wrap;
+    }
+
+    .relatorio-tab-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .relatorio-filtros {
+        flex-direction: column;
+    }
+
+    .filtro-group {
+        min-width: 100%;
+    }
+
+    .relatorio-acoes {
+        flex-direction: column;
+    }
+
+    .relatorio-acoes .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 </style>
@@ -1495,6 +1766,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // ============================================================
+    // NAVEGAÇÃO DAS ABAS DE RELATÓRIOS
+    // ============================================================
+    const relatorioTabBtns = document.querySelectorAll('.relatorio-tab-btn');
+    const relatorioTabContents = document.querySelectorAll('.relatorio-tab-content');
+
+    relatorioTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.relatorioTab;
+
+            // Remover active de todos
+            relatorioTabBtns.forEach(b => b.classList.remove('active'));
+            relatorioTabContents.forEach(c => c.classList.remove('active'));
+
+            // Adicionar active no selecionado
+            btn.classList.add('active');
+            document.getElementById('relatorio-tab-' + tabId).classList.add('active');
+        });
+    });
+
     // Reinicializar ícones Lucide
     lucide.createIcons();
 });

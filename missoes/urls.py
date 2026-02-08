@@ -113,6 +113,12 @@ urlpatterns = [
     path('htmx/solicitacao/<int:pk>/detalhes/', views.htmx_solicitacao_detalhes_modal, name='htmx_solicitacao_detalhes_modal'),
 
     # ============================================================
+    # 📊 RELATÓRIOS
+    # ============================================================
+    path('relatorio/missoes/', views.relatorio_missoes_pdf, name='relatorio_missoes_pdf'),
+    path('relatorio/oficiais/', views.relatorio_oficiais_pdf, name='relatorio_oficiais_pdf'),
+
+    # ============================================================
     # 📥 EXPORTAÇÃO
     # ============================================================
     path('exportar/excel/<str:tipo>/', views.exportar_excel, name='exportar_excel'),

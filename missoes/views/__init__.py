@@ -74,6 +74,9 @@ from .exports import (
     exportar_excel, exportar_pdf, importar_excel, gerar_modelo_importacao
 )
 
+# Relatórios
+from .relatorios import relatorio_missoes_pdf, relatorio_oficiais_pdf
+
 # Explicit __all__ for clarity (61 functions total)
 __all__ = [
     # Auth (3)
@@ -114,4 +117,6 @@ __all__ = [
     'admin_painel',
     # Exports (4)
     'exportar_excel', 'exportar_pdf', 'importar_excel', 'gerar_modelo_importacao',
+    # Relatórios (2)
+    'relatorio_missoes_pdf', 'relatorio_oficiais_pdf',
 ]

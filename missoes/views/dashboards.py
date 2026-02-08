@@ -487,6 +487,17 @@ def dashboard(request):
 
             # Oficiais sem missão
             'oficiais_sem_missao': total_oficiais - oficiais_com_missao,
+
+            # Dados para formulários de relatórios
+            'tipo_labels_choices': Missao.TIPO_CHOICES,
+            'obm_list': obms_permitidas if is_comandante else list(
+                Oficial.objects.filter(ativo=True)
+                .exclude(obm__isnull=True)
+                .exclude(obm='')
+                .values_list('obm', flat=True)
+                .distinct()
+                .order_by('obm')
+            ),
         }
 
         return render(request, 'pages/dashboard.html', context)
