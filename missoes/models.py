@@ -710,9 +710,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     
     @property
     def foto_url(self):
-        """Retorna a URL da foto do oficial vinculado."""
-        if self.oficial and self.oficial.foto:
-            return self.oficial.foto.url
+        """Retorna a URL da foto do oficial vinculado (usa foto_url do oficial)."""
+        if self.oficial:
+            return self.oficial.foto_url
         return '/static/img/default_avatar.png'
 
 
