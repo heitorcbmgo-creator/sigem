@@ -133,12 +133,21 @@ def htmx_missao_organograma(request, pk):
 
     designacoes = missao.designacoes.select_related('oficial', 'funcao').all()
 
-    # Separar por hierarquia
+    # Funções de liderança (nível superior - destaque em dourado)
+    funcoes_lideranca = ['comandante', 'presidente', 'coordenador', 'encarregado']
+
+    # Separar por hierarquia usando case-insensitive matching
     superiores = designacoes.filter(
-        funcao__funcao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
+        Q(funcao__funcao__iexact='comandante') |
+        Q(funcao__funcao__iexact='presidente') |
+        Q(funcao__funcao__iexact='coordenador') |
+        Q(funcao__funcao__iexact='encarregado')
     )
     subordinados = designacoes.exclude(
-        funcao__funcao__in=['COMANDANTE', 'PRESIDENTE', 'COORDENADOR', 'ENCARREGADO']
+        Q(funcao__funcao__iexact='comandante') |
+        Q(funcao__funcao__iexact='presidente') |
+        Q(funcao__funcao__iexact='coordenador') |
+        Q(funcao__funcao__iexact='encarregado')
     )
 
     context = {
