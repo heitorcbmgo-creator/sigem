@@ -298,7 +298,7 @@ function limparBusca() {
                     {% for d in designacoes %}
                     <tr>
                         <td><strong>{{ d.missao.nome_completo }}</strong></td>
-                        <td>{{ d.funcao_na_missao }}</td>
+                        <td>{{ d.funcao.funcao }}</td>
                         <td>
                             <span class="badge badge-{% if d.complexidade == 'ALTA' %}danger{% elif d.complexidade == 'MEDIA' %}warning{% else %}success{% endif %}">
                                 {{ d.get_complexidade_display }}

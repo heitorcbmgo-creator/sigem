@@ -1,9 +1,33 @@
-<!-- 
+<!--
 ============================================================
 Template: htmx/usuarios_tabela.html
 Tabela de usuários com paginação e filtros para Admin
 ============================================================
 -->
+
+<!-- Mensagens de feedback -->
+{% if messages %}
+<div class="htmx-messages">
+    {% for message in messages %}
+    <div class="htmx-message htmx-message-{{ message.tags }}" role="alert">
+        <i data-lucide="{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' or message.tags == 'danger' %}alert-circle{% elif message.tags == 'warning' %}alert-triangle{% else %}info{% endif %}"></i>
+        <span>{{ message }}</span>
+        <button type="button" class="htmx-message-close" onclick="this.parentElement.remove()">
+            <i data-lucide="x"></i>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+<script>
+// Auto-hide messages after 4 seconds
+setTimeout(() => {
+    document.querySelectorAll('.htmx-message').forEach(msg => {
+        msg.style.animation = 'htmxSlideOut 0.3s ease forwards';
+        setTimeout(() => msg.remove(), 300);
+    });
+}, 4000);
+</script>
+{% endif %}
 
 <!-- Filtros -->
 <div class="table-filters">

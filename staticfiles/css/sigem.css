@@ -1724,3 +1724,104 @@ select.resultado-select:focus {
         flex-wrap: wrap;
     }
 }
+
+/* ============================================================
+   HTMX FEEDBACK MESSAGES
+   Mensagens de feedback para operações HTMX nos CRUDs
+   ============================================================ */
+.htmx-messages {
+    margin-bottom: 1rem;
+}
+
+.htmx-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    animation: htmxSlideIn 0.3s ease;
+    position: relative;
+}
+
+.htmx-message i {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.htmx-message span {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.htmx-message-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.htmx-message-close:hover {
+    opacity: 1;
+}
+
+.htmx-message-close i {
+    width: 16px;
+    height: 16px;
+}
+
+/* Success */
+.htmx-message-success {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+/* Error/Danger */
+.htmx-message-error,
+.htmx-message-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+}
+
+/* Warning */
+.htmx-message-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fcd34d;
+    color: #92400e;
+}
+
+/* Info */
+.htmx-message-info {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+/* Animations */
+@keyframes htmxSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes htmxSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
