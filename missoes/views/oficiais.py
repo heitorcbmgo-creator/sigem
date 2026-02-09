@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
-from ..models import Oficial, Designacao, Missao, Usuario, Unidade, Solicitacao, Funcao
+from ..models import Oficial, Designacao, Missao, Usuario, Unidade, Solicitacao, Funcao, TemplateEstruturaMissao
 
 
 @login_required
@@ -193,6 +193,9 @@ def painel_oficial(request):
     # Designações para o formulário de prorrogação (sem filtros aplicados)
     minhas_designacoes = Designacao.objects.filter(oficial=oficial).select_related('missao', 'funcao')
 
+    # Templates de missão disponíveis para criar nova missão a partir de template
+    templates_missao = TemplateEstruturaMissao.objects.filter(ativo=True).prefetch_related('funcoes_template').order_by('nome')
+
     context = {
         'oficial': oficial,
         'designacoes': designacoes,
@@ -203,6 +206,7 @@ def painel_oficial(request):
         'status_choices': Missao.STATUS_CHOICES,
         'complexidade_choices': Funcao.COMPLEXIDADE_CHOICES,
         'local_choices': Solicitacao.LOCAL_CHOICES,
+        'templates_missao': templates_missao,
     }
 
     return render(request, 'pages/painel_oficial.html', context)

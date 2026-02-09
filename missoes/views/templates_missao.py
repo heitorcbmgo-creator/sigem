@@ -1,8 +1,8 @@
 """
 ============================================================
-SIGEM - Views de Templates de Missão
+SIGEM - Views de Missões Padronizadas
 ============================================================
-CRUD para TemplateEstruturaMissao e TemplateFuncao
+CRUD para TemplateEstruturaMissao (Missões Padronizadas) e TemplateFuncao
 """
 
 from django.shortcuts import render, get_object_or_404
@@ -15,12 +15,12 @@ from ..decorators import permissao_gerenciar_missoes
 
 
 # ============================================================
-# LISTAGEM DE TEMPLATES
+# LISTAGEM DE MISSÕES PADRONIZADAS
 # ============================================================
 @login_required
 @permissao_gerenciar_missoes
 def htmx_templates_lista(request):
-    """Lista todos os templates de missão."""
+    """Lista todas as missões padronizadas."""
     templates = TemplateEstruturaMissao.objects.prefetch_related('funcoes_template').all()
 
     context = {
@@ -31,13 +31,13 @@ def htmx_templates_lista(request):
 
 
 # ============================================================
-# CRUD DE TEMPLATE DE MISSÃO
+# CRUD DE MISSÃO PADRONIZADA
 # ============================================================
 @login_required
 @permissao_gerenciar_missoes
 @require_http_methods(["GET", "POST"])
 def htmx_template_criar(request):
-    """Cria um novo template de missão."""
+    """Cria uma nova missão padronizada."""
     if request.method == 'POST':
         nome = request.POST.get('nome', '').strip()
         sigla = request.POST.get('sigla', '').strip()
@@ -53,7 +53,7 @@ def htmx_template_criar(request):
         # Verificar duplicidade
         if TemplateEstruturaMissao.objects.filter(nome__iexact=nome).exists():
             return HttpResponse(
-                '<div class="alert alert-danger">Já existe um template com este nome.</div>',
+                '<div class="alert alert-danger">Já existe uma missão padronizada com este nome.</div>',
                 status=400
             )
 
@@ -78,7 +78,7 @@ def htmx_template_criar(request):
 @permissao_gerenciar_missoes
 @require_http_methods(["GET", "POST"])
 def htmx_template_editar(request, pk):
-    """Edita um template de missão existente."""
+    """Edita uma missão padronizada existente."""
     template = get_object_or_404(TemplateEstruturaMissao, pk=pk)
 
     if request.method == 'POST':
@@ -97,7 +97,7 @@ def htmx_template_editar(request, pk):
         # Verificar duplicidade (exceto o próprio)
         if TemplateEstruturaMissao.objects.filter(nome__iexact=nome).exclude(pk=pk).exists():
             return HttpResponse(
-                '<div class="alert alert-danger">Já existe outro template com este nome.</div>',
+                '<div class="alert alert-danger">Já existe outra missão padronizada com este nome.</div>',
                 status=400
             )
 
@@ -124,13 +124,13 @@ def htmx_template_editar(request, pk):
 @permissao_gerenciar_missoes
 @require_http_methods(["DELETE", "POST"])
 def htmx_template_excluir(request, pk):
-    """Exclui um template de missão."""
+    """Exclui uma missão padronizada."""
     template = get_object_or_404(TemplateEstruturaMissao, pk=pk)
 
-    # Verificar se há missões usando este template
+    # Verificar se há missões usando esta missão padronizada
     if template.instancias.exists():
         return HttpResponse(
-            '<div class="alert alert-danger">Não é possível excluir: existem missões usando este template.</div>',
+            '<div class="alert alert-danger">Não é possível excluir: existem missões usando esta missão padronizada.</div>',
             status=400
         )
 
@@ -139,12 +139,12 @@ def htmx_template_excluir(request, pk):
 
 
 # ============================================================
-# CRUD DE TEMPLATE DE FUNÇÃO
+# CRUD DE FUNÇÃO DE MISSÃO PADRONIZADA
 # ============================================================
 @login_required
 @permissao_gerenciar_missoes
 def htmx_template_funcoes_lista(request, template_pk):
-    """Lista as funções de um template."""
+    """Lista as funções de uma missão padronizada."""
     template = get_object_or_404(TemplateEstruturaMissao, pk=template_pk)
     funcoes = template.funcoes_template.all()
 
@@ -159,7 +159,7 @@ def htmx_template_funcoes_lista(request, template_pk):
 @permissao_gerenciar_missoes
 @require_http_methods(["GET", "POST"])
 def htmx_template_funcao_criar(request, template_pk):
-    """Cria uma nova função no template."""
+    """Cria uma nova função na missão padronizada."""
     template = get_object_or_404(TemplateEstruturaMissao, pk=template_pk)
 
     if request.method == 'POST':
@@ -178,7 +178,7 @@ def htmx_template_funcao_criar(request, template_pk):
         # Verificar duplicidade
         if TemplateFuncao.objects.filter(template_missao=template, nome__iexact=nome).exists():
             return HttpResponse(
-                '<div class="alert alert-danger">Já existe uma função com este nome neste template.</div>',
+                '<div class="alert alert-danger">Já existe uma função com este nome nesta missão padronizada.</div>',
                 status=400
             )
 
@@ -207,7 +207,7 @@ def htmx_template_funcao_criar(request, template_pk):
 @permissao_gerenciar_missoes
 @require_http_methods(["GET", "POST"])
 def htmx_template_funcao_editar(request, pk):
-    """Edita uma função do template."""
+    """Edita uma função da missão padronizada."""
     funcao = get_object_or_404(TemplateFuncao, pk=pk)
     template = funcao.template_missao
 
@@ -227,7 +227,7 @@ def htmx_template_funcao_editar(request, pk):
         # Verificar duplicidade
         if TemplateFuncao.objects.filter(template_missao=template, nome__iexact=nome).exclude(pk=pk).exists():
             return HttpResponse(
-                '<div class="alert alert-danger">Já existe outra função com este nome neste template.</div>',
+                '<div class="alert alert-danger">Já existe outra função com este nome nesta missão padronizada.</div>',
                 status=400
             )
 
@@ -256,14 +256,14 @@ def htmx_template_funcao_editar(request, pk):
 @permissao_gerenciar_missoes
 @require_http_methods(["DELETE", "POST"])
 def htmx_template_funcao_excluir(request, pk):
-    """Exclui uma função do template."""
+    """Exclui uma função da missão padronizada."""
     funcao = get_object_or_404(TemplateFuncao, pk=pk)
     template_pk = funcao.template_missao.pk
 
-    # Verificar se há funções instanciadas usando este template
+    # Verificar se há funções instanciadas usando esta função padronizada
     if funcao.instancias.exists():
         return HttpResponse(
-            '<div class="alert alert-danger">Não é possível excluir: existem funções de missão usando este template.</div>',
+            '<div class="alert alert-danger">Não é possível excluir: existem funções de missão usando esta função padronizada.</div>',
             status=400
         )
 

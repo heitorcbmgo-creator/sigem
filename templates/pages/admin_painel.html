@@ -90,7 +90,7 @@
             hx-get="{% url 'htmx_templates_lista' %}"
             hx-target="#tab-content"
             onclick="setActiveTab(this, 'templates')">
-        <i data-lucide="copy"></i> Templates
+        <i data-lucide="copy"></i> Missões Padronizadas
     </button>
     {% endif %}
 </div>
@@ -180,6 +180,109 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Modal Global (fora do tab-content para não ser substituído pelo HTMX) -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+        <div id="modal-content">
+            <!-- Conteúdo carregado via HTMX -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Modal Global */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-dialog {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    transform: scale(0.95);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.active .modal-dialog {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--sigem-gray-200);
+    background: var(--sigem-gray-50);
+}
+
+/* Loading indicator para formulários no modal */
+.modal-dialog .htmx-request {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.modal-dialog .htmx-request .btn[type="submit"]::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -200,7 +303,7 @@ function setActiveTab(clickedTab, tipo) {
         'unidades': '📁 Unidades',
         'usuarios': '📁 Usuários',
         'solicitacoes': '📁 Solicitações',
-        'templates': '📁 Templates'
+        'templates': '📁 Missões Padronizadas'
     };
     const badge = document.getElementById('badge-tipo');
     if (badge) badge.textContent = nomes[tipo] || tipo;
@@ -236,5 +339,60 @@ function exportarDados() {
 // Inicializar
 const form = document.getElementById('form-importar');
 if (form) form.action = '/importar/' + tipoAtual + '/';
+
+// ============================================================
+// FUNÇÕES DO MODAL GLOBAL
+// ============================================================
+function openModal() {
+    document.getElementById('modal-overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('active');
+    document.body.style.overflow = '';
+    // Limpar conteúdo do modal após fechar (para evitar flash de conteúdo antigo)
+    setTimeout(() => {
+        const modalContent = document.getElementById('modal-content');
+        if (modalContent && !document.getElementById('modal-overlay').classList.contains('active')) {
+            modalContent.innerHTML = '';
+        }
+    }, 200);
+}
+
+function closeModalOnOverlay(event) {
+    if (event.target === document.getElementById('modal-overlay')) {
+        closeModal();
+    }
+}
+
+// Fechar modal com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Reinicializar ícones Lucide após HTMX swaps
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+});
+
+// Fechar modal automaticamente após swap bem-sucedido vindo de formulário no modal
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    // Verificar se a requisição veio de dentro do modal e foi bem-sucedida
+    const trigger = event.detail.elt;
+    const modalContent = document.getElementById('modal-content');
+
+    if (modalContent && modalContent.contains(trigger)) {
+        // A requisição veio de dentro do modal
+        if (event.detail.successful) {
+            // Requisição bem-sucedida - fechar modal
+            closeModal();
+        }
+    }
+});
 </script>
 {% endblock %}

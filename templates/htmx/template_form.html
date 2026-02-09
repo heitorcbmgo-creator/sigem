@@ -1,8 +1,8 @@
-<!-- Formulário de Template de Missão -->
+<!-- Formulário de Missão Padronizada -->
 <div class="modal-header">
     <h3 class="modal-title">
         <i data-lucide="{% if editando %}pencil{% else %}plus{% endif %}"></i>
-        {% if editando %}Editar Template{% else %}Novo Template{% endif %}
+        {% if editando %}Editar Missão Padronizada{% else %}Nova Missão Padronizada{% endif %}
     </h3>
     <button class="btn btn-ghost btn-sm" onclick="closeModal()">
         <i data-lucide="x"></i>
@@ -18,7 +18,7 @@
     <div class="modal-body">
         <div class="form-grid">
             <div class="form-group">
-                <label class="form-label required">Nome do Template</label>
+                <label class="form-label required">Nome da Missão Padronizada</label>
                 <input type="text" name="nome" class="form-input"
                        value="{{ template.nome|default:'' }}"
                        placeholder="Ex: Processo Administrativo Disciplinar"
@@ -58,9 +58,9 @@
         <div class="form-group">
             <label class="form-checkbox">
                 <input type="checkbox" name="ativo" {% if template.ativo %}checked{% endif %}>
-                <span>Template ativo</span>
+                <span>Missão padronizada ativa</span>
             </label>
-            <small class="form-hint">Templates inativos não aparecem na criação de missões</small>
+            <small class="form-hint">Missões padronizadas inativas não aparecem na criação de missões</small>
         </div>
         {% endif %}
     </div>
@@ -71,7 +71,7 @@
         </button>
         <button type="submit" class="btn btn-primary">
             <i data-lucide="check"></i>
-            {% if editando %}Salvar Alterações{% else %}Criar Template{% endif %}
+            {% if editando %}Salvar Alterações{% else %}Criar Missão Padronizada{% endif %}
         </button>
     </div>
 </form>

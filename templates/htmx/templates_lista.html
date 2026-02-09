@@ -1,19 +1,31 @@
-<!-- Templates de Missão - Lista -->
+<!-- Missões Padronizadas - Lista -->
 <div class="templates-container">
     <!-- Header com botão de adicionar -->
     <div class="flex justify-between items-center mb-4">
         <div>
-            <h3 class="text-lg font-semibold">Templates de Missão</h3>
+            <h3 class="text-lg font-semibold">Missões Padronizadas</h3>
             <p class="text-gray text-sm">Defina estruturas reutilizáveis para missões repetitivas (PAD, IPM, etc.)</p>
         </div>
-        <button class="btn btn-primary"
-                hx-get="{% url 'htmx_template_criar' %}"
-                hx-target="#modal-content"
-                hx-trigger="click"
-                onclick="openModal()">
-            <i data-lucide="plus"></i>
-            Novo Template
-        </button>
+        <div class="flex gap-2 items-center">
+            {% if templates %}
+            <div class="btn-group-sm">
+                <button class="btn btn-xs btn-ghost" onclick="expandirTodos()" title="Expandir todas as funções">
+                    <i data-lucide="chevrons-down"></i>
+                </button>
+                <button class="btn btn-xs btn-ghost" onclick="recolherTodos()" title="Recolher todas as funções">
+                    <i data-lucide="chevrons-up"></i>
+                </button>
+            </div>
+            {% endif %}
+            <button class="btn btn-primary"
+                    hx-get="{% url 'htmx_template_criar' %}"
+                    hx-target="#modal-content"
+                    hx-trigger="click"
+                    onclick="openModal()">
+                <i data-lucide="plus"></i>
+                Nova Missão Padronizada
+            </button>
+        </div>
     </div>
 
     <!-- Lista de Templates -->
@@ -47,7 +59,7 @@
                     <button class="btn btn-sm btn-ghost text-danger"
                             hx-post="{% url 'htmx_template_excluir' template.pk %}"
                             hx-target="#tab-content"
-                            hx-confirm="Tem certeza que deseja excluir este template?"
+                            hx-confirm="Tem certeza que deseja excluir esta missão padronizada?"
                             title="Excluir">
                         <i data-lucide="trash-2"></i>
                     </button>
@@ -70,19 +82,24 @@
                 </div>
             </div>
 
-            <!-- Lista de Funções do Template -->
+            <!-- Lista de Funções da Missão Padronizada (colapsável) -->
             <div class="template-funcoes" id="funcoes-template-{{ template.pk }}">
-                <div class="funcoes-header">
-                    <h5>Funções do Template</h5>
+                <div class="funcoes-header" onclick="toggleFuncoes(this)">
+                    <div class="funcoes-title-area">
+                        <i data-lucide="chevron-right" class="funcoes-toggle-icon"></i>
+                        <h5>Funções da Missão Padronizada</h5>
+                        <span class="badge badge-secondary badge-sm">{{ template.total_funcoes }}</span>
+                    </div>
                     <button class="btn btn-xs btn-secondary"
                             hx-get="{% url 'htmx_template_funcao_criar' template.pk %}"
                             hx-target="#modal-content"
-                            onclick="openModal()">
+                            onclick="event.stopPropagation(); openModal()">
                         <i data-lucide="plus"></i>
                         Adicionar
                     </button>
                 </div>
 
+                <div class="funcoes-content" style="display: none;">
                 {% if template.funcoes_template.all %}
                 <table class="table table-sm">
                     <thead>
@@ -120,7 +137,7 @@
                                     <button class="btn btn-xs btn-ghost text-danger"
                                             hx-post="{% url 'htmx_template_funcao_excluir' funcao.pk %}"
                                             hx-target="#funcoes-template-{{ template.pk }}"
-                                            hx-confirm="Excluir esta função do template?">
+                                            hx-confirm="Excluir esta função da missão padronizada?">
                                         <i data-lucide="trash-2"></i>
                                     </button>
                                 </div>
@@ -135,6 +152,7 @@
                     Nenhuma função definida ainda
                 </p>
                 {% endif %}
+                </div><!-- /.funcoes-content -->
             </div>
         </div>
         {% endfor %}
@@ -142,8 +160,8 @@
     {% else %}
     <div class="empty-state">
         <i data-lucide="copy"></i>
-        <h4>Nenhum template cadastrado</h4>
-        <p>Crie templates para missões que se repetem, como PAD, IPM, Sindicâncias, etc.</p>
+        <h4>Nenhuma missão padronizada cadastrada</h4>
+        <p>Crie missões padronizadas para tipos que se repetem, como PAD, IPM, Sindicâncias, etc.</p>
     </div>
     {% endif %}
 </div>
@@ -227,7 +245,36 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 4px;
+}
+
+.funcoes-header:hover {
+    background: var(--sigem-gray-100);
+}
+
+.funcoes-title-area {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.funcoes-toggle-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--sigem-gray-500);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.funcoes-header.expanded .funcoes-toggle-icon {
+    transform: rotate(90deg);
 }
 
 .funcoes-header h5 {
@@ -237,12 +284,45 @@
     color: var(--sigem-gray-700);
 }
 
+.badge-sm {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+}
+
+.funcoes-content {
+    margin-top: 0.75rem;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .badge-operacional { background: #3b82f6; color: white; }
 .badge-administrativa { background: #8b5cf6; color: white; }
 .badge-ensino { background: #10b981; color: white; }
 .badge-correicional { background: #f59e0b; color: white; }
 .badge-comissao { background: #ec4899; color: white; }
 .badge-acao_social { background: #06b6d4; color: white; }
+
+.btn-group-sm {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--sigem-gray-100);
+    border-radius: 6px;
+}
+
+.btn-group-sm .btn {
+    padding: 0.35rem 0.5rem;
+}
 
 .empty-state {
     text-align: center;
@@ -260,109 +340,43 @@
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
 }
-/* Modal */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s;
-}
-
-.modal-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-.modal-dialog {
-    background: white;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    transform: scale(0.95);
-    transition: transform 0.2s;
-}
-
-.modal-overlay.active .modal-dialog {
-    transform: scale(1);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--sigem-gray-200);
-}
-
-.modal-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid var(--sigem-gray-200);
-    background: var(--sigem-gray-50);
-}
 </style>
 
-<!-- Modal -->
-<div id="modal-overlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
-    <div class="modal-dialog" onclick="event.stopPropagation()">
-        <div id="modal-content">
-            <!-- Conteúdo carregado via HTMX -->
-        </div>
-    </div>
-</div>
-
 <script>
-function openModal() {
-    document.getElementById('modal-overlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
+// Toggle para mostrar/esconder funções do template
+function toggleFuncoes(header) {
+    const content = header.nextElementSibling;
+    const isExpanded = header.classList.contains('expanded');
 
-function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-function closeModalOnOverlay(event) {
-    if (event.target === document.getElementById('modal-overlay')) {
-        closeModal();
+    if (isExpanded) {
+        // Recolher
+        header.classList.remove('expanded');
+        content.style.display = 'none';
+    } else {
+        // Expandir
+        header.classList.add('expanded');
+        content.style.display = 'block';
+        // Reinicializar ícones dentro do conteúdo expandido
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
 }
 
-// Fechar modal com ESC
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeModal();
-    }
-});
+// Expandir/Recolher todos
+function expandirTodos() {
+    document.querySelectorAll('.funcoes-header:not(.expanded)').forEach(header => {
+        toggleFuncoes(header);
+    });
+}
 
-// Reinicializar ícones Lucide
+function recolherTodos() {
+    document.querySelectorAll('.funcoes-header.expanded').forEach(header => {
+        toggleFuncoes(header);
+    });
+}
+
+// Reinicializar ícones Lucide após carregar o conteúdo
 if (typeof lucide !== 'undefined') {
     lucide.createIcons();
 }

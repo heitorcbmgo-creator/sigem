@@ -172,25 +172,196 @@
             </div>
         </div>
         
-        <!-- Step 2: Formulário Nova Missão -->
-        <div id="wizard-step-nova-missao" style="display: none;">
+        <!-- Step 2A: Sub-escolha - Usar Template ou Criar do Zero -->
+        <div id="wizard-step-nova-missao-escolha" style="display: none;">
             <div class="wizard-header">
                 <button type="button" class="btn btn-sm btn-secondary" onclick="backToStep1()">
                     <i data-lucide="arrow-left"></i> Voltar
                 </button>
-                <h3><i data-lucide="folder-plus"></i> Nova Missão + Designação</h3>
+                <h3><i data-lucide="folder-plus"></i> Nova Missão - Escolha o Modo</h3>
             </div>
-            
-            <form hx-post="{% url 'htmx_solicitacao_criar' %}" 
-                  hx-target="#feedback-solicitacao" 
+
+            <p class="text-muted mb-4">Como você deseja criar a missão?</p>
+
+            <div class="wizard-options">
+                {% if templates_missao %}
+                <div class="wizard-option" onclick="showFormTemplate()">
+                    <div class="wizard-option-icon" style="background: #3b82f6;">
+                        <i data-lucide="copy"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Usar uma MISSÃO PADRONIZADA existente</h3>
+                        <p>Ideal para PAD, IPM, Sindicância e outros tipos padronizados. Funções e critérios já estão definidos.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+                {% endif %}
+
+                <div class="wizard-option" onclick="showFormManual()">
+                    <div class="wizard-option-icon" style="background: #8b5cf6;">
+                        <i data-lucide="pencil"></i>
+                    </div>
+                    <div class="wizard-option-content">
+                        <h3>Criar missão do ZERO</h3>
+                        <p>Para missões únicas que não se enquadram em nenhuma missão padronizada existente.</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="wizard-option-arrow"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2B: Formulário usando Missão Padronizada -->
+        <div id="wizard-step-nova-missao-template" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToNovaMissaoEscolha()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="copy"></i> Nova Missão via Missão Padronizada</h3>
+            </div>
+
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}"
+                  hx-target="#feedback-solicitacao-template"
+                  hx-swap="innerHTML"
+                  id="form-nova-missao-template">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_solicitacao" value="NOVA_MISSAO">
+                <input type="hidden" name="usar_template" value="1">
+                <input type="hidden" name="template_id" id="template_id_hidden" value="">
+
+                <div class="form-section">
+                    <h4 class="form-section-title"><i data-lucide="layers"></i> Selecione a Missão Padronizada</h4>
+
+                    <div class="templates-lista">
+                        {% for t in templates_missao %}
+                        <label class="template-item" onclick="selecionarTemplate({{ t.pk }}, '{{ t.nome }}', '{{ t.tipo }}')">
+                            <input type="radio" name="template_radio" value="{{ t.pk }}" required>
+                            <div class="template-item-content">
+                                <div class="template-item-header">
+                                    {% if t.sigla %}
+                                    <span class="badge badge-secondary">{{ t.sigla }}</span>
+                                    {% endif %}
+                                    <strong>{{ t.nome }}</strong>
+                                    <span class="badge badge-{{ t.tipo|lower }}">{{ t.get_tipo_display }}</span>
+                                </div>
+                                {% if t.descricao %}
+                                <p class="template-item-desc">{{ t.descricao|truncatechars:80 }}</p>
+                                {% endif %}
+                                <span class="template-item-meta">
+                                    <i data-lucide="target"></i> {{ t.total_funcoes }} função(ões)
+                                </span>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">Nenhuma missão padronizada disponível.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-section" id="template-funcao-section" style="display: none;">
+                    <h4 class="form-section-title"><i data-lucide="target"></i> Sua Função na Missão</h4>
+
+                    <div class="form-group">
+                        <label class="form-label">Função <span class="text-danger">*</span></label>
+                        <select class="form-select" name="template_funcao_id" id="select-template-funcao" required>
+                            <option value="">Selecione a missão padronizada primeiro...</option>
+                        </select>
+                        <small class="form-text text-muted">Esta será sua função na missão criada</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Complexidade</label>
+                            <input type="text" class="form-input" id="display-complexidade-template" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="Definida pela missão padronizada">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Critérios (TDE+NQT+GRS+DEC)</label>
+                            <input type="text" class="form-input" id="display-criterios-template" readonly disabled
+                                   style="background: #f3f4f6; color: #6b7280;" placeholder="Definidos pela missão padronizada">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" id="template-dados-section" style="display: none;">
+                    <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label class="form-label">Número/Identificador <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="numero_missao" required
+                                   placeholder="Ex: 001/2026">
+                            <small class="form-text text-muted">Número único desta instância da missão padronizada</small>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Ano</label>
+                            <input type="number" class="form-input" name="ano_missao"
+                                   value="2026" min="2020" max="2099" placeholder="2026">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Local <span class="text-danger">*</span></label>
+                        <select class="form-select" name="local_missao" required>
+                            <option value="">Selecione...</option>
+                            {% for value, label in local_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="data_inicio" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Data de Término <span class="text-danger">*</span></label>
+                            <input type="date" class="form-input" name="data_fim" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="documento_sei_missao" required
+                               placeholder="Ex: 202500012345">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nº SEI/BG da sua Designação <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="documento_sei_designacao" required
+                               placeholder="Ex: BG 001/2025">
+                    </div>
+                </div>
+
+                <div id="feedback-solicitacao-template"></div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-template" style="display: none;">
+                    <i data-lucide="send"></i>
+                    Enviar Solicitação
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2C: Formulário Nova Missão Manual (sem missão padronizada) -->
+        <div id="wizard-step-nova-missao" style="display: none;">
+            <div class="wizard-header">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="backToNovaMissaoEscolha()">
+                    <i data-lucide="arrow-left"></i> Voltar
+                </button>
+                <h3><i data-lucide="pencil"></i> Nova Missão (Manual)</h3>
+            </div>
+
+            <form hx-post="{% url 'htmx_solicitacao_criar' %}"
+                  hx-target="#feedback-solicitacao"
                   hx-swap="innerHTML"
                   id="form-nova-missao">
                 {% csrf_token %}
                 <input type="hidden" name="tipo_solicitacao" value="NOVA_MISSAO">
-                
+
                 <div class="form-section">
                     <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
-                    
+
                     <div class="form-row">
                         <div class="form-group" style="flex: 4;">
                             <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
@@ -213,7 +384,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label class="form-label">Local <span class="text-danger">*</span></label>
                         <select class="form-select" name="local_missao" required>
@@ -223,29 +394,29 @@
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Data de Início <span class="text-danger">*</span></label>
                             <input type="date" class="form-input" name="data_inicio" required>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">Data de Término <span class="text-danger">*</span></label>
                             <input type="date" class="form-input" name="data_fim" required>
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label class="form-label">Nº SEI da Missão <span class="text-danger">*</span></label>
-                        <input type="text" class="form-input" name="documento_sei_missao" required 
+                        <input type="text" class="form-input" name="documento_sei_missao" required
                                placeholder="Ex: 202500012345">
                     </div>
                 </div>
-                
+
                 <div class="form-section">
                     <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Nome da Função <span class="text-danger">*</span></label>
@@ -267,9 +438,9 @@
                         <small class="form-text text-muted">Os critérios de complexidade (TDE, NQT, GRS, DEC) são preenchidos pelo avaliador</small>
                     </div>
                 </div>
-                
+
                 <div id="feedback-solicitacao"></div>
-                
+
                 <button type="submit" class="btn btn-primary btn-block">
                     <i data-lucide="send"></i>
                     Enviar Solicitação
@@ -746,14 +917,119 @@
     height: 18px;
     flex-shrink: 0;
 }
+
+/* Templates Lista */
+.templates-lista {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    background: white;
+}
+
+.template-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sigem-gray-100);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.template-item:hover {
+    background: var(--sigem-gray-50);
+}
+
+.template-item:last-child {
+    border-bottom: none;
+}
+
+.template-item.selected {
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
+}
+
+.template-item input[type="radio"] {
+    margin-top: 4px;
+    accent-color: #3b82f6;
+}
+
+.template-item-content {
+    flex: 1;
+}
+
+.template-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.template-item-header strong {
+    font-size: 0.95rem;
+    color: var(--sigem-gray-800);
+}
+
+.template-item-desc {
+    font-size: 0.8rem;
+    color: var(--sigem-gray-500);
+    margin: 0.25rem 0;
+}
+
+.template-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--sigem-gray-500);
+}
+
+.template-item-meta i {
+    width: 12px;
+    height: 12px;
+}
+
+/* Badge de tipos de missão padronizada */
+.badge-operacional { background: #3b82f6; color: white; }
+.badge-administrativa { background: #8b5cf6; color: white; }
+.badge-ensino { background: #10b981; color: white; }
+.badge-correicional { background: #f59e0b; color: white; }
+.badge-comissao { background: #ec4899; color: white; }
+.badge-acao_social { background: #06b6d4; color: white; }
 </style>
 
 <script>
+// Templates data cache
+let templatesData = {
+    {% for t in templates_missao %}
+    {{ t.pk }}: {
+        nome: "{{ t.nome }}",
+        tipo: "{{ t.tipo }}",
+        funcoes: [
+            {% for f in t.funcoes_template.all %}
+            {
+                id: {{ f.pk }},
+                nome: "{{ f.nome }}",
+                tde: {{ f.tde }},
+                nqt: {{ f.nqt }},
+                grs: {{ f.grs }},
+                dec: {{ f.dec }},
+                complexidade: "{{ f.complexidade }}",
+                complexidade_display: "{{ f.get_complexidade_display }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
 function showForm(tipo) {
     document.getElementById('wizard-step-1').style.display = 'none';
 
     if (tipo === 'NOVA_MISSAO') {
-        document.getElementById('wizard-step-nova-missao').style.display = 'block';
+        // Mostrar sub-escolha (missão padronizada ou manual)
+        document.getElementById('wizard-step-nova-missao-escolha').style.display = 'block';
     } else if (tipo === 'PRORROGACAO_PRAZO') {
         document.getElementById('wizard-step-prorrogacao').style.display = 'block';
     } else {
@@ -763,13 +1039,99 @@ function showForm(tipo) {
     lucide.createIcons();
 }
 
+function showFormTemplate() {
+    document.getElementById('wizard-step-nova-missao-escolha').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao-template').style.display = 'block';
+    lucide.createIcons();
+}
+
+function showFormManual() {
+    document.getElementById('wizard-step-nova-missao-escolha').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao').style.display = 'block';
+    lucide.createIcons();
+}
+
+function backToNovaMissaoEscolha() {
+    document.getElementById('wizard-step-nova-missao').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao-template').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao-escolha').style.display = 'block';
+
+    // Reset template form
+    document.getElementById('form-nova-missao-template').reset();
+    document.getElementById('template-funcao-section').style.display = 'none';
+    document.getElementById('template-dados-section').style.display = 'none';
+    document.getElementById('btn-enviar-template').style.display = 'none';
+    document.getElementById('template_id_hidden').value = '';
+
+    lucide.createIcons();
+}
+
 function backToStep1() {
     document.getElementById('wizard-step-1').style.display = 'block';
     document.getElementById('wizard-step-nova-missao').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao-escolha').style.display = 'none';
+    document.getElementById('wizard-step-nova-missao-template').style.display = 'none';
     document.getElementById('wizard-step-designacao').style.display = 'none';
     document.getElementById('wizard-step-prorrogacao').style.display = 'none';
     lucide.createIcons();
 }
+
+function selecionarTemplate(templateId, templateNome, templateTipo) {
+    // Set hidden field
+    document.getElementById('template_id_hidden').value = templateId;
+
+    // Highlight selected item
+    document.querySelectorAll('.template-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+
+    // Load functions for this mission template
+    const template = templatesData[templateId];
+    const selectFuncao = document.getElementById('select-template-funcao');
+
+    selectFuncao.innerHTML = '<option value="">Selecione sua função...</option>';
+
+    if (template && template.funcoes.length > 0) {
+        template.funcoes.forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao.id;
+            option.textContent = `${funcao.nome} (${funcao.complexidade_display})`;
+            option.dataset.complexidade = funcao.complexidade_display;
+            option.dataset.tde = funcao.tde;
+            option.dataset.nqt = funcao.nqt;
+            option.dataset.grs = funcao.grs;
+            option.dataset.dec = funcao.dec;
+            selectFuncao.appendChild(option);
+        });
+
+        // Show function selection section
+        document.getElementById('template-funcao-section').style.display = 'block';
+        document.getElementById('template-dados-section').style.display = 'block';
+        document.getElementById('btn-enviar-template').style.display = 'block';
+    } else {
+        selectFuncao.innerHTML = '<option value="">Nenhuma função definida nesta missão padronizada</option>';
+    }
+
+    lucide.createIcons();
+}
+
+// Event listener for template function selection
+document.getElementById('select-template-funcao').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption && selectedOption.value) {
+        document.getElementById('display-complexidade-template').value = selectedOption.dataset.complexidade || '';
+        const soma = (parseInt(selectedOption.dataset.tde) || 0) +
+                     (parseInt(selectedOption.dataset.nqt) || 0) +
+                     (parseInt(selectedOption.dataset.grs) || 0) +
+                     (parseInt(selectedOption.dataset.dec) || 0);
+        document.getElementById('display-criterios-template').value =
+            `TDE=${selectedOption.dataset.tde} + NQT=${selectedOption.dataset.nqt} + GRS=${selectedOption.dataset.grs} + DEC=${selectedOption.dataset.dec} = ${soma}`;
+    } else {
+        document.getElementById('display-complexidade-template').value = '';
+        document.getElementById('display-criterios-template').value = '';
+    }
+});
 
 function selecionarMissaoProrrogacao(missaoId, dataFimAtual) {
     // Preenche a data fim atual no campo readonly
@@ -887,18 +1249,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Limpar formulário e voltar ao step 1 após sucesso
 document.body.addEventListener('htmx:afterSwap', function(evt) {
-    if ((evt.detail.target.id === 'feedback-solicitacao' || evt.detail.target.id === 'feedback-solicitacao-desig')
-        && evt.detail.xhr.response.includes('alert-success')) {
+    const targetId = evt.detail.target.id;
+    const isSuccess = evt.detail.xhr && evt.detail.xhr.response && evt.detail.xhr.response.includes('alert-success');
 
-        setTimeout(() => {
-            if (evt.detail.target.id === 'feedback-solicitacao') {
+    if (isSuccess) {
+        if (targetId === 'feedback-solicitacao') {
+            setTimeout(() => {
                 document.getElementById('form-nova-missao').reset();
-            } else {
+                backToStep1();
+            }, 2000);
+        } else if (targetId === 'feedback-solicitacao-template') {
+            setTimeout(() => {
+                document.getElementById('form-nova-missao-template').reset();
+                document.getElementById('template-funcao-section').style.display = 'none';
+                document.getElementById('template-dados-section').style.display = 'none';
+                document.getElementById('btn-enviar-template').style.display = 'none';
+                document.getElementById('template_id_hidden').value = '';
+                document.querySelectorAll('.template-item').forEach(item => item.classList.remove('selected'));
+                backToStep1();
+            }, 2000);
+        } else if (targetId === 'feedback-solicitacao-desig') {
+            setTimeout(() => {
                 document.getElementById('form-designacao').reset();
                 funcoesDisponiveisDesig = [];
-            }
-            backToStep1();
-        }, 2000);
+                backToStep1();
+            }, 2000);
+        } else if (targetId === 'feedback-solicitacao-prorrog') {
+            setTimeout(() => {
+                document.getElementById('form-prorrogacao').reset();
+                document.getElementById('data-fim-atual-prorrog').value = '';
+                backToStep1();
+            }, 2000);
+        }
     }
     lucide.createIcons();
 });

@@ -9,7 +9,7 @@ from django.http import HttpResponse
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 
-from ..models import Solicitacao, Missao, Designacao, Oficial, Funcao
+from ..models import Solicitacao, Missao, Designacao, Oficial, Funcao, TemplateEstruturaMissao, TemplateFuncao
 
 
 @login_required
@@ -72,37 +72,90 @@ def htmx_solicitacao_criar(request):
 
     try:
         if tipo_solicitacao == 'NOVA_MISSAO':
-            # Validações para nova missão
-            nome_missao = request.POST.get('nome_missao', '').strip()
-            ano_missao = request.POST.get('ano_missao') or None
-            tipo_missao = request.POST.get('tipo_missao', '')
-            local_missao = request.POST.get('local_missao', '')
-            data_inicio = request.POST.get('data_inicio')
-            data_fim = request.POST.get('data_fim')
-            documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
-            nome_funcao = request.POST.get('nome_funcao', '').strip()
-            documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+            usar_template = request.POST.get('usar_template') == '1'
 
-            # Data de término agora é obrigatória (status é calculado automaticamente)
-            if not all([nome_missao, tipo_missao, local_missao, data_inicio, data_fim, documento_sei_missao, nome_funcao, documento_sei_designacao]):
-                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
+            if usar_template:
+                # === Modo TEMPLATE ===
+                template_id = request.POST.get('template_id')
+                template_funcao_id = request.POST.get('template_funcao_id')
+                numero_missao = request.POST.get('numero_missao', '').strip()
+                ano_missao = request.POST.get('ano_missao') or None
+                local_missao = request.POST.get('local_missao', '')
+                data_inicio = request.POST.get('data_inicio')
+                data_fim = request.POST.get('data_fim')
+                documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
+                documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
 
-            # Criar solicitação (status será calculado automaticamente na aprovação)
-            Solicitacao.objects.create(
-                tipo_solicitacao='NOVA_MISSAO',
-                solicitante=request.user.oficial,
-                nome_missao=nome_missao,
-                ano_missao=ano_missao,
-                tipo_missao=tipo_missao,
-                local_missao=local_missao,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-                documento_sei_missao=documento_sei_missao,
-                nome_funcao=nome_funcao,
-                documento_sei_designacao=documento_sei_designacao,
-            )
+                if not all([template_id, template_funcao_id, numero_missao, local_missao, data_inicio, data_fim, documento_sei_missao, documento_sei_designacao]):
+                    return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
-            return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de nova missão enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
+                # Validar template e função
+                try:
+                    template = TemplateEstruturaMissao.objects.get(pk=template_id, ativo=True)
+                    template_funcao = TemplateFuncao.objects.get(pk=template_funcao_id, template_missao=template)
+                except (TemplateEstruturaMissao.DoesNotExist, TemplateFuncao.DoesNotExist):
+                    return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Missão padronizada ou função inválidos.</div>')
+
+                # Criar solicitação com template
+                Solicitacao.objects.create(
+                    tipo_solicitacao='NOVA_MISSAO',
+                    solicitante=request.user.oficial,
+                    # Campos do template
+                    template_missao=template,
+                    template_funcao=template_funcao,
+                    numero_missao=numero_missao,
+                    # Nome da missão será gerado do template + número
+                    nome_missao=f"{template.nome} {numero_missao}",
+                    ano_missao=ano_missao,
+                    tipo_missao=template.tipo,
+                    local_missao=local_missao,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    documento_sei_missao=documento_sei_missao,
+                    # Função virá do template
+                    nome_funcao=template_funcao.nome,
+                    documento_sei_designacao=documento_sei_designacao,
+                    # TDE/NQT/GRS/DEC já definidos no template
+                    tde=template_funcao.tde,
+                    nqt=template_funcao.nqt,
+                    grs=template_funcao.grs,
+                    dec=template_funcao.dec,
+                )
+
+                return HttpResponse(f'<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de {template.nome} {numero_missao} enviada com sucesso! Os critérios de complexidade já estão definidos pela missão padronizada.</div><script>lucide.createIcons();</script>')
+
+            else:
+                # === Modo MANUAL (sem template) ===
+                nome_missao = request.POST.get('nome_missao', '').strip()
+                ano_missao = request.POST.get('ano_missao') or None
+                tipo_missao = request.POST.get('tipo_missao', '')
+                local_missao = request.POST.get('local_missao', '')
+                data_inicio = request.POST.get('data_inicio')
+                data_fim = request.POST.get('data_fim')
+                documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
+                nome_funcao = request.POST.get('nome_funcao', '').strip()
+                documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+
+                # Data de término agora é obrigatória (status é calculado automaticamente)
+                if not all([nome_missao, tipo_missao, local_missao, data_inicio, data_fim, documento_sei_missao, nome_funcao, documento_sei_designacao]):
+                    return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
+
+                # Criar solicitação (status será calculado automaticamente na aprovação)
+                Solicitacao.objects.create(
+                    tipo_solicitacao='NOVA_MISSAO',
+                    solicitante=request.user.oficial,
+                    nome_missao=nome_missao,
+                    ano_missao=ano_missao,
+                    tipo_missao=tipo_missao,
+                    local_missao=local_missao,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    documento_sei_missao=documento_sei_missao,
+                    nome_funcao=nome_funcao,
+                    documento_sei_designacao=documento_sei_designacao,
+                )
+
+                return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de nova missão enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
 
         elif tipo_solicitacao == 'DESIGNACAO':
             # Validações para designação em missão existente

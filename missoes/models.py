@@ -992,7 +992,33 @@ class Solicitacao(models.Model):
     data_inicio = models.DateField('Data de Início', null=True, blank=True)
     data_fim = models.DateField('Data de Término', null=True, blank=True)
     documento_sei_missao = models.CharField('Nº SEI da Missão', max_length=100, blank=True)
-    
+
+    # === Campos de TEMPLATE (para NOVA_MISSAO com template) ===
+    template_missao = models.ForeignKey(
+        'TemplateEstruturaMissao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes',
+        verbose_name='Template de Missão',
+        help_text='Se preenchido, a missão será criada a partir deste template'
+    )
+    template_funcao = models.ForeignKey(
+        'TemplateFuncao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes',
+        verbose_name='Função do Template',
+        help_text='Função do template que o solicitante ocupará'
+    )
+    numero_missao = models.CharField(
+        'Número/Identificador da Missão',
+        max_length=50,
+        blank=True,
+        help_text='Ex: 001/2026 - usado apenas com template'
+    )
+
     # === Campos de FUNÇÃO (para NOVA_MISSAO) ===
     nome_funcao = models.CharField('Nome da Função', max_length=100, blank=True)
     tde = models.IntegerField(
@@ -1154,42 +1180,86 @@ class Solicitacao(models.Model):
         self.status = 'APROVADA'
 
         if self.tipo_solicitacao == 'NOVA_MISSAO':
-            # Validar critérios
-            if self.tde is None or self.nqt is None or self.grs is None or self.dec is None:
-                raise ValueError('TDE, NQT, GRS e DEC devem ser informados.')
+            if self.template_missao and self.template_funcao:
+                # === MODO TEMPLATE ===
+                # Critérios vêm do template (não precisa validar tde/nqt/grs/dec)
 
-            # 1. Criar Missão
-            missao = Missao.objects.create(
-                nome=self.nome_missao,
-                ano=self.ano_missao,
-                tipo=self.tipo_missao,
-                status=self.status_missao,
-                local=self.local_missao,
-                data_inicio=self.data_inicio,
-                data_fim=self.data_fim,
-                documento_referencia=self.documento_sei_missao,
-            )
-            self.missao_criada = missao
+                # 1. Criar Missão baseada no template
+                missao = Missao.objects.create(
+                    template=self.template_missao,
+                    numero=self.numero_missao,
+                    nome=self.template_missao.nome,
+                    tipo=self.template_missao.tipo,
+                    status=self.status_missao or 'EM_ANDAMENTO',
+                    local=self.local_missao,
+                    data_inicio=self.data_inicio,
+                    data_fim=self.data_fim,
+                    documento_referencia=self.documento_sei_missao,
+                )
+                self.missao_criada = missao
 
-            # 2. Criar Função
-            funcao = Funcao.objects.create(
-                missao=missao,
-                funcao=self.nome_funcao,
-                tde=self.tde,
-                nqt=self.nqt,
-                grs=self.grs,
-                dec=self.dec
-            )
-            self.funcao_criada = funcao
+                # 2. Criar todas as funções do template
+                funcoes_criadas = missao.criar_funcoes_do_template()
 
-            # 3. Criar Designação
-            designacao = Designacao.objects.create(
-                oficial=self.solicitante,
-                missao=missao,
-                funcao=funcao,
-                observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
-            )
-            self.designacao_criada = designacao
+                # 3. Encontrar a função correspondente ao template_funcao selecionado
+                funcao_solicitante = None
+                for f in funcoes_criadas:
+                    if f.template_funcao and f.template_funcao.pk == self.template_funcao.pk:
+                        funcao_solicitante = f
+                        break
+
+                if not funcao_solicitante:
+                    raise ValueError('Não foi possível encontrar a função correspondente ao template.')
+
+                self.funcao_criada = funcao_solicitante
+
+                # 4. Criar Designação do solicitante
+                designacao = Designacao.objects.create(
+                    oficial=self.solicitante,
+                    missao=missao,
+                    funcao=funcao_solicitante,
+                    observacoes=f'Criado via solicitação (template). SEI: {self.documento_sei_designacao}',
+                )
+                self.designacao_criada = designacao
+
+            else:
+                # === MODO TRADICIONAL (sem template) ===
+                # Validar critérios
+                if self.tde is None or self.nqt is None or self.grs is None or self.dec is None:
+                    raise ValueError('TDE, NQT, GRS e DEC devem ser informados.')
+
+                # 1. Criar Missão
+                missao = Missao.objects.create(
+                    nome=self.nome_missao,
+                    ano=self.ano_missao,
+                    tipo=self.tipo_missao,
+                    status=self.status_missao,
+                    local=self.local_missao,
+                    data_inicio=self.data_inicio,
+                    data_fim=self.data_fim,
+                    documento_referencia=self.documento_sei_missao,
+                )
+                self.missao_criada = missao
+
+                # 2. Criar Função
+                funcao = Funcao.objects.create(
+                    missao=missao,
+                    funcao=self.nome_funcao,
+                    tde=self.tde,
+                    nqt=self.nqt,
+                    grs=self.grs,
+                    dec=self.dec
+                )
+                self.funcao_criada = funcao
+
+                # 3. Criar Designação
+                designacao = Designacao.objects.create(
+                    oficial=self.solicitante,
+                    missao=missao,
+                    funcao=funcao,
+                    observacoes=f'Criado via solicitação. SEI: {self.documento_sei_designacao}',
+                )
+                self.designacao_criada = designacao
 
         elif self.tipo_solicitacao == 'DESIGNACAO':
             if not self.funcao_existente:
