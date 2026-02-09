@@ -1,0 +1,132 @@
+<!-- Formulário de Template de Missão -->
+<div class="modal-header">
+    <h3 class="modal-title">
+        <i data-lucide="{% if editando %}pencil{% else %}plus{% endif %}"></i>
+        {% if editando %}Editar Template{% else %}Novo Template{% endif %}
+    </h3>
+    <button class="btn btn-ghost btn-sm" onclick="closeModal()">
+        <i data-lucide="x"></i>
+    </button>
+</div>
+
+<form hx-post="{% if editando %}{% url 'htmx_template_editar' template.pk %}{% else %}{% url 'htmx_template_criar' %}{% endif %}"
+      hx-target="#tab-content"
+      hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) closeModal()">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label required">Nome do Template</label>
+                <input type="text" name="nome" class="form-input"
+                       value="{{ template.nome|default:'' }}"
+                       placeholder="Ex: Processo Administrativo Disciplinar"
+                       required>
+                <small class="form-hint">Nome completo do tipo de missão</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Sigla</label>
+                <input type="text" name="sigla" class="form-input"
+                       value="{{ template.sigla|default:'' }}"
+                       placeholder="Ex: PAD"
+                       maxlength="20">
+                <small class="form-hint">Abreviação para identificação rápida</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label required">Tipo de Missão</label>
+            <select name="tipo" class="form-select" required>
+                <option value="">Selecione o tipo...</option>
+                {% for value, label in tipo_choices %}
+                <option value="{{ value }}" {% if template.tipo == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <textarea name="descricao" class="form-textarea" rows="3"
+                      placeholder="Descreva o propósito deste tipo de missão...">{{ template.descricao|default:'' }}</textarea>
+        </div>
+
+        {% if editando %}
+        <div class="form-group">
+            <label class="form-checkbox">
+                <input type="checkbox" name="ativo" {% if template.ativo %}checked{% endif %}>
+                <span>Template ativo</span>
+            </label>
+            <small class="form-hint">Templates inativos não aparecem na criação de missões</small>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            {% if editando %}Salvar Alterações{% else %}Criar Template{% endif %}
+        </button>
+    </div>
+</form>
+
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--sigem-gray-700);
+}
+
+.form-label.required::after {
+    content: ' *';
+    color: #ef4444;
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--sigem-gray-500);
+    margin-top: 0.25rem;
+}
+
+.form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.form-checkbox input {
+    width: 18px;
+    height: 18px;
+}
+</style>
+
+<script>
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+</script>

@@ -1,0 +1,208 @@
+<!-- Formulário de Função de Template -->
+<div class="modal-header">
+    <h3 class="modal-title">
+        <i data-lucide="{% if editando %}pencil{% else %}plus{% endif %}"></i>
+        {% if editando %}Editar Função{% else %}Nova Função{% endif %}
+        <span class="badge badge-secondary">{{ template.sigla|default:template.nome }}</span>
+    </h3>
+    <button class="btn btn-ghost btn-sm" onclick="closeModal()">
+        <i data-lucide="x"></i>
+    </button>
+</div>
+
+<form hx-post="{% if editando %}{% url 'htmx_template_funcao_editar' funcao.pk %}{% else %}{% url 'htmx_template_funcao_criar' template.pk %}{% endif %}"
+      hx-target="#tab-content"
+      hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) closeModal()">
+    {% csrf_token %}
+
+    <div class="modal-body">
+        <div class="form-group">
+            <label class="form-label required">Nome da Função</label>
+            <input type="text" name="nome" class="form-input"
+                   value="{{ funcao.nome|default:'' }}"
+                   placeholder="Ex: Encarregado, Escrivão, Presidente..."
+                   required>
+        </div>
+
+        <!-- Critérios de Complexidade -->
+        <div class="criterios-section">
+            <h4>Critérios de Complexidade</h4>
+            <p class="text-gray text-sm mb-3">
+                Defina os valores padrão para funções criadas a partir deste template.
+            </p>
+
+            <div class="criterios-grid">
+                <div class="criterio-item">
+                    <label class="form-label">
+                        <strong>TDE</strong>
+                        <span class="criterio-desc">Tempo de Dedicação Exigido</span>
+                    </label>
+                    <select name="tde" class="form-select" onchange="calcularComplexidade()">
+                        {% for value, label in nivel_choices %}
+                        <option value="{{ value }}" {% if funcao.tde == value %}selected{% elif not funcao and value == 2 %}selected{% endif %}>
+                            {{ value }} - {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="criterio-item">
+                    <label class="form-label">
+                        <strong>NQT</strong>
+                        <span class="criterio-desc">Nível de Qualificação Técnica</span>
+                    </label>
+                    <select name="nqt" class="form-select" onchange="calcularComplexidade()">
+                        {% for value, label in nivel_choices %}
+                        <option value="{{ value }}" {% if funcao.nqt == value %}selected{% elif not funcao and value == 2 %}selected{% endif %}>
+                            {{ value }} - {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="criterio-item">
+                    <label class="form-label">
+                        <strong>GRS</strong>
+                        <span class="criterio-desc">Grau de Responsabilidade</span>
+                    </label>
+                    <select name="grs" class="form-select" onchange="calcularComplexidade()">
+                        {% for value, label in nivel_choices %}
+                        <option value="{{ value }}" {% if funcao.grs == value %}selected{% elif not funcao and value == 2 %}selected{% endif %}>
+                            {{ value }} - {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="criterio-item">
+                    <label class="form-label">
+                        <strong>DEC</strong>
+                        <span class="criterio-desc">Dimensão do Efetivo Comandado</span>
+                    </label>
+                    <select name="dec" class="form-select" onchange="calcularComplexidade()">
+                        {% for value, label in dec_choices %}
+                        <option value="{{ value }}" {% if funcao.dec == value %}selected{% elif not funcao and value == 1 %}selected{% endif %}>
+                            {{ value }} - {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Preview da Complexidade -->
+            <div class="complexidade-preview" id="complexidade-preview">
+                <span class="label">Complexidade resultante:</span>
+                <span class="badge badge-warning" id="badge-complexidade">Média</span>
+                <span class="soma" id="soma-criterios">(soma: 8 pts)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">
+            Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i data-lucide="check"></i>
+            {% if editando %}Salvar Alterações{% else %}Adicionar Função{% endif %}
+        </button>
+    </div>
+</form>
+
+<style>
+.criterios-section {
+    background: var(--sigem-gray-50);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.criterios-section h4 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.criterios-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .criterios-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.criterio-item {
+    background: white;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--sigem-gray-200);
+}
+
+.criterio-desc {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: normal;
+    color: var(--sigem-gray-500);
+}
+
+.complexidade-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--sigem-gray-200);
+}
+
+.complexidade-preview .label {
+    font-weight: 500;
+    color: var(--sigem-gray-600);
+}
+
+.complexidade-preview .soma {
+    font-size: 0.85rem;
+    color: var(--sigem-gray-500);
+}
+</style>
+
+<script>
+function calcularComplexidade() {
+    const tde = parseInt(document.querySelector('[name="tde"]').value) || 0;
+    const nqt = parseInt(document.querySelector('[name="nqt"]').value) || 0;
+    const grs = parseInt(document.querySelector('[name="grs"]').value) || 0;
+    const dec = parseInt(document.querySelector('[name="dec"]').value) || 0;
+
+    const soma = tde + nqt + grs + dec;
+    let complexidade, badgeClass;
+
+    if (soma >= 4 && soma <= 6) {
+        complexidade = 'Baixa';
+        badgeClass = 'badge-success';
+    } else if (soma >= 7 && soma <= 9) {
+        complexidade = 'Média';
+        badgeClass = 'badge-warning';
+    } else {
+        complexidade = 'Alta';
+        badgeClass = 'badge-danger';
+    }
+
+    const badge = document.getElementById('badge-complexidade');
+    badge.textContent = complexidade;
+    badge.className = 'badge ' + badgeClass;
+
+    document.getElementById('soma-criterios').textContent = '(soma: ' + soma + ' pts)';
+}
+
+// Calcular ao carregar
+calcularComplexidade();
+
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+</script>

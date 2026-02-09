@@ -77,6 +77,13 @@ from .exports import (
 # Relatórios
 from .relatorios import relatorio_missoes_pdf, relatorio_oficiais_pdf
 
+# Templates de Missão
+from .templates_missao import (
+    htmx_templates_lista, htmx_template_criar, htmx_template_editar, htmx_template_excluir,
+    htmx_template_funcoes_lista, htmx_template_funcao_criar, htmx_template_funcao_editar,
+    htmx_template_funcao_excluir
+)
+
 # Explicit __all__ for clarity (61 functions total)
 __all__ = [
     # Auth (3)
@@ -119,4 +126,8 @@ __all__ = [
     'exportar_excel', 'exportar_pdf', 'importar_excel', 'gerar_modelo_importacao',
     # Relatórios (2)
     'relatorio_missoes_pdf', 'relatorio_oficiais_pdf',
+    # Templates de Missão (8)
+    'htmx_templates_lista', 'htmx_template_criar', 'htmx_template_editar', 'htmx_template_excluir',
+    'htmx_template_funcoes_lista', 'htmx_template_funcao_criar', 'htmx_template_funcao_editar',
+    'htmx_template_funcao_excluir',
 ]

@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
-from ..models import Missao, Designacao, Oficial
+from ..models import Missao, Designacao, Oficial, TemplateEstruturaMissao
 
 
 # ============================================================
@@ -100,6 +100,9 @@ def htmx_missoes_tabela(request):
         del query_params['pagina']
     query_string = query_params.urlencode()
 
+    # Buscar templates ativos para o formulário
+    templates_missao = TemplateEstruturaMissao.objects.filter(ativo=True).prefetch_related('funcoes_template')
+
     context = {
         'page_obj': page_obj,
         'filtros': {
@@ -119,6 +122,7 @@ def htmx_missoes_tabela(request):
         'status_choices': Missao.STATUS_CHOICES,
         'finalizacao_choices': Missao.FINALIZACAO_CHOICES,
         'local_choices': Missao.LOCAL_CHOICES,
+        'templates_missao': templates_missao,
         'user': request.user,
     }
 
@@ -162,24 +166,53 @@ def htmx_missao_organograma(request, pk):
 @login_required
 @require_POST
 def htmx_missao_criar(request):
-    """Cria uma nova missão via HTMX."""
+    """Cria uma nova missão via HTMX. Suporta criação via template."""
 
     if not request.user.pode_gerenciar_missoes:
         return HttpResponse('Sem permissão', status=403)
 
     try:
-        Missao.objects.create(
-            tipo=request.POST.get('tipo', ''),
-            nome=request.POST.get('nome', ''),
-            ano=request.POST.get('ano', 2026),
-            descricao=request.POST.get('descricao', ''),
-            local=request.POST.get('local', ''),
-            data_inicio=request.POST.get('data_inicio'),
-            data_fim=request.POST.get('data_fim'),
-            finalizacao=request.POST.get('finalizacao', ''),
-            documento_referencia=request.POST.get('documento_referencia', ''),
-        )
-        messages.success(request, 'Missão criada com sucesso!')
+        template_id = request.POST.get('template_id', '').strip()
+        template = None
+
+        if template_id:
+            # Criação via template
+            template = get_object_or_404(TemplateEstruturaMissao, pk=template_id)
+            numero = request.POST.get('numero', '').strip()
+
+            missao = Missao.objects.create(
+                template=template,
+                numero=numero,
+                tipo=template.tipo,
+                nome=template.nome,
+                descricao=request.POST.get('descricao', ''),
+                local=request.POST.get('local', ''),
+                data_inicio=request.POST.get('data_inicio'),
+                data_fim=request.POST.get('data_fim'),
+                finalizacao=request.POST.get('finalizacao', ''),
+                documento_referencia=request.POST.get('documento_referencia', ''),
+            )
+
+            # Criar funções a partir do template
+            funcoes_criadas = missao.criar_funcoes_do_template()
+            messages.success(
+                request,
+                f'Missão criada com sucesso! {len(funcoes_criadas)} função(ões) criada(s) automaticamente.'
+            )
+        else:
+            # Criação normal (sem template)
+            Missao.objects.create(
+                tipo=request.POST.get('tipo', ''),
+                nome=request.POST.get('nome', ''),
+                ano=request.POST.get('ano', 2026),
+                descricao=request.POST.get('descricao', ''),
+                local=request.POST.get('local', ''),
+                data_inicio=request.POST.get('data_inicio'),
+                data_fim=request.POST.get('data_fim'),
+                finalizacao=request.POST.get('finalizacao', ''),
+                documento_referencia=request.POST.get('documento_referencia', ''),
+            )
+            messages.success(request, 'Missão criada com sucesso!')
 
     except Exception as e:
         messages.error(request, f'Erro ao criar missão: {str(e)}')

@@ -161,6 +161,144 @@ class Oficial(models.Model):
 
 
 # ============================================================
+# 📋 MODELO: TEMPLATE DE ESTRUTURA DE MISSÃO (Gênero)
+# ============================================================
+class TemplateEstruturaMissao(models.Model):
+    """
+    Template reutilizável para tipos de missão que se repetem.
+    Exemplo: PAD, IPM, Sindicância, CEBM, CFO
+
+    Funciona como um "gênero" de missão, onde as missões individuais
+    são "espécies" que herdam a estrutura de funções.
+    """
+
+    TIPO_CHOICES = [
+        ('OPERACIONAL', 'Operacional'),
+        ('ADMINISTRATIVA', 'Administrativa'),
+        ('ENSINO', 'Ensino'),
+        ('CORREICIONAL', 'Correicional'),
+        ('COMISSAO', 'Comissão'),
+        ('ACAO_SOCIAL', 'Ação Social'),
+    ]
+
+    nome = models.CharField('Nome do Template', max_length=100, unique=True)
+    sigla = models.CharField('Sigla', max_length=20, blank=True, help_text='Ex: PAD, IPM, CEBM')
+    descricao = models.TextField('Descrição', blank=True)
+    tipo = models.CharField('Tipo Padrão', max_length=20, choices=TIPO_CHOICES)
+    ativo = models.BooleanField('Ativo', default=True)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Template de Missão'
+        verbose_name_plural = 'Templates de Missões'
+        ordering = ['tipo', 'nome']
+
+    def __str__(self):
+        if self.sigla:
+            return f"{self.sigla} - {self.nome}"
+        return self.nome
+
+    @property
+    def total_funcoes(self):
+        """Retorna o total de funções definidas no template."""
+        return self.funcoes_template.count()
+
+    @property
+    def total_instancias(self):
+        """Retorna o total de missões que usam este template."""
+        return self.instancias.count()
+
+
+# ============================================================
+# 🎯 MODELO: TEMPLATE DE FUNÇÃO (Gênero)
+# ============================================================
+class TemplateFuncao(models.Model):
+    """
+    Template de função com critérios de complexidade pré-definidos.
+    Vinculado a um TemplateEstruturaMissao.
+
+    Define os critérios TDE/NQT/GRS/DEC que serão herdados
+    pelas funções instanciadas em cada missão.
+    """
+
+    NIVEL_TDE_NQT_GRS_CHOICES = [
+        (1, 'Baixo'),
+        (2, 'Médio'),
+        (3, 'Alto'),
+    ]
+
+    NIVEL_DEC_CHOICES = [
+        (1, 'Pequeno'),
+        (2, 'Médio'),
+        (3, 'Grande'),
+    ]
+
+    template_missao = models.ForeignKey(
+        TemplateEstruturaMissao,
+        on_delete=models.CASCADE,
+        related_name='funcoes_template',
+        verbose_name='Template de Missão'
+    )
+    nome = models.CharField('Nome da Função', max_length=100)
+    tde = models.IntegerField(
+        'TDE (Tempo de Dedicação Exigido)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    nqt = models.IntegerField(
+        'NQT (Nível de Qualificação Técnica)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    grs = models.IntegerField(
+        'GRS (Grau de Responsabilidade)',
+        choices=NIVEL_TDE_NQT_GRS_CHOICES,
+        default=2
+    )
+    dec = models.IntegerField(
+        'DEC (Dimensão do Efetivo Comandado)',
+        choices=NIVEL_DEC_CHOICES,
+        default=1
+    )
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+    atualizado_em = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Template de Função'
+        verbose_name_plural = 'Templates de Funções'
+        ordering = ['template_missao__nome', 'nome']
+        unique_together = ['template_missao', 'nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.template_missao.sigla or self.template_missao.nome})"
+
+    @property
+    def soma_criterios(self):
+        """Retorna a soma dos critérios TDE + NQT + GRS + DEC."""
+        return self.tde + self.nqt + self.grs + self.dec
+
+    @property
+    def complexidade(self):
+        """Calcula a complexidade com base na soma dos critérios."""
+        soma = self.soma_criterios
+        if 4 <= soma <= 6:
+            return 'BAIXA'
+        elif 7 <= soma <= 9:
+            return 'MEDIA'
+        return 'ALTA'
+
+    def get_complexidade_display(self):
+        """Retorna o display da complexidade."""
+        complexidade_map = {
+            'BAIXA': 'Baixa',
+            'MEDIA': 'Média',
+            'ALTA': 'Alta',
+        }
+        return complexidade_map.get(self.complexidade, '')
+
+
+# ============================================================
 # 🗂️ MODELO: MISSÃO
 # ============================================================
 class Missao(models.Model):
@@ -206,6 +344,23 @@ class Missao(models.Model):
         ('8_CRBM', '8º CRBM'),
         ('9_CRBM', '9º CRBM'),
     ]
+
+    # Vinculo opcional com template (gênero da missão)
+    template = models.ForeignKey(
+        'TemplateEstruturaMissao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='instancias',
+        verbose_name='Template Base',
+        help_text='Se preenchido, as funções podem ser herdadas do template'
+    )
+    numero = models.CharField(
+        'Número/Identificador',
+        max_length=50,
+        blank=True,
+        help_text='Ex: 001/2026 (para PADs, IPMs, etc.)'
+    )
 
     tipo = models.CharField('Tipo', max_length=20, choices=TIPO_CHOICES)
     nome = models.CharField('Nome da Missão', max_length=200)
@@ -276,10 +431,44 @@ class Missao(models.Model):
 
     @property
     def nome_completo(self):
-        """Retorna o nome completo da missão com o ano (se houver)."""
+        """Retorna o nome completo da missão.
+
+        Prioridade:
+        1. Template + Número (ex: PAD 001/2026)
+        2. Nome + Ano (ex: Operação Verão 2026)
+        3. Apenas Nome
+        """
+        if self.template and self.numero:
+            sigla = self.template.sigla or self.template.nome
+            return f"{sigla} {self.numero}"
         if self.ano:
             return f"{self.nome} {self.ano}"
         return self.nome
+
+    def criar_funcoes_do_template(self):
+        """
+        Cria instâncias de Funcao a partir do template.
+        Retorna lista de funções criadas.
+        """
+        if not self.template:
+            return []
+
+        funcoes_criadas = []
+        for template_funcao in self.template.funcoes_template.all():
+            funcao, created = Funcao.objects.get_or_create(
+                missao=self,
+                funcao=template_funcao.nome,
+                defaults={
+                    'template_funcao': template_funcao,
+                    'tde': template_funcao.tde,
+                    'nqt': template_funcao.nqt,
+                    'grs': template_funcao.grs,
+                    'dec': template_funcao.dec,
+                }
+            )
+            if created:
+                funcoes_criadas.append(funcao)
+        return funcoes_criadas
 
     @property
     def total_designados(self):
@@ -321,6 +510,15 @@ class Funcao(models.Model):
         on_delete=models.CASCADE,
         related_name='funcoes',
         verbose_name='Missão'
+    )
+    template_funcao = models.ForeignKey(
+        'TemplateFuncao',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='instancias',
+        verbose_name='Template de Origem',
+        help_text='Se preenchido, os critérios foram herdados deste template'
     )
     funcao = models.CharField('Função', max_length=100)
     tde = models.IntegerField(

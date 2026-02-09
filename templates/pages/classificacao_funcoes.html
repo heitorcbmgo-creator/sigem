@@ -16,12 +16,27 @@
     </div>
 </div>
 
-<!-- FILTROS E ESTATISTICAS -->
+<!-- TOGGLE DE MODO + FILTROS -->
 <div class="card mb-4">
     <div class="card-body">
         <form method="get" style="display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+            <!-- Toggle de Modo -->
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Visualização</label>
+                <div class="btn-group-toggle">
+                    <button type="submit" name="modo" value="template"
+                            class="btn btn-sm {% if modo == 'template' %}btn-primary{% else %}btn-secondary{% endif %}">
+                        <i data-lucide="copy"></i> Templates
+                    </button>
+                    <button type="submit" name="modo" value="expandido"
+                            class="btn btn-sm {% if modo == 'expandido' %}btn-primary{% else %}btn-secondary{% endif %}">
+                        <i data-lucide="list"></i> Expandido
+                    </button>
+                </div>
+            </div>
+
             <div class="form-group" style="margin-bottom: 0; min-width: 180px;">
-                <label class="form-label">Tipo de Missao</label>
+                <label class="form-label">Tipo de Missão</label>
                 <select name="tipo" class="form-select" onchange="this.form.submit()">
                     <option value="">Todos os tipos</option>
                     {% for value, label in tipo_choices %}
@@ -47,22 +62,30 @@
             <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
                 <label class="form-label">Buscar</label>
                 <input type="text" name="busca" class="form-input"
-                       placeholder="Nome da funcao ou missao..."
+                       placeholder="Nome da função ou missão..."
                        value="{{ filtros.busca }}">
             </div>
+
+            <!-- Manter o modo atual nos filtros -->
+            <input type="hidden" name="modo" value="{{ modo }}">
 
             <button type="submit" class="btn btn-primary">
                 <i data-lucide="search"></i> Filtrar
             </button>
 
             {% if filtros.tipo or filtros.complexidade or filtros.busca %}
-            <a href="{% url 'classificacao_funcoes' %}" class="btn btn-secondary">
+            <a href="{% url 'classificacao_funcoes' %}?modo={{ modo }}" class="btn btn-secondary">
                 <i data-lucide="x"></i> Limpar
             </a>
             {% endif %}
 
             <!-- ESTATISTICAS INLINE -->
-            <div style="display: flex; gap: 0.5rem; margin-left: auto; align-items: center;">
+            <div style="display: flex; gap: 0.5rem; margin-left: auto; align-items: center; flex-wrap: wrap;">
+                {% if modo == 'template' and stats.templates > 0 %}
+                <span class="badge badge-info" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    Templates: <strong>{{ stats.templates }}</strong>
+                </span>
+                {% endif %}
                 <span class="badge badge-secondary" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
                     Total: <strong>{{ stats.total }}</strong>
                 </span>
@@ -80,19 +103,29 @@
     </div>
 </div>
 
-<!-- LEGENDA DOS CRITERIOS -->
+<!-- INFO DO MODO -->
+{% if modo == 'template' %}
+<div class="alert alert-info mb-4">
+    <i data-lucide="info"></i>
+    <strong>Modo Template:</strong> Funções são agrupadas por template de missão.
+    Templates com múltiplas instâncias mostram a contagem de missões que os utilizam.
+</div>
+{% endif %}
+
+<!-- LEGENDA DOS CRITÉRIOS -->
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header collapsible" onclick="toggleCard(this)">
         <h3><i data-lucide="info"></i> Legenda dos Critérios de Avaliação</h3>
+        <i data-lucide="chevron-down" class="card-toggle-icon"></i>
     </div>
-    <div class="card-body">
+    <div class="card-body card-collapsible">
         <div class="criterios-legenda">
             <div class="criterio-item">
                 <strong>TDE</strong> - Tempo de Dedicação Exigido
                 <span class="text-muted">(1=Baixo, 2=Médio, 3=Alto)</span>
             </div>
             <div class="criterio-item">
-                <strong>NQT</strong> - Nivel de Qualificação Técnica
+                <strong>NQT</strong> - Nível de Qualificação Técnica
                 <span class="text-muted">(1=Baixo, 2=Médio, 3=Alto)</span>
             </div>
             <div class="criterio-item">
@@ -112,102 +145,278 @@
     </div>
 </div>
 
-<!-- LISTA AGRUPADA -->
-{% for tipo_data in dados_agrupados %}
-<div class="accordion-item mb-3">
-    <button class="accordion-header" onclick="toggleAccordion(this)">
-        <div class="accordion-title">
-            <i data-lucide="folder"></i>
-            <span>{{ tipo_data.tipo }}</span>
-            <span class="badge badge-secondary">
-                {{ tipo_data.missoes|length }} missões
+<!-- LISTA DE FUNÇÕES -->
+{% for item in dados_agrupados %}
+<div class="classificacao-card mb-3">
+    <div class="classificacao-header" onclick="toggleClassificacao(this)">
+        <div class="classificacao-info">
+            {% if item.is_template %}
+            <span class="badge badge-template">
+                <i data-lucide="copy"></i> Template
             </span>
+            {% endif %}
+            <span class="badge badge-tipo-{{ item.tipo|lower|slugify }}">{{ item.tipo }}</span>
+            <strong class="classificacao-nome">{{ item.nome }}</strong>
+            {% if item.descricao %}
+            <span class="classificacao-descricao">{{ item.descricao }}</span>
+            {% endif %}
         </div>
-        <i data-lucide="chevron-down" class="accordion-icon"></i>
-    </button>
-
-    <div class="accordion-content">
-        {% for missao_data in tipo_data.missoes %}
-        <div class="missao-card mb-2">
-            <div class="missao-header" onclick="toggleMissao(this)">
-                <i data-lucide="target"></i>
-                <strong>{{ missao_data.nome }}</strong>
-                <span class="badge badge-info">{{ missao_data.funcoes|length }} funções</span>
-                <i data-lucide="chevron-right" class="missao-icon"></i>
-            </div>
-
-            <div class="missao-content" style="display: none;">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Funcao</th>
-                            <th class="text-center">TDE</th>
-                            <th class="text-center">NQT</th>
-                            <th class="text-center">GRS</th>
-                            <th class="text-center">DEC</th>
-                            <th class="text-center">Soma</th>
-                            <th class="text-center">Complexidade</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for funcao in missao_data.funcoes %}
-                        <tr>
-                            <td>{{ funcao.funcao }}</td>
-                            <td class="text-center">{{ funcao.tde }}</td>
-                            <td class="text-center">{{ funcao.nqt }}</td>
-                            <td class="text-center">{{ funcao.grs }}</td>
-                            <td class="text-center">{{ funcao.dec }}</td>
-                            <td class="text-center"><strong>{{ funcao.soma_criterios }}</strong></td>
-                            <td class="text-center">
-                                <span class="badge badge-{% if funcao.complexidade == 'BAIXA' %}success{% elif funcao.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
-                                    {{ funcao.get_complexidade_display }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="classificacao-badges">
+            <span class="badge badge-info">{{ item.funcoes|length }} funções</span>
+            {% if item.is_template and item.total_instancias > 0 %}
+            <span class="badge badge-secondary">{{ item.total_instancias }} missões</span>
+            {% endif %}
+            <i data-lucide="chevron-down" class="classificacao-icon"></i>
         </div>
-        {% endfor %}
+    </div>
+
+    <div class="classificacao-content" style="display: none;">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Função</th>
+                    <th class="text-center" width="60">TDE</th>
+                    <th class="text-center" width="60">NQT</th>
+                    <th class="text-center" width="60">GRS</th>
+                    <th class="text-center" width="60">DEC</th>
+                    <th class="text-center" width="60">Soma</th>
+                    <th class="text-center" width="100">Complexidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for funcao in item.funcoes %}
+                <tr>
+                    <td>
+                        {% if item.is_template %}
+                            {{ funcao.nome }}
+                        {% else %}
+                            {{ funcao.funcao }}
+                        {% endif %}
+                    </td>
+                    <td class="text-center">{{ funcao.tde }}</td>
+                    <td class="text-center">{{ funcao.nqt }}</td>
+                    <td class="text-center">{{ funcao.grs }}</td>
+                    <td class="text-center">{{ funcao.dec }}</td>
+                    <td class="text-center"><strong>{{ funcao.soma_criterios }}</strong></td>
+                    <td class="text-center">
+                        <span class="badge badge-{% if funcao.complexidade == 'BAIXA' %}success{% elif funcao.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                            {{ funcao.get_complexidade_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% empty %}
 <div class="empty-state">
     <i data-lucide="search-x"></i>
-    <p>Nenhuma função encontrada com os filtros aplicados.</p>
+    <h4>Nenhuma função encontrada</h4>
+    <p>{% if modo == 'template' %}Nenhum template cadastrado ou{% endif %} nenhuma função corresponde aos filtros aplicados.</p>
 </div>
 {% endfor %}
 
+<style>
+.btn-group-toggle {
+    display: inline-flex;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.btn-group-toggle .btn {
+    border-radius: 0;
+    margin: 0;
+}
+
+.btn-group-toggle .btn:first-child {
+    border-radius: 6px 0 0 6px;
+}
+
+.btn-group-toggle .btn:last-child {
+    border-radius: 0 6px 6px 0;
+}
+
+.alert-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #e0f2fe;
+    border: 1px solid #7dd3fc;
+    color: #0369a1;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+}
+
+.alert-info i {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.classificacao-card {
+    background: white;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.classificacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.classificacao-header:hover {
+    background: var(--sigem-gray-50);
+}
+
+.classificacao-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.classificacao-nome {
+    font-size: 1.05rem;
+}
+
+.classificacao-descricao {
+    color: var(--sigem-gray-500);
+    font-size: 0.9rem;
+}
+
+.classificacao-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.classificacao-icon {
+    transition: transform 0.3s;
+    color: var(--sigem-gray-400);
+}
+
+.classificacao-content {
+    border-top: 1px solid var(--sigem-gray-200);
+    padding: 1rem 1.25rem;
+    background: var(--sigem-gray-50);
+}
+
+.classificacao-content.open {
+    display: block !important;
+}
+
+.badge-template {
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge-template i {
+    width: 12px;
+    height: 12px;
+}
+
+/* Cores por tipo de missão */
+.badge-tipo-operacional { background: #3b82f6; color: white; }
+.badge-tipo-administrativa { background: #8b5cf6; color: white; }
+.badge-tipo-ensino { background: #10b981; color: white; }
+.badge-tipo-correicional { background: #f59e0b; color: white; }
+.badge-tipo-comissao, .badge-tipo-comissão { background: #ec4899; color: white; }
+.badge-tipo-acao-social, .badge-tipo-ação-social { background: #06b6d4; color: white; }
+
+.card-header.collapsible {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-toggle-icon {
+    transition: transform 0.3s;
+}
+
+.card-collapsible {
+    transition: max-height 0.3s ease;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-500);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    margin-bottom: 0.5rem;
+}
+
+.criterios-legenda {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .criterios-legenda {
+        grid-template-columns: 1fr;
+    }
+}
+
+.criterio-item {
+    padding: 0.5rem;
+    background: var(--sigem-gray-50);
+    border-radius: 4px;
+}
+
+.complexidade-legenda {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function toggleAccordion(header) {
+function toggleClassificacao(header) {
     const content = header.nextElementSibling;
-    const icon = header.querySelector('.accordion-icon');
-
-    content.classList.toggle('open');
-    icon.style.transform = content.classList.contains('open') ? 'rotate(180deg)' : '';
-}
-
-function toggleMissao(header) {
-    const content = header.nextElementSibling;
-    const icon = header.querySelector('.missao-icon');
+    const icon = header.querySelector('.classificacao-icon');
 
     const isOpen = content.style.display !== 'none';
     content.style.display = isOpen ? 'none' : 'block';
-    icon.style.transform = isOpen ? '' : 'rotate(90deg)';
+    icon.style.transform = isOpen ? '' : 'rotate(180deg)';
 }
 
-// Abrir primeiro accordion por padrao
+function toggleCard(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.card-toggle-icon');
+
+    const isVisible = content.style.display !== 'none';
+    content.style.display = isVisible ? 'none' : 'block';
+    icon.style.transform = isVisible ? 'rotate(-90deg)' : '';
+}
+
+// Abrir primeiro item por padrão
 document.addEventListener('DOMContentLoaded', function() {
-    const firstAccordion = document.querySelector('.accordion-header');
-    if (firstAccordion) {
-        toggleAccordion(firstAccordion);
+    const firstItem = document.querySelector('.classificacao-header');
+    if (firstItem) {
+        toggleClassificacao(firstItem);
     }
 
-    // Reinicializar icones Lucide
+    // Reinicializar ícones Lucide
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }

@@ -123,9 +123,21 @@ urlpatterns = [
     # ============================================================
     path('exportar/excel/<str:tipo>/', views.exportar_excel, name='exportar_excel'),
     path('exportar/pdf/<str:tipo>/', views.exportar_pdf, name='exportar_pdf'),
-    
+
     # ============================================================
     # 📤 IMPORTAÇÃO EM MASSA
     # ============================================================
     path('importar/<str:tipo>/', views.importar_excel, name='importar_excel'),
+
+    # ============================================================
+    # 🔄 ENDPOINTS HTMX - TEMPLATES DE MISSÃO
+    # ============================================================
+    path('htmx/templates/lista/', views.htmx_templates_lista, name='htmx_templates_lista'),
+    path('htmx/template/criar/', views.htmx_template_criar, name='htmx_template_criar'),
+    path('htmx/template/<int:pk>/editar/', views.htmx_template_editar, name='htmx_template_editar'),
+    path('htmx/template/<int:pk>/excluir/', views.htmx_template_excluir, name='htmx_template_excluir'),
+    path('htmx/template/<int:template_pk>/funcoes/', views.htmx_template_funcoes_lista, name='htmx_template_funcoes_lista'),
+    path('htmx/template/<int:template_pk>/funcao/criar/', views.htmx_template_funcao_criar, name='htmx_template_funcao_criar'),
+    path('htmx/template-funcao/<int:pk>/editar/', views.htmx_template_funcao_editar, name='htmx_template_funcao_editar'),
+    path('htmx/template-funcao/<int:pk>/excluir/', views.htmx_template_funcao_excluir, name='htmx_template_funcao_excluir'),
 ]

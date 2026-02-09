@@ -1,0 +1,70 @@
+<!-- Lista de Funções do Template (partial para atualização via HTMX) -->
+<div class="funcoes-header">
+    <h5>Funções do Template</h5>
+    <button class="btn btn-xs btn-secondary"
+            hx-get="{% url 'htmx_template_funcao_criar' template.pk %}"
+            hx-target="#modal-content"
+            onclick="openModal()">
+        <i data-lucide="plus"></i>
+        Adicionar
+    </button>
+</div>
+
+{% if funcoes %}
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Função</th>
+            <th class="text-center">TDE</th>
+            <th class="text-center">NQT</th>
+            <th class="text-center">GRS</th>
+            <th class="text-center">DEC</th>
+            <th class="text-center">Complexidade</th>
+            <th class="text-center" width="80">Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for funcao in funcoes %}
+        <tr>
+            <td>{{ funcao.nome }}</td>
+            <td class="text-center">{{ funcao.tde }}</td>
+            <td class="text-center">{{ funcao.nqt }}</td>
+            <td class="text-center">{{ funcao.grs }}</td>
+            <td class="text-center">{{ funcao.dec }}</td>
+            <td class="text-center">
+                <span class="badge badge-{% if funcao.complexidade == 'BAIXA' %}success{% elif funcao.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                    {{ funcao.get_complexidade_display }}
+                </span>
+            </td>
+            <td class="text-center">
+                <div class="flex gap-1 justify-center">
+                    <button class="btn btn-xs btn-ghost"
+                            hx-get="{% url 'htmx_template_funcao_editar' funcao.pk %}"
+                            hx-target="#modal-content"
+                            onclick="openModal()">
+                        <i data-lucide="pencil"></i>
+                    </button>
+                    <button class="btn btn-xs btn-ghost text-danger"
+                            hx-post="{% url 'htmx_template_funcao_excluir' funcao.pk %}"
+                            hx-target="#funcoes-template-{{ template.pk }}"
+                            hx-confirm="Excluir esta função do template?">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray text-center py-2">
+    <i data-lucide="info"></i>
+    Nenhuma função definida ainda
+</p>
+{% endif %}
+
+<script>
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+</script>

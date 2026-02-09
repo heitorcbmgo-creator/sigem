@@ -83,6 +83,16 @@
         <i data-lucide="inbox"></i> Solicitações
     </button>
     {% endif %}
+
+    {% if user.is_admin or user.is_bm3 %}
+    <button class="tab {% if aba_ativa == 'templates' %}active{% endif %}"
+            data-tipo="templates"
+            hx-get="{% url 'htmx_templates_lista' %}"
+            hx-target="#tab-content"
+            onclick="setActiveTab(this, 'templates')">
+        <i data-lucide="copy"></i> Templates
+    </button>
+    {% endif %}
 </div>
 
 <!-- Ações Gerais - Apenas admin pode importar/exportar -->
@@ -189,7 +199,8 @@ function setActiveTab(clickedTab, tipo) {
         'designacoes': '📁 Designações',
         'unidades': '📁 Unidades',
         'usuarios': '📁 Usuários',
-        'solicitacoes': '📁 Solicitações'
+        'solicitacoes': '📁 Solicitações',
+        'templates': '📁 Templates'
     };
     const badge = document.getElementById('badge-tipo');
     if (badge) badge.textContent = nomes[tipo] || tipo;

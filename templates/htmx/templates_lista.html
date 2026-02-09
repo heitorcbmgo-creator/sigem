@@ -1,0 +1,369 @@
+<!-- Templates de Missão - Lista -->
+<div class="templates-container">
+    <!-- Header com botão de adicionar -->
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h3 class="text-lg font-semibold">Templates de Missão</h3>
+            <p class="text-gray text-sm">Defina estruturas reutilizáveis para missões repetitivas (PAD, IPM, etc.)</p>
+        </div>
+        <button class="btn btn-primary"
+                hx-get="{% url 'htmx_template_criar' %}"
+                hx-target="#modal-content"
+                hx-trigger="click"
+                onclick="openModal()">
+            <i data-lucide="plus"></i>
+            Novo Template
+        </button>
+    </div>
+
+    <!-- Lista de Templates -->
+    {% if templates %}
+    <div class="templates-grid">
+        {% for template in templates %}
+        <div class="template-card" id="template-{{ template.pk }}">
+            <div class="template-header">
+                <div class="template-info">
+                    <h4 class="template-title">
+                        {% if template.sigla %}
+                            <span class="badge badge-secondary">{{ template.sigla }}</span>
+                        {% endif %}
+                        {{ template.nome }}
+                    </h4>
+                    <span class="badge badge-{{ template.tipo|lower }}">
+                        {{ template.get_tipo_display }}
+                    </span>
+                    {% if not template.ativo %}
+                    <span class="badge badge-warning">Inativo</span>
+                    {% endif %}
+                </div>
+                <div class="template-actions">
+                    <button class="btn btn-sm btn-ghost"
+                            hx-get="{% url 'htmx_template_editar' template.pk %}"
+                            hx-target="#modal-content"
+                            onclick="openModal()"
+                            title="Editar">
+                        <i data-lucide="pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-ghost text-danger"
+                            hx-post="{% url 'htmx_template_excluir' template.pk %}"
+                            hx-target="#tab-content"
+                            hx-confirm="Tem certeza que deseja excluir este template?"
+                            title="Excluir">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if template.descricao %}
+            <p class="template-descricao">{{ template.descricao|truncatechars:100 }}</p>
+            {% endif %}
+
+            <!-- Estatísticas -->
+            <div class="template-stats">
+                <div class="stat-item">
+                    <i data-lucide="target"></i>
+                    <span>{{ template.total_funcoes }} funções</span>
+                </div>
+                <div class="stat-item">
+                    <i data-lucide="folder"></i>
+                    <span>{{ template.total_instancias }} missões</span>
+                </div>
+            </div>
+
+            <!-- Lista de Funções do Template -->
+            <div class="template-funcoes" id="funcoes-template-{{ template.pk }}">
+                <div class="funcoes-header">
+                    <h5>Funções do Template</h5>
+                    <button class="btn btn-xs btn-secondary"
+                            hx-get="{% url 'htmx_template_funcao_criar' template.pk %}"
+                            hx-target="#modal-content"
+                            onclick="openModal()">
+                        <i data-lucide="plus"></i>
+                        Adicionar
+                    </button>
+                </div>
+
+                {% if template.funcoes_template.all %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Função</th>
+                            <th class="text-center">TDE</th>
+                            <th class="text-center">NQT</th>
+                            <th class="text-center">GRS</th>
+                            <th class="text-center">DEC</th>
+                            <th class="text-center">Complexidade</th>
+                            <th class="text-center" width="80">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for funcao in template.funcoes_template.all %}
+                        <tr>
+                            <td>{{ funcao.nome }}</td>
+                            <td class="text-center">{{ funcao.tde }}</td>
+                            <td class="text-center">{{ funcao.nqt }}</td>
+                            <td class="text-center">{{ funcao.grs }}</td>
+                            <td class="text-center">{{ funcao.dec }}</td>
+                            <td class="text-center">
+                                <span class="badge badge-{% if funcao.complexidade == 'BAIXA' %}success{% elif funcao.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
+                                    {{ funcao.get_complexidade_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <div class="flex gap-1 justify-center">
+                                    <button class="btn btn-xs btn-ghost"
+                                            hx-get="{% url 'htmx_template_funcao_editar' funcao.pk %}"
+                                            hx-target="#modal-content"
+                                            onclick="openModal()">
+                                        <i data-lucide="pencil"></i>
+                                    </button>
+                                    <button class="btn btn-xs btn-ghost text-danger"
+                                            hx-post="{% url 'htmx_template_funcao_excluir' funcao.pk %}"
+                                            hx-target="#funcoes-template-{{ template.pk }}"
+                                            hx-confirm="Excluir esta função do template?">
+                                        <i data-lucide="trash-2"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-gray text-center py-2">
+                    <i data-lucide="info"></i>
+                    Nenhuma função definida ainda
+                </p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="copy"></i>
+        <h4>Nenhum template cadastrado</h4>
+        <p>Crie templates para missões que se repetem, como PAD, IPM, Sindicâncias, etc.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.templates-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.template-card {
+    background: white;
+    border: 1px solid var(--sigem-gray-200);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.template-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.template-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.template-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.template-descricao {
+    color: var(--sigem-gray-600);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.template-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--sigem-gray-50);
+    border-radius: 6px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--sigem-gray-600);
+    font-size: 0.9rem;
+}
+
+.stat-item i {
+    width: 16px;
+    height: 16px;
+}
+
+.template-funcoes {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--sigem-gray-200);
+}
+
+.funcoes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.funcoes-header h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--sigem-gray-700);
+}
+
+.badge-operacional { background: #3b82f6; color: white; }
+.badge-administrativa { background: #8b5cf6; color: white; }
+.badge-ensino { background: #10b981; color: white; }
+.badge-correicional { background: #f59e0b; color: white; }
+.badge-comissao { background: #ec4899; color: white; }
+.badge-acao_social { background: #06b6d4; color: white; }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--sigem-gray-500);
+}
+
+.empty-state i {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-dialog {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    transform: scale(0.95);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.active .modal-dialog {
+    transform: scale(1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--sigem-gray-200);
+}
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--sigem-gray-200);
+    background: var(--sigem-gray-50);
+}
+</style>
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+        <div id="modal-content">
+            <!-- Conteúdo carregado via HTMX -->
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal() {
+    document.getElementById('modal-overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnOverlay(event) {
+    if (event.target === document.getElementById('modal-overlay')) {
+        closeModal();
+    }
+}
+
+// Fechar modal com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Reinicializar ícones Lucide
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+</script>

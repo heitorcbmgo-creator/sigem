@@ -255,31 +255,86 @@ setTimeout(() => {
             <form id="missao-form" hx-post="{% url 'htmx_missao_criar' %}" hx-target="#tab-content">
                 {% csrf_token %}
                 <input type="hidden" name="missao_id" id="missao_id">
-                
-                <div class="form-row">
-                    <div class="form-group col-md-5">
-                        <label>Nome da Missão *</label>
-                        <input type="text" name="nome" class="form-control" required>
-                    </div>
-                    <div class="form-group col-md-1">
-                        <label>Ano</label>
-                        <input type="number" name="ano" class="form-control" value="2026" min="2020" max="2099" placeholder="2026">
-                    </div>
-                    <div class="form-group col-md-3">
-                        <label>Tipo *</label>
-                        <select name="tipo" class="form-control" required>
-                            {% for value, label in tipo_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
+                <input type="hidden" name="template_id" id="template_id">
+
+                <!-- Seletor de Template (opcional) -->
+                {% if templates_missao %}
+                <div class="form-row mb-3" id="template-selector-row">
+                    <div class="form-group col-md-12">
+                        <label><i data-lucide="copy" style="width:14px;height:14px;"></i> Usar Template (opcional)</label>
+                        <select id="template-selector" class="form-control" onchange="onTemplateChange(this)">
+                            <option value="">-- Criar missão sem template --</option>
+                            {% for t in templates_missao %}
+                            <option value="{{ t.id }}"
+                                    data-tipo="{{ t.tipo }}"
+                                    data-nome="{{ t.nome }}"
+                                    data-sigla="{{ t.sigla }}"
+                                    data-funcoes="{{ t.total_funcoes }}">
+                                {{ t.sigla|default:t.nome }} - {{ t.nome }} ({{ t.total_funcoes }} funções)
+                            </option>
                             {% endfor %}
                         </select>
+                        <small class="text-muted">Ao selecionar um template, as funções serão criadas automaticamente.</small>
                     </div>
-                    <div class="form-group col-md-3">
-                        <label>Finalização</label>
-                        <select name="finalizacao" class="form-control">
-                            {% for value, label in finalizacao_choices %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
+                </div>
+                {% endif %}
+
+                <!-- Campos para missão COM template -->
+                <div id="campos-com-template" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label>Template</label>
+                            <input type="text" id="template-nome-display" class="form-control" readonly
+                                   style="background: var(--sigem-gray-100); font-weight: 600;">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Número/Identificador *</label>
+                            <input type="text" name="numero" id="input-numero" class="form-control"
+                                   placeholder="Ex: 001/2026">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Tipo</label>
+                            <input type="text" id="template-tipo-display" class="form-control" readonly
+                                   style="background: var(--sigem-gray-100);">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Finalização</label>
+                            <select name="finalizacao" class="form-control">
+                                {% for value, label in finalizacao_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos para missão SEM template -->
+                <div id="campos-sem-template">
+                    <div class="form-row">
+                        <div class="form-group col-md-5">
+                            <label>Nome da Missão *</label>
+                            <input type="text" name="nome" id="input-nome" class="form-control">
+                        </div>
+                        <div class="form-group col-md-1">
+                            <label>Ano</label>
+                            <input type="number" name="ano" class="form-control" value="2026" min="2020" max="2099" placeholder="2026">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Tipo *</label>
+                            <select name="tipo" id="select-tipo" class="form-control">
+                                {% for value, label in tipo_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Finalização</label>
+                            <select name="finalizacao" class="form-control">
+                                {% for value, label in finalizacao_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -330,6 +385,12 @@ function novaMissao() {
     document.getElementById('missao-form').reset();
     document.getElementById('missao_id').value = '';
     document.getElementById('missao-form').setAttribute('hx-post', '{% url "htmx_missao_criar" %}');
+
+    // Mostrar seletor de template e resetar
+    const templateSelectorRow = document.getElementById('template-selector-row');
+    if (templateSelectorRow) templateSelectorRow.style.display = 'block';
+    resetTemplateSelector();
+
     document.getElementById('form-missao').style.display = 'block';
     document.getElementById('form-missao').scrollIntoView({behavior: 'smooth'});
     htmx.process(document.getElementById('missao-form'));
@@ -341,6 +402,14 @@ function editarMissao(id) {
         .then(data => {
             document.getElementById('form-missao-titulo').textContent = 'Editar Missão';
             document.getElementById('missao_id').value = id;
+
+            // Esconder seletor de template na edição e mostrar campos normais
+            const templateSelectorRow = document.getElementById('template-selector-row');
+            if (templateSelectorRow) templateSelectorRow.style.display = 'none';
+            document.getElementById('campos-com-template').style.display = 'none';
+            document.getElementById('campos-sem-template').style.display = 'block';
+            document.getElementById('template_id').value = '';
+
             document.querySelector('#missao-form [name=nome]').value = data.nome;
             document.querySelector('#missao-form [name=ano]').value = data.ano || 2026;
             document.querySelector('#missao-form [name=tipo]').value = data.tipo;
@@ -359,6 +428,51 @@ function editarMissao(id) {
 
 function fecharFormMissao() {
     document.getElementById('form-missao').style.display = 'none';
+}
+
+function onTemplateChange(select) {
+    const templateId = select.value;
+    const camposComTemplate = document.getElementById('campos-com-template');
+    const camposSemTemplate = document.getElementById('campos-sem-template');
+    const templateIdInput = document.getElementById('template_id');
+    const inputNome = document.getElementById('input-nome');
+    const inputNumero = document.getElementById('input-numero');
+
+    if (templateId) {
+        // Template selecionado
+        const option = select.options[select.selectedIndex];
+        const sigla = option.dataset.sigla || option.dataset.nome;
+        const tipo = option.dataset.tipo;
+
+        document.getElementById('template-nome-display').value = sigla;
+        document.getElementById('template-tipo-display').value = tipo;
+        templateIdInput.value = templateId;
+
+        camposComTemplate.style.display = 'block';
+        camposSemTemplate.style.display = 'none';
+
+        // Remover required do nome e adicionar ao número
+        if (inputNome) inputNome.removeAttribute('required');
+        if (inputNumero) inputNumero.setAttribute('required', 'required');
+    } else {
+        // Sem template
+        templateIdInput.value = '';
+
+        camposComTemplate.style.display = 'none';
+        camposSemTemplate.style.display = 'block';
+
+        // Adicionar required ao nome e remover do número
+        if (inputNome) inputNome.setAttribute('required', 'required');
+        if (inputNumero) inputNumero.removeAttribute('required');
+    }
+}
+
+function resetTemplateSelector() {
+    const selector = document.getElementById('template-selector');
+    if (selector) {
+        selector.value = '';
+        onTemplateChange(selector);
+    }
 }
 
 // Reinicializar ícones Lucide
