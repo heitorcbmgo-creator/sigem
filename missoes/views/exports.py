@@ -212,8 +212,8 @@ def gerar_modelo_importacao():
             ['1º Batalhão BM', '1º BBM', 'BBM', 'GSCG'],
         ],
         6,
-        {'TIPOS:': ['COMANDO_GERAL', 'DIRETORIA', 'BBM', 'CIBM', 'CBM', 'SECAO'],
-         'NOTA:': ['Importar unidades superiores', 'antes das subordinadas.', 'Cmd Superior aceita Sigla,', 'Nome ou ID numérico.']}
+        {'TIPOS:': ['COMANDO_GERAL', 'ORGAO_DIRECAO', 'ORGAO_APOIO', 'ORGAO_EXEC', 'SECAO_EMG', 'BBM', 'CIBM', 'PBM', 'DBM'],
+         'NOTA:': ['Importar unidades superiores', 'antes das subordinadas.', 'Cmd Superior aceita Sigla,', 'Nome ou ID numérico.', 'Tipo aceita valor ou label', '(ex: BBM ou Batalhão BM)']}
     )
 
     # ========================================
@@ -239,8 +239,9 @@ def gerar_modelo_importacao():
         ['OPERACIONAL', 'Operação Exemplo', 'Descrição da missão', 'CAPITAL', '2024-01-15', '2024-01-20', 'EM_ANDAMENTO', 'SEI-123'],
         10,
         {'TIPOS:': ['OPERACIONAL', 'ADMINISTRATIVA', 'ENSINO', 'CORREICIONAL', 'COMISSAO', 'ACAO_SOCIAL'],
-         'STATUS:': ['PLANEJADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA'],
-         'LOCAIS:': ['INTERNACIONAL', 'NACIONAL', 'ESTADUAL', 'CAPITAL', '1_CRBM', '2_CRBM', '3_CRBM', '4_CRBM', '5_CRBM', '6_CRBM', '7_CRBM', '8_CRBM', '9_CRBM']}
+         'STATUS:': ['PLANEJADA', 'EM_ANDAMENTO', 'ATRASADA', 'CONCLUIDA', 'CANCELADA', 'SUSPENSA'],
+         'LOCAIS:': ['INTERNACIONAL', 'NACIONAL', 'ESTADUAL', 'CAPITAL', '1_CRBM a 9_CRBM'],
+         'NOTA:': ['Aceita valor ou label.', 'Ex: EM_ANDAMENTO ou', 'Em andamento']}
     )
 
     # ========================================
@@ -722,9 +723,47 @@ def importar_excel(request, tipo):
         errors = []
 
         # ============================================================
+        # FUNÇÃO AUXILIAR: Resolver valores de campos com choices
+        # Aceita o valor armazenado, o label de exibição ou aliases
+        # ============================================================
+        def _normalizar(texto):
+            """Remove acentos e normaliza texto para matching."""
+            texto = texto.strip().upper().replace('-', ' ')
+            for ac, sem in [('Ã', 'A'), ('Õ', 'O'), ('Ç', 'C'), ('Á', 'A'),
+                            ('É', 'E'), ('Í', 'I'), ('Ó', 'O'), ('Ú', 'U'),
+                            ('Â', 'A'), ('Ê', 'E'), ('º', ''), ('ª', '')]:
+                texto = texto.replace(ac, sem)
+            return texto
+
+        def _build_choice_map(choices):
+            """Cria mapa de lookup: normalizado → valor armazenado."""
+            mapa = {}
+            for valor, label in choices:
+                mapa[_normalizar(valor)] = valor
+                mapa[_normalizar(label)] = valor
+            return mapa
+
+        def resolver_choice(valor_raw, mapa, fallback_upper=True):
+            """Resolve um valor de choice aceitando valor, label ou alias."""
+            if not valor_raw:
+                return ''
+            normalizado = _normalizar(str(valor_raw))
+            if normalizado in mapa:
+                return mapa[normalizado]
+            # Fallback: tentar com underscores no lugar de espaços
+            com_underscore = normalizado.replace(' ', '_')
+            if com_underscore in mapa:
+                return mapa[com_underscore]
+            # Último recurso: devolver o valor original (upper ou não)
+            return str(valor_raw).strip().upper().replace(' ', '_') if fallback_upper else str(valor_raw).strip()
+
+        # ============================================================
         # IMPORTAR OFICIAIS
         # ============================================================
         if tipo == 'oficiais':
+            postos_map = _build_choice_map(Oficial.POSTO_CHOICES)
+            quadros_map = _build_choice_map(Oficial.QUADRO_CHOICES)
+
             for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row[0]:  # Se tem CPF
                     try:
@@ -735,8 +774,8 @@ def importar_excel(request, tipo):
                                 'rg': str(row[1]).strip() if row[1] else '',
                                 'nome': str(row[2]).strip() if row[2] else '',
                                 'nome_guerra': str(row[3]).strip() if row[3] else '',
-                                'posto': str(row[4]).strip() if row[4] else '',
-                                'quadro': str(row[5]).strip() if row[5] else '',
+                                'posto': resolver_choice(row[4], postos_map, fallback_upper=False) if row[4] else '',
+                                'quadro': resolver_choice(row[5], quadros_map, fallback_upper=False) if row[5] else '',
                                 'obm': str(row[6]).strip() if row[6] else '',
                                 'funcao': str(row[7]).strip() if row[7] else '',
                                 'email': str(row[8]).strip() if row[8] else '',
@@ -760,6 +799,10 @@ def importar_excel(request, tipo):
         # IMPORTAR MISSÕES
         # ============================================================
         elif tipo == 'missoes':
+            tipos_missao_map = _build_choice_map(Missao.TIPO_CHOICES)
+            status_missao_map = _build_choice_map(Missao.STATUS_CHOICES)
+            local_missao_map = _build_choice_map(Missao.LOCAL_CHOICES)
+
             for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row[0] and row[1]:  # Se tem tipo e nome
                     try:
@@ -779,14 +822,18 @@ def importar_excel(request, tipo):
                             else:
                                 data_fim = datetime.strptime(str(row[5]), '%Y-%m-%d').date()
 
+                        tipo_missao = resolver_choice(str(row[0]), tipos_missao_map)
+                        status_missao = resolver_choice(str(row[6]), status_missao_map) if row[6] else 'PLANEJADA'
+                        local_missao = resolver_choice(str(row[3]), local_missao_map) if row[3] else ''
+
                         Missao.objects.create(
-                            tipo=str(row[0]).strip().upper(),
+                            tipo=tipo_missao,
                             nome=str(row[1]).strip(),
                             descricao=str(row[2]).strip() if row[2] else '',
-                            local=str(row[3]).strip() if row[3] else '',
+                            local=local_missao,
                             data_inicio=data_inicio,
                             data_fim=data_fim,
-                            status=str(row[6]).strip().upper() if row[6] else 'PLANEJADA',
+                            status=status_missao,
                             documento_referencia=str(row[7]).strip() if row[7] else '',
                         )
                         count += 1
@@ -879,6 +926,8 @@ def importar_excel(request, tipo):
         # IMPORTAR UNIDADES
         # ============================================================
         elif tipo == 'unidades':
+            tipos_unidade_map = _build_choice_map(Unidade.TIPO_CHOICES)
+
             for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if row[0]:  # Se tem nome
                     try:
@@ -902,7 +951,7 @@ def importar_excel(request, tipo):
                             nome=str(row[0]).strip(),
                             defaults={
                                 'sigla': str(row[1]).strip() if row[1] else '',
-                                'tipo': str(row[2]).strip().upper() if row[2] else '',
+                                'tipo': resolver_choice(row[2], tipos_unidade_map) if row[2] else '',
                                 'comando_superior': comando_superior,
                             }
                         )
@@ -952,6 +1001,8 @@ def importar_excel(request, tipo):
         # Processa ambas as planilhas se existirem: MissoesPadronizadas e FuncoesPadronizadas
         # ============================================================
         elif tipo == 'missoes_padronizadas' or tipo == 'templates':
+            tipos_template_map = _build_choice_map(TemplateEstruturaMissao.TIPO_CHOICES)
+
             # Primeiro, importar a planilha de Missões Padronizadas
             ws_templates = None
             if 'MissoesPadronizadas' in wb.sheetnames:
@@ -964,7 +1015,7 @@ def importar_excel(request, tipo):
                     try:
                         nome = str(row[0]).strip()
                         sigla = str(row[1]).strip() if row[1] else ''
-                        tipo_missao = str(row[2]).strip().upper() if row[2] else 'OPERACIONAL'
+                        tipo_missao = resolver_choice(row[2], tipos_template_map) if row[2] else 'OPERACIONAL'
                         descricao = str(row[3]).strip() if row[3] else ''
                         ativo = str(row[4]).strip().lower() in ['sim', 'yes', 's', 'y', '1', 'true'] if row[4] else True
 
