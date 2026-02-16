@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 
-from ..models import Oficial, Missao, Designacao, Usuario, Unidade, Funcao
+from ..models import Oficial, Missao, Designacao, Usuario, Unidade, Funcao, TemplateEstruturaMissao, TemplateFuncao
 
 
 def exportar_excel(request, tipo):
@@ -91,10 +91,11 @@ def exportar_excel(request, tipo):
 
     elif tipo == 'unidades':
         ws.title = 'Unidades'
-        ws.append(['ID', 'Nome', 'Sigla', 'Tipo', 'ID Comando Superior'])
+        ws.append(['ID', 'Nome', 'Sigla', 'Tipo', 'Sigla Cmd Superior'])
         style_header(ws, 5)
-        for u in Unidade.objects.all():
-            ws.append([u.id, u.nome, u.sigla, u.tipo, u.comando_superior_id or ''])
+        for u in Unidade.objects.select_related('comando_superior').all():
+            ws.append([u.id, u.nome, u.sigla, u.tipo,
+                      u.comando_superior.sigla if u.comando_superior else ''])
 
     elif tipo == 'funcoes':
         ws.title = 'Funções'
@@ -113,6 +114,34 @@ def exportar_excel(request, tipo):
                       u.oficial.rg if u.oficial else '',
                       str(u.oficial) if u.oficial else '',
                       'Sim' if u.is_active else 'Não'])
+
+    elif tipo == 'missoes_padronizadas' or tipo == 'templates':
+        # Exportar Missões Padronizadas (Templates) com suas Funções
+        ws.title = 'MissoesPadronizadas'
+        ws.append(['ID', 'Nome', 'Sigla', 'Tipo', 'Descrição', 'Ativo', 'Total Funções'])
+        style_header(ws, 7)
+        for t in TemplateEstruturaMissao.objects.prefetch_related('funcoes_template').all():
+            ws.append([t.id, t.nome, t.sigla, t.tipo, t.descricao,
+                      'Sim' if t.ativo else 'Não', t.total_funcoes])
+
+        # Criar segunda aba para funções padronizadas
+        ws2 = wb.create_sheet('FuncoesPadronizadas')
+        ws2.append(['ID', 'ID Missão Padronizada', 'Nome Missão Padronizada', 'Função', 'TDE', 'NQT', 'GRS', 'DEC', 'Complexidade'])
+        for col in range(1, 10):
+            cell = ws2.cell(row=1, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+
+        for f in TemplateFuncao.objects.select_related('template_missao').all():
+            ws2.append([f.id, f.template_missao.id, f.template_missao.nome, f.nome,
+                       f.tde, f.nqt, f.grs, f.dec, f.complexidade])
+
+        # Ajustar largura da segunda aba também
+        for column_cells in ws2.columns:
+            length = max(len(str(cell.value or '')) for cell in column_cells)
+            ws2.column_dimensions[get_column_letter(column_cells[0].column)].width = min(length + 2, 50)
 
     elif tipo == 'modelo':
         # Criar planilha modelo com todas as abas
@@ -176,12 +205,15 @@ def gerar_modelo_importacao():
     ws = wb.active
     ws.title = 'Unidades'
     setup_sheet(ws,
-        ['Nome*', 'Sigla', 'Tipo*', 'ID Cmd Superior'],
-        [40, 15, 18, 18],
-        ['1º Batalhão BM', '1º BBM', 'BBM', ''],
+        ['Nome*', 'Sigla', 'Tipo*', 'Cmd Superior (Sigla/Nome/ID)'],
+        [40, 15, 18, 30],
+        [
+            ['Comando Geral do CBMGO', 'GSCG', 'COMANDO_GERAL', ''],
+            ['1º Batalhão BM', '1º BBM', 'BBM', 'GSCG'],
+        ],
         6,
         {'TIPOS:': ['COMANDO_GERAL', 'DIRETORIA', 'BBM', 'CIBM', 'CBM', 'SECAO'],
-         'NOTA:': ['Importar unidades superiores', 'antes das subordinadas']}
+         'NOTA:': ['Importar unidades superiores', 'antes das subordinadas.', 'Cmd Superior aceita Sigla,', 'Nome ou ID numérico.']}
     )
 
     # ========================================
@@ -257,6 +289,44 @@ def gerar_modelo_importacao():
         5,
         {'PERFIS:': ['admin', 'gestor', 'comandante', 'oficial'],
          'NOTA:': ['Senha padrão: 123456', 'Usuários de oficiais são', 'criados automaticamente', 'ao importar Oficiais.']}
+    )
+
+    # ========================================
+    # Aba 7: Missões Padronizadas (Templates)
+    # ========================================
+    ws7 = wb.create_sheet('MissoesPadronizadas')
+    setup_sheet(ws7,
+        ['Nome*', 'Sigla', 'Tipo*', 'Descrição', 'Ativo'],
+        [30, 12, 18, 45, 10],
+        [
+            ['PAD', 'PAD', 'CORREICIONAL', 'Processo Administrativo Disciplinar', 'Sim'],
+            ['IPM', 'IPM', 'CORREICIONAL', 'Inquérito Policial Militar', 'Sim'],
+            ['Sindicância', 'SIND', 'CORREICIONAL', 'Sindicância Administrativa', 'Sim'],
+        ],
+        7,
+        {'TIPOS:': ['OPERACIONAL', 'ADMINISTRATIVA', 'ENSINO', 'CORREICIONAL', 'COMISSAO', 'ACAO_SOCIAL'],
+         'NOTA:': ['Missões padronizadas definem', 'estruturas reutilizáveis para', 'missões repetitivas.', 'Ativo: Sim ou Não']}
+    )
+
+    # ========================================
+    # Aba 8: Funções de Missões Padronizadas
+    # ========================================
+    ws8 = wb.create_sheet('FuncoesPadronizadas')
+    setup_sheet(ws8,
+        ['Nome Missão Padronizada*', 'Função*', 'TDE*', 'NQT*', 'GRS*', 'DEC*'],
+        [30, 25, 10, 10, 10, 10],
+        [
+            ['PAD', 'Encarregado', 2, 2, 2, 1],
+            ['PAD', 'Escrivão', 1, 2, 1, 1],
+            ['IPM', 'Encarregado', 2, 3, 3, 1],
+            ['IPM', 'Escrivão', 2, 2, 2, 1],
+        ],
+        8,
+        {'TDE:': ['Tempo de Dedicação Exigido', '1=Baixo, 2=Médio, 3=Alto'],
+         'NQT:': ['Nível de Qualificação Técnica', '1=Baixo, 2=Médio, 3=Alto'],
+         'GRS:': ['Grau de Responsabilidade', '1=Baixo, 2=Médio, 3=Alto'],
+         'DEC:': ['Dimensão Efetivo Comandado', '1=Pequeno, 2=Médio, 3=Grande'],
+         'NOTA:': ['A missão padronizada deve', 'ser importada antes.']}
     )
 
     response = HR(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -814,10 +884,19 @@ def importar_excel(request, tipo):
                     try:
                         comando_superior = None
                         if row[3]:
+                            valor_cmd = str(row[3]).strip()
+                            # Tentar buscar por ID numérico, sigla ou nome
                             try:
-                                comando_superior = Unidade.objects.get(id=int(row[3]))
-                            except Unidade.DoesNotExist:
-                                pass
+                                comando_superior = Unidade.objects.get(id=int(valor_cmd))
+                            except (ValueError, Unidade.DoesNotExist):
+                                try:
+                                    comando_superior = Unidade.objects.get(sigla__iexact=valor_cmd)
+                                except Unidade.DoesNotExist:
+                                    try:
+                                        comando_superior = Unidade.objects.get(nome__iexact=valor_cmd)
+                                    except Unidade.DoesNotExist:
+                                        errors.append(f'Linha {row_num}: Comando superior "{valor_cmd}" não encontrado')
+                                        continue
 
                         Unidade.objects.update_or_create(
                             nome=str(row[0]).strip(),
@@ -865,6 +944,121 @@ def importar_excel(request, tipo):
                                 usuario.oficial = oficial
                             usuario.save()
                             count += 1
+                    except Exception as e:
+                        errors.append(f'Linha {row_num}: {str(e)}')
+
+        # ============================================================
+        # IMPORTAR MISSÕES PADRONIZADAS (Templates)
+        # Processa ambas as planilhas se existirem: MissoesPadronizadas e FuncoesPadronizadas
+        # ============================================================
+        elif tipo == 'missoes_padronizadas' or tipo == 'templates':
+            # Primeiro, importar a planilha de Missões Padronizadas
+            ws_templates = None
+            if 'MissoesPadronizadas' in wb.sheetnames:
+                ws_templates = wb['MissoesPadronizadas']
+            else:
+                ws_templates = ws  # Usar planilha ativa se não houver a específica
+
+            for row_num, row in enumerate(ws_templates.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0]:  # Se tem nome
+                    try:
+                        nome = str(row[0]).strip()
+                        sigla = str(row[1]).strip() if row[1] else ''
+                        tipo_missao = str(row[2]).strip().upper() if row[2] else 'OPERACIONAL'
+                        descricao = str(row[3]).strip() if row[3] else ''
+                        ativo = str(row[4]).strip().lower() in ['sim', 'yes', 's', 'y', '1', 'true'] if row[4] else True
+
+                        TemplateEstruturaMissao.objects.update_or_create(
+                            nome=nome,
+                            defaults={
+                                'sigla': sigla,
+                                'tipo': tipo_missao,
+                                'descricao': descricao,
+                                'ativo': ativo,
+                            }
+                        )
+                        count += 1
+                    except Exception as e:
+                        errors.append(f'MissõesPad. Linha {row_num}: {str(e)}')
+
+            # Depois, importar a planilha de Funções Padronizadas (se existir)
+            if 'FuncoesPadronizadas' in wb.sheetnames:
+                ws_funcoes = wb['FuncoesPadronizadas']
+                for row_num, row in enumerate(ws_funcoes.iter_rows(min_row=2, values_only=True), start=2):
+                    if row[0] and row[1]:  # Se tem nome da missão padronizada e função
+                        try:
+                            nome_template = str(row[0]).strip()
+                            nome_funcao = str(row[1]).strip()
+
+                            # Buscar a missão padronizada pelo nome
+                            template = TemplateEstruturaMissao.objects.get(nome__iexact=nome_template)
+
+                            # Validar valores TDE, NQT, GRS, DEC (1, 2 ou 3)
+                            tde = int(row[2]) if row[2] else 2
+                            nqt = int(row[3]) if row[3] else 2
+                            grs = int(row[4]) if row[4] else 2
+                            dec = int(row[5]) if row[5] else 1
+
+                            # Garantir que estão no range válido
+                            tde = max(1, min(3, tde))
+                            nqt = max(1, min(3, nqt))
+                            grs = max(1, min(3, grs))
+                            dec = max(1, min(3, dec))
+
+                            TemplateFuncao.objects.update_or_create(
+                                template_missao=template,
+                                nome=nome_funcao,
+                                defaults={
+                                    'tde': tde,
+                                    'nqt': nqt,
+                                    'grs': grs,
+                                    'dec': dec,
+                                }
+                            )
+                            count += 1
+                        except TemplateEstruturaMissao.DoesNotExist:
+                            errors.append(f'FunçõesPad. Linha {row_num}: Missão Padronizada "{row[0]}" não encontrada')
+                        except Exception as e:
+                            errors.append(f'FunçõesPad. Linha {row_num}: {str(e)}')
+
+        # ============================================================
+        # IMPORTAR FUNÇÕES PADRONIZADAS (TemplateFuncao)
+        # ============================================================
+        elif tipo == 'funcoes_padronizadas':
+            for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if row[0] and row[1]:  # Se tem nome da missão padronizada e função
+                    try:
+                        nome_template = str(row[0]).strip()
+                        nome_funcao = str(row[1]).strip()
+
+                        # Buscar a missão padronizada pelo nome
+                        template = TemplateEstruturaMissao.objects.get(nome__iexact=nome_template)
+
+                        # Validar valores TDE, NQT, GRS, DEC (1, 2 ou 3)
+                        tde = int(row[2]) if row[2] else 2
+                        nqt = int(row[3]) if row[3] else 2
+                        grs = int(row[4]) if row[4] else 2
+                        dec = int(row[5]) if row[5] else 1
+
+                        # Garantir que estão no range válido
+                        tde = max(1, min(3, tde))
+                        nqt = max(1, min(3, nqt))
+                        grs = max(1, min(3, grs))
+                        dec = max(1, min(3, dec))
+
+                        TemplateFuncao.objects.update_or_create(
+                            template_missao=template,
+                            nome=nome_funcao,
+                            defaults={
+                                'tde': tde,
+                                'nqt': nqt,
+                                'grs': grs,
+                                'dec': dec,
+                            }
+                        )
+                        count += 1
+                    except TemplateEstruturaMissao.DoesNotExist:
+                        errors.append(f'Linha {row_num}: Missão Padronizada "{row[0]}" não encontrada')
                     except Exception as e:
                         errors.append(f'Linha {row_num}: {str(e)}')
 
