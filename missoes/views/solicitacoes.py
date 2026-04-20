@@ -158,42 +158,73 @@ def htmx_solicitacao_criar(request):
                 return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de nova missão enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
 
         elif tipo_solicitacao == 'DESIGNACAO':
-            # Validações para designação em missão existente
             missao_id = request.POST.get('missao_id')
-            funcao_id = request.POST.get('funcao_id')
             documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
+            criar_nova_funcao = request.POST.get('nova_funcao') == '1'
 
-            if not all([missao_id, funcao_id, documento_sei_designacao]):
+            if not all([missao_id, documento_sei_designacao]):
                 return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
             missao = Missao.objects.get(id=missao_id)
 
-            # Validar que a função pertence à missão selecionada
-            funcao = get_object_or_404(Funcao, pk=funcao_id, missao=missao)
+            if criar_nova_funcao:
+                nome_funcao = request.POST.get('nome_funcao', '').strip()
+                if not nome_funcao:
+                    return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Informe o nome da nova função.</div>')
 
-            # Verificar se já existe designação para esta missão e função
-            if Designacao.objects.filter(oficial=request.user.oficial, missao=missao, funcao=funcao).exists():
-                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Você já está designado para esta função nesta missão.</div>')
+                # Verificar se a função já existe (nome duplicado na mesma missão)
+                if Funcao.objects.filter(missao=missao, funcao__iexact=nome_funcao).exists():
+                    return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma função com este nome nesta missão. Selecione-a na lista.</div>')
 
-            # Verificar se já existe solicitação pendente para esta função
-            if Solicitacao.objects.filter(
-                solicitante=request.user.oficial,
-                missao_existente=missao,
-                funcao_existente=funcao,
-                status='PENDENTE'
-            ).exists():
-                return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para esta função nesta missão.</div>')
+                # Verificar solicitação pendente com mesmo nome de função
+                if Solicitacao.objects.filter(
+                    solicitante=request.user.oficial,
+                    missao_existente=missao,
+                    nova_funcao=True,
+                    nome_funcao__iexact=nome_funcao,
+                    status='PENDENTE'
+                ).exists():
+                    return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para criar esta função nesta missão.</div>')
 
-            # Criar solicitação
-            Solicitacao.objects.create(
-                tipo_solicitacao='DESIGNACAO',
-                solicitante=request.user.oficial,
-                missao_existente=missao,
-                funcao_existente=funcao,
-                documento_sei_designacao=documento_sei_designacao,
-            )
+                Solicitacao.objects.create(
+                    tipo_solicitacao='DESIGNACAO',
+                    solicitante=request.user.oficial,
+                    missao_existente=missao,
+                    nova_funcao=True,
+                    nome_funcao=nome_funcao,
+                    documento_sei_designacao=documento_sei_designacao,
+                )
+                return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação enviada! A função será criada e avaliada pela BM/3.</div><script>lucide.createIcons();</script>')
 
-            return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de designação enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
+            else:
+                funcao_id = request.POST.get('funcao_id')
+                if not funcao_id:
+                    return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Selecione uma função ou marque a opção de criar nova função.</div>')
+
+                # Validar que a função pertence à missão selecionada
+                funcao = get_object_or_404(Funcao, pk=funcao_id, missao=missao)
+
+                # Verificar se já existe designação para esta missão e função
+                if Designacao.objects.filter(oficial=request.user.oficial, missao=missao, funcao=funcao).exists():
+                    return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Você já está designado para esta função nesta missão.</div>')
+
+                # Verificar se já existe solicitação pendente para esta função
+                if Solicitacao.objects.filter(
+                    solicitante=request.user.oficial,
+                    missao_existente=missao,
+                    funcao_existente=funcao,
+                    status='PENDENTE'
+                ).exists():
+                    return HttpResponse('<div class="alert alert-warning"><i data-lucide="alert-triangle"></i> Já existe uma solicitação pendente para esta função nesta missão.</div>')
+
+                Solicitacao.objects.create(
+                    tipo_solicitacao='DESIGNACAO',
+                    solicitante=request.user.oficial,
+                    missao_existente=missao,
+                    funcao_existente=funcao,
+                    documento_sei_designacao=documento_sei_designacao,
+                )
+                return HttpResponse('<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de designação enviada com sucesso! Aguarde avaliação da BM/3.</div><script>lucide.createIcons();</script>')
 
         elif tipo_solicitacao == 'PRORROGACAO_PRAZO':
             # Validações para prorrogação de prazo
@@ -410,11 +441,18 @@ def htmx_solicitacao_editar(request, pk):
             if missao_id:
                 solicitacao.missao_existente = Missao.objects.get(id=missao_id)
 
-            # Atualizar função existente (FK)
-            funcao_id = request.POST.get('funcao_id')
-            if funcao_id:
-                funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
-                solicitacao.funcao_existente = funcao
+            if solicitacao.nova_funcao:
+                if request.POST.get('nome_funcao'):
+                    solicitacao.nome_funcao = request.POST.get('nome_funcao')
+                solicitacao.tde = int(tde)
+                solicitacao.nqt = int(nqt)
+                solicitacao.grs = int(grs)
+                solicitacao.dec = int(dec)
+            else:
+                funcao_id = request.POST.get('funcao_id')
+                if funcao_id:
+                    funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
+                    solicitacao.funcao_existente = funcao
 
         solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao', solicitacao.documento_sei_designacao)
         solicitacao.save()
@@ -451,11 +489,18 @@ def htmx_solicitacao_aprovar(request, pk):
         if not all([tde, nqt, grs, dec]):
             return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha TDE, NQT, GRS e DEC para aprovar nova missão.</div>')
     elif solicitacao.tipo_solicitacao == 'PRORROGACAO_PRAZO':
-        # Para prorrogação, apenas a nova data é necessária (já está na solicitação)
         tde = nqt = grs = dec = None
     else:
-        # Para designação, complexidade virá da função selecionada
-        tde = nqt = grs = dec = None
+        # Para designação com nova função, TDE/NQT/GRS/DEC são obrigatórios
+        if solicitacao.nova_funcao:
+            tde = request.POST.get('tde')
+            nqt = request.POST.get('nqt')
+            grs = request.POST.get('grs')
+            dec = request.POST.get('dec')
+            if not all([tde, nqt, grs, dec]):
+                return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha TDE, NQT, GRS e DEC para criar a nova função.</div>')
+        else:
+            tde = nqt = grs = dec = None
 
     try:
         # Atualizar dados editados antes de aprovar (caso tenham sido modificados)
@@ -490,11 +535,18 @@ def htmx_solicitacao_aprovar(request, pk):
             if missao_id:
                 solicitacao.missao_existente = Missao.objects.get(id=missao_id)
 
-            # Atualizar função existente (FK)
-            funcao_id = request.POST.get('funcao_id')
-            if funcao_id:
-                funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
-                solicitacao.funcao_existente = funcao
+            if solicitacao.nova_funcao:
+                if request.POST.get('nome_funcao'):
+                    solicitacao.nome_funcao = request.POST.get('nome_funcao')
+                solicitacao.tde = int(tde)
+                solicitacao.nqt = int(nqt)
+                solicitacao.grs = int(grs)
+                solicitacao.dec = int(dec)
+            else:
+                funcao_id = request.POST.get('funcao_id')
+                if funcao_id:
+                    funcao = get_object_or_404(Funcao, pk=funcao_id, missao=solicitacao.missao_existente)
+                    solicitacao.funcao_existente = funcao
 
         if request.POST.get('documento_sei_designacao'):
             solicitacao.documento_sei_designacao = request.POST.get('documento_sei_designacao')

@@ -515,8 +515,19 @@
                 
                 <div class="form-section">
                     <h4 class="form-section-title"><i data-lucide="user"></i> Sua Designação</h4>
-                    
-                    <div class="form-row">
+
+                    <input type="hidden" name="nova_funcao" id="input-nova-funcao" value="0">
+
+                    <!-- Toggle: criar nova função -->
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="chk-nova-funcao" onchange="toggleNovaFuncaoDesig()">
+                            <span>A função ainda não existe nesta missão — quero solicitar a criação</span>
+                        </label>
+                    </div>
+
+                    <!-- Função existente -->
+                    <div id="grupo-funcao-existente">
                         <div class="form-group">
                             <label class="form-label">Função na Missão <span class="text-danger">*</span></label>
                             <select class="form-select" name="funcao_id" id="select-funcao-desig" required onchange="atualizarComplexidadeDesignacao()">
@@ -525,27 +536,42 @@
                             <small class="form-text text-muted">Selecione a missão para carregar as funções</small>
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
-                            <input type="text" class="form-input" name="documento_sei_designacao" required
-                                   placeholder="Ex: BG 001/2025">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Complexidade</label>
+                                <input type="text" class="form-input" id="display-complexidade-desig" value="" readonly disabled
+                                       style="background: #f3f4f6; color: #6b7280;" placeholder="Automático">
+                                <small class="form-text text-muted">Calculado automaticamente da função</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Soma Critérios</label>
+                                <input type="text" class="form-input" id="display-soma-desig" value="" readonly disabled
+                                       style="background: #f3f4f6; color: #6b7280;" placeholder="-">
+                                <small class="form-text text-muted">TDE+NQT+GRS+DEC</small>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Complexidade</label>
-                            <input type="text" class="form-input" id="display-complexidade-desig" value="" readonly disabled
-                                   style="background: #f3f4f6; color: #6b7280;" placeholder="Automático">
-                            <small class="form-text text-muted">Calculado automaticamente da função</small>
+                    <!-- Nova função -->
+                    <div id="grupo-nova-funcao" style="display:none;">
+                        <div class="alert alert-info" style="margin-bottom:12px;">
+                            <i data-lucide="info"></i>
+                            <span>Os critérios de complexidade (TDE, NQT, GRS, DEC) serão definidos pela BM/3 na aprovação.</span>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Nome da Nova Função <span class="text-danger">*</span></label>
+                            <input type="text" class="form-input" name="nome_funcao" id="input-nome-funcao-desig"
+                                   placeholder="Ex: Chefe da Subcomissão de Logística">
+                            <small class="form-text text-muted">Será criada e vinculada à missão selecionada após aprovação</small>
+                        </div>
+                    </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Soma Critérios</label>
-                            <input type="text" class="form-input" id="display-soma-desig" value="" readonly disabled
-                                   style="background: #f3f4f6; color: #6b7280;" placeholder="-">
-                            <small class="form-text text-muted">TDE+NQT+GRS+DEC</small>
-                        </div>
+                    <!-- SEI/BG (sempre visível) -->
+                    <div class="form-group">
+                        <label class="form-label">Nº SEI/BG <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="documento_sei_designacao" required
+                               placeholder="Ex: BG 001/2025">
                     </div>
                 </div>
                 
@@ -1238,6 +1264,32 @@ function atualizarComplexidadeDesignacao() {
     }
 }
 
+function toggleNovaFuncaoDesig() {
+    const chk = document.getElementById('chk-nova-funcao');
+    const grupoExistente = document.getElementById('grupo-funcao-existente');
+    const grupaNova = document.getElementById('grupo-nova-funcao');
+    const inputNova = document.getElementById('input-nova-funcao');
+    const selectFuncao = document.getElementById('select-funcao-desig');
+    const inputNomeFuncao = document.getElementById('input-nome-funcao-desig');
+
+    if (chk.checked) {
+        grupoExistente.style.display = 'none';
+        grupaNova.style.display = '';
+        inputNova.value = '1';
+        selectFuncao.removeAttribute('required');
+        selectFuncao.value = '';
+        if (inputNomeFuncao) inputNomeFuncao.required = true;
+        document.getElementById('display-complexidade-desig').value = '';
+        document.getElementById('display-soma-desig').value = '';
+    } else {
+        grupoExistente.style.display = '';
+        grupaNova.style.display = 'none';
+        inputNova.value = '0';
+        selectFuncao.setAttribute('required', '');
+        if (inputNomeFuncao) inputNomeFuncao.required = false;
+    }
+}
+
 // Event listener para radio buttons de missão (carregar funções)
 document.addEventListener('DOMContentLoaded', function() {
     document.body.addEventListener('change', function(e) {
@@ -1272,6 +1324,9 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
             setTimeout(() => {
                 document.getElementById('form-designacao').reset();
                 funcoesDisponiveisDesig = [];
+                // Resetar toggle nova função
+                document.getElementById('chk-nova-funcao').checked = false;
+                toggleNovaFuncaoDesig();
                 backToStep1();
             }, 2000);
         } else if (targetId === 'feedback-solicitacao-prorrog') {

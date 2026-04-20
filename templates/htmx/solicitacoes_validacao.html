@@ -254,6 +254,9 @@ lucide.createIcons();
                         <span>
                             {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
                                 {{ sol.nome_funcao }}
+                            {% elif sol.nova_funcao %}
+                                {{ sol.nome_funcao }}
+                                <span class="badge badge-warning" style="font-size:10px;">Nova</span>
                             {% else %}
                                 {{ sol.funcao_existente.funcao|default:"—" }}
                             {% endif %}
@@ -282,7 +285,12 @@ lucide.createIcons();
                         </div>
                         {% endif %}
                     {% elif sol.tipo_solicitacao == 'DESIGNACAO' %}
-                        {% if sol.funcao_existente %}
+                        {% if sol.nova_funcao %}
+                        <div class="detalhe-item">
+                            <label>Complexidade:</label>
+                            <span class="badge badge-secondary">A definir na aprovação</span>
+                        </div>
+                        {% elif sol.funcao_existente %}
                         <div class="detalhe-item">
                             <label>Complexidade:</label>
                             <span class="badge badge-{% if sol.funcao_existente.complexidade == 'BAIXA' %}success{% elif sol.funcao_existente.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
@@ -403,13 +411,61 @@ lucide.createIcons();
                         </div>
                     </form>
                     {% else %}
-                    <!-- Para DESIGNACAO: não precisa preencher critérios -->
+                    <!-- Para DESIGNACAO -->
                     <form id="form-aprovar-{{ sol.id }}"
                           hx-post="{% url 'htmx_solicitacao_aprovar' sol.id %}"
                           hx-target="#feedback-{{ sol.id }}"
                           hx-on::after-request="handleAprovarResponse(event, {{ sol.id }})">
                         {% csrf_token %}
 
+                        {% if sol.nova_funcao %}
+                        <!-- Nova função: preencher critérios -->
+                        <p class="text-muted" style="font-size:12px;margin-bottom:6px;">
+                            Criar função <strong>{{ sol.nome_funcao }}</strong>:
+                        </p>
+                        <div class="criterios-form-inline">
+                            <div class="criterio-input">
+                                <label>TDE</label>
+                                <select name="tde" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.tde == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.tde == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.tde == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>NQT</label>
+                                <select name="nqt" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.nqt == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.nqt == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.nqt == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>GRS</label>
+                                <select name="grs" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.grs == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.grs == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.grs == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="criterio-input">
+                                <label>DEC</label>
+                                <select name="dec" required onchange="calcularComplexidadeInline({{ sol.id }})">
+                                    <option value="">-</option>
+                                    <option value="1" {% if sol.dec == 1 %}selected{% endif %}>1</option>
+                                    <option value="2" {% if sol.dec == 2 %}selected{% endif %}>2</option>
+                                    <option value="3" {% if sol.dec == 3 %}selected{% endif %}>3</option>
+                                </select>
+                            </div>
+                            <div class="complexidade-inline-preview" id="complexidade-{{ sol.id }}">
+                                —
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Função existente: exibir complexidade -->
                         <div class="info-designacao">
                             {% if sol.funcao_existente %}
                             <span class="badge badge-{% if sol.funcao_existente.complexidade == 'BAIXA' %}success{% elif sol.funcao_existente.complexidade == 'MEDIA' %}warning{% else %}danger{% endif %}">
@@ -420,6 +476,7 @@ lucide.createIcons();
                             <span class="text-danger">Função não selecionada!</span>
                             {% endif %}
                         </div>
+                        {% endif %}
 
                         <div class="observacao-inline">
                             <input type="text" name="observacao" placeholder="Observação (opcional)" class="form-input-mini">
@@ -428,7 +485,7 @@ lucide.createIcons();
                         <div id="feedback-{{ sol.id }}" class="feedback-inline"></div>
 
                         <div class="acoes-btns">
-                            <button type="submit" class="btn btn-sm btn-success" {% if not sol.funcao_existente %}disabled{% endif %}>
+                            <button type="submit" class="btn btn-sm btn-success" {% if not sol.nova_funcao and not sol.funcao_existente %}disabled{% endif %}>
                                 <i data-lucide="check"></i> Aprovar
                             </button>
                             <button type="button" class="btn btn-sm btn-danger" onclick="recusarSolicitacao({{ sol.id }})">

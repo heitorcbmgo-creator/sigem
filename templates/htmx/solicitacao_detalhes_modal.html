@@ -133,6 +133,9 @@
                     <strong>
                         {% if sol.tipo_solicitacao == 'NOVA_MISSAO' %}
                             {{ sol.nome_funcao }}
+                        {% elif sol.nova_funcao %}
+                            {{ sol.nome_funcao }}
+                            <span class="badge badge-warning" style="font-size:10px;margin-left:4px;">Nova função</span>
                         {% else %}
                             {{ sol.funcao_existente.funcao|default:"—" }}
                         {% endif %}
@@ -168,6 +171,35 @@
                         <span class="badge badge-secondary">
                             <i data-lucide="alert-circle" style="width:12px;height:12px;"></i>
                             Aguardando preenchimento dos critérios
+                        </span>
+                    </dd>
+                    {% endif %}
+                {% elif sol.nova_funcao %}
+                    {% if sol.tde and sol.nqt and sol.grs and sol.dec %}
+                    <dt>Critérios (TDE/NQT/GRS/DEC):</dt>
+                    <dd>
+                        <div class="criterios-inline">
+                            <span class="criterio-badge">TDE: {{ sol.tde }}</span>
+                            <span class="criterio-badge">NQT: {{ sol.nqt }}</span>
+                            <span class="criterio-badge">GRS: {{ sol.grs }}</span>
+                            <span class="criterio-badge">DEC: {{ sol.dec }}</span>
+                        </div>
+                    </dd>
+                    <dt>Complexidade:</dt>
+                    <dd>
+                        {% with soma=sol.tde|add:sol.nqt|add:sol.grs|add:sol.dec %}
+                        <span class="badge badge-{% if soma <= 6 %}success{% elif soma <= 9 %}warning{% else %}danger{% endif %}">
+                            {% if soma <= 6 %}Baixa{% elif soma <= 9 %}Média{% else %}Alta{% endif %}
+                            ({{ soma }} pts)
+                        </span>
+                        {% endwith %}
+                    </dd>
+                    {% else %}
+                    <dt>Complexidade:</dt>
+                    <dd>
+                        <span class="badge badge-secondary">
+                            <i data-lucide="alert-circle" style="width:12px;height:12px;"></i>
+                            Aguardando definição pela BM/3
                         </span>
                     </dd>
                     {% endif %}
@@ -354,6 +386,66 @@
                     <span class="complexidade-valor" id="complexidade-valor">—</span>
                 </div>
             </div>
+            {% elif sol.nova_funcao %}
+            <!-- Nova função a ser criada -->
+            <div class="form-group">
+                <label class="form-label">Nome da Função <span class="text-danger">*</span></label>
+                <input type="text" class="form-input" name="nome_funcao" value="{{ sol.nome_funcao }}" required>
+                <small class="text-muted">Esta função será criada na missão ao aprovar</small>
+            </div>
+
+            <div class="form-section-sub">
+                <h5 class="form-section-subtitle">
+                    <i data-lucide="gauge"></i> Classificação de Complexidade
+                    <small class="text-muted">(preencher para aprovar)</small>
+                </h5>
+                <div class="form-row criterios-row">
+                    <div class="form-group">
+                        <label class="form-label">TDE <span class="text-danger">*</span></label>
+                        <select class="form-select criterio-select" name="tde" onchange="calcularComplexidade()">
+                            <option value="">--</option>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if sol.tde == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Tempo Dedicação</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">NQT <span class="text-danger">*</span></label>
+                        <select class="form-select criterio-select" name="nqt" onchange="calcularComplexidade()">
+                            <option value="">--</option>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if sol.nqt == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Qualif. Técnica</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">GRS <span class="text-danger">*</span></label>
+                        <select class="form-select criterio-select" name="grs" onchange="calcularComplexidade()">
+                            <option value="">--</option>
+                            {% for value, label in nivel_tde_nqt_grs_choices %}
+                            <option value="{{ value }}" {% if sol.grs == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Responsabilidade</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">DEC <span class="text-danger">*</span></label>
+                        <select class="form-select criterio-select" name="dec" onchange="calcularComplexidade()">
+                            <option value="">--</option>
+                            {% for value, label in nivel_dec_choices %}
+                            <option value="{{ value }}" {% if sol.dec == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Efetivo Cmd.</small>
+                    </div>
+                </div>
+                <div class="complexidade-preview" id="complexidade-preview">
+                    <span class="complexidade-label">Complexidade calculada:</span>
+                    <span class="complexidade-valor" id="complexidade-valor">—</span>
+                </div>
+            </div>
             {% else %}
             <!-- Designação em Missão Existente -->
             <div class="form-group">
@@ -410,6 +502,57 @@
             <div class="alert alert-info mb-3">
                 <i data-lucide="info"></i>
                 <span>Preencha os critérios de classificação para a função <strong>{{ sol.nome_funcao }}</strong></span>
+            </div>
+
+            <div class="form-row criterios-row-approve">
+                <div class="form-group">
+                    <label class="form-label">TDE <span class="text-danger">*</span></label>
+                    <select class="form-select criterio-select-approve" name="tde" onchange="calcularComplexidadeApprove()" required>
+                        <option value="">--</option>
+                        {% for value, label in nivel_tde_nqt_grs_choices %}
+                        <option value="{{ value }}" {% if sol.tde == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">NQT <span class="text-danger">*</span></label>
+                    <select class="form-select criterio-select-approve" name="nqt" onchange="calcularComplexidadeApprove()" required>
+                        <option value="">--</option>
+                        {% for value, label in nivel_tde_nqt_grs_choices %}
+                        <option value="{{ value }}" {% if sol.nqt == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">GRS <span class="text-danger">*</span></label>
+                    <select class="form-select criterio-select-approve" name="grs" onchange="calcularComplexidadeApprove()" required>
+                        <option value="">--</option>
+                        {% for value, label in nivel_tde_nqt_grs_choices %}
+                        <option value="{{ value }}" {% if sol.grs == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">DEC <span class="text-danger">*</span></label>
+                    <select class="form-select criterio-select-approve" name="dec" onchange="calcularComplexidadeApprove()" required>
+                        <option value="">--</option>
+                        {% for value, label in nivel_dec_choices %}
+                        <option value="{{ value }}" {% if sol.dec == value %}selected{% endif %}>{{ value }} - {{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="complexidade-preview mb-3" id="complexidade-preview-approve">
+                <span class="complexidade-label">Complexidade:</span>
+                <span class="complexidade-valor" id="complexidade-valor-approve">Preencha todos os critérios</span>
+            </div>
+
+            {% elif sol.nova_funcao %}
+            <!-- Para Designação com nova função: preencher TDE/NQT/GRS/DEC -->
+            <div class="alert alert-info mb-3">
+                <i data-lucide="info"></i>
+                <span>Preencha os critérios para criar a nova função <strong>{{ sol.nome_funcao }}</strong> na missão {{ sol.missao_existente.nome_completo }}</span>
             </div>
 
             <div class="form-row criterios-row-approve">

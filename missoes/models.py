@@ -1047,6 +1047,11 @@ class Solicitacao(models.Model):
     )
 
     # === Campos de DESIGNAÇÃO (sempre preenchidos) ===
+    nova_funcao = models.BooleanField(
+        'Criar nova função',
+        default=False,
+        help_text='Se True, a função será criada na aprovação com base em nome_funcao e critérios'
+    )
     missao_existente = models.ForeignKey(
         Missao,
         on_delete=models.CASCADE,
@@ -1262,7 +1267,20 @@ class Solicitacao(models.Model):
                 self.designacao_criada = designacao
 
         elif self.tipo_solicitacao == 'DESIGNACAO':
-            if not self.funcao_existente:
+            if self.nova_funcao:
+                if self.tde is None or self.nqt is None or self.grs is None or self.dec is None:
+                    raise ValueError('TDE, NQT, GRS e DEC devem ser informados para criar a nova função.')
+                funcao = Funcao.objects.create(
+                    missao=self.missao_existente,
+                    funcao=self.nome_funcao,
+                    tde=self.tde,
+                    nqt=self.nqt,
+                    grs=self.grs,
+                    dec=self.dec,
+                )
+                self.funcao_criada = funcao
+                self.funcao_existente = funcao
+            elif not self.funcao_existente:
                 raise ValueError('Função deve ser selecionada.')
 
             designacao = Designacao.objects.create(
