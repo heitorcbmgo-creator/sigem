@@ -439,8 +439,8 @@ class Missao(models.Model):
         3. Apenas Nome
         """
         if self.template and self.numero:
-            sigla = self.template.sigla or self.template.nome
-            return f"{sigla} {self.numero}"
+            nome_base = self.nome if self.nome else (self.template.sigla or self.template.nome)
+            return f"{nome_base} {self.numero}"
         if self.ano:
             return f"{self.nome} {self.ano}"
         return self.nome
@@ -1193,7 +1193,7 @@ class Solicitacao(models.Model):
                 missao = Missao.objects.create(
                     template=self.template_missao,
                     numero=self.numero_missao,
-                    nome=self.template_missao.nome,
+                    nome=self.nome_missao or self.template_missao.nome,
                     tipo=self.template_missao.tipo,
                     status=self.status_missao or 'EM_ANDAMENTO',
                     local=self.local_missao,

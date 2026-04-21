@@ -283,9 +283,10 @@ setTimeout(() => {
                 <div id="campos-com-template" style="display: none;">
                     <div class="form-row">
                         <div class="form-group col-md-3">
-                            <label>Template</label>
-                            <input type="text" id="template-nome-display" class="form-control" readonly
-                                   style="background: var(--sigem-gray-100); font-weight: 600;">
+                            <label>Nome da Missão *</label>
+                            <input type="text" name="nome_missao_custom" id="template-nome-display" class="form-control"
+                                   placeholder="Nome da missão" title="Pré-preenchido com o template — edite livremente">
+                            <small class="text-muted">Pré-preenchido — edite se necessário</small>
                         </div>
                         <div class="form-group col-md-3">
                             <label>Número/Identificador *</label>
@@ -444,7 +445,7 @@ function onTemplateChange(select) {
         const sigla = option.dataset.sigla || option.dataset.nome;
         const tipo = option.dataset.tipo;
 
-        document.getElementById('template-nome-display').value = sigla;
+        document.getElementById('template-nome-display').value = option.dataset.nome;
         document.getElementById('template-tipo-display').value = tipo;
         templateIdInput.value = templateId;
 

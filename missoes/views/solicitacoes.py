@@ -78,6 +78,7 @@ def htmx_solicitacao_criar(request):
                 # === Modo TEMPLATE ===
                 template_id = request.POST.get('template_id')
                 template_funcao_id = request.POST.get('template_funcao_id')
+                nome_missao = request.POST.get('nome_missao', '').strip()
                 numero_missao = request.POST.get('numero_missao', '').strip()
                 ano_missao = request.POST.get('ano_missao') or None
                 local_missao = request.POST.get('local_missao', '')
@@ -86,7 +87,7 @@ def htmx_solicitacao_criar(request):
                 documento_sei_missao = request.POST.get('documento_sei_missao', '').strip()
                 documento_sei_designacao = request.POST.get('documento_sei_designacao', '').strip()
 
-                if not all([template_id, template_funcao_id, numero_missao, local_missao, data_inicio, data_fim, documento_sei_missao, documento_sei_designacao]):
+                if not all([template_id, template_funcao_id, nome_missao, numero_missao, local_missao, data_inicio, data_fim, documento_sei_missao, documento_sei_designacao]):
                     return HttpResponse('<div class="alert alert-danger"><i data-lucide="alert-circle"></i> Preencha todos os campos obrigatórios.</div>')
 
                 # Validar template e função
@@ -104,8 +105,7 @@ def htmx_solicitacao_criar(request):
                     template_missao=template,
                     template_funcao=template_funcao,
                     numero_missao=numero_missao,
-                    # Nome da missão será gerado do template + número
-                    nome_missao=f"{template.nome} {numero_missao}",
+                    nome_missao=nome_missao,
                     ano_missao=ano_missao,
                     tipo_missao=template.tipo,
                     local_missao=local_missao,
@@ -122,7 +122,7 @@ def htmx_solicitacao_criar(request):
                     dec=template_funcao.dec,
                 )
 
-                return HttpResponse(f'<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de {template.nome} {numero_missao} enviada com sucesso! Os critérios de complexidade já estão definidos pela missão padronizada.</div><script>lucide.createIcons();</script>')
+                return HttpResponse(f'<div class="alert alert-success"><i data-lucide="check-circle"></i> Solicitação de {nome_missao} enviada com sucesso! Os critérios de complexidade já estão definidos pela missão padronizada.</div><script>lucide.createIcons();</script>')
 
             else:
                 # === Modo MANUAL (sem template) ===

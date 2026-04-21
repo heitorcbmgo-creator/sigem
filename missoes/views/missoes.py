@@ -180,11 +180,15 @@ def htmx_missao_criar(request):
             template = get_object_or_404(TemplateEstruturaMissao, pk=template_id)
             numero = request.POST.get('numero', '').strip()
 
+            nome_custom = (
+                request.POST.get('nome_missao_custom', '').strip()
+                or request.POST.get('nome', '').strip()
+            )
             missao = Missao.objects.create(
                 template=template,
                 numero=numero,
                 tipo=template.tipo,
-                nome=template.nome,
+                nome=nome_custom or template.nome,
                 descricao=request.POST.get('descricao', ''),
                 local=request.POST.get('local', ''),
                 data_inicio=request.POST.get('data_inicio'),

@@ -5,7 +5,26 @@
       "Bash(head:*)",
       "Bash(python manage.py migrate missoes 0028_solicitacao_nova_funcao)",
       "Bash(venv/bin/python manage.py migrate missoes)",
-      "Bash(wsl -d Ubuntu bash -c \"cd /home/heitorbp/sigem && venv/bin/python manage.py migrate missoes 2>&1\")"
+      "Bash(wsl -d Ubuntu bash -c \"cd /home/heitorbp/sigem && venv/bin/python manage.py migrate missoes 2>&1\")",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/templates/pages/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/missoes/views/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/core/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/templates/htmx/**)",
+      "Read(///wsl.localhost/Ubuntu/home/heitorbp/sigem/missoes/**)",
+      "Read(//home/heitorbp/sigem/missoes/**)",
+      "Read(//home/heitorbp/sigem/templates/htmx/**)",
+      "Read(//home/heitorbp/sigem/missoes/views/**)",
+      "Bash(grep -E \"\\\\.html$\")",
+      "Read(//wsl.localhost/Ubuntu/home/heitorbp/**)",
+      "Read(//home/heitorbp/sigem/**)",
+      "Read(//c/Users/heito/**)",
+      "Read(///wsl.localhost/Ubuntu//**)"
+    ],
+    "additionalDirectories": [
+      "\\home\\heitorbp\\sigem\\missoes",
+      "\\\\wsl.localhost\\Ubuntu\\home\\heitorbp\\sigem\\missoes"
     ]
   }
 }

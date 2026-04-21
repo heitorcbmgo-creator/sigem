@@ -285,6 +285,13 @@
                 <div class="form-section" id="template-dados-section" style="display: none;">
                     <h4 class="form-section-title"><i data-lucide="folder"></i> Dados da Missão</h4>
 
+                    <div class="form-group">
+                        <label class="form-label">Nome da Missão <span class="text-danger">*</span></label>
+                        <input type="text" class="form-input" name="nome_missao" id="input-nome-missao-template" required
+                               placeholder="Nome da missão">
+                        <small class="form-text text-muted">Pré-preenchido com o nome do template — edite livremente</small>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group" style="flex: 2;">
                             <label class="form-label">Número/Identificador <span class="text-danger">*</span></label>
@@ -1105,6 +1112,10 @@ function backToStep1() {
 function selecionarTemplate(templateId, templateNome, templateTipo) {
     // Set hidden field
     document.getElementById('template_id_hidden').value = templateId;
+
+    // Pré-preencher nome editável com o nome do template
+    const inputNome = document.getElementById('input-nome-missao-template');
+    if (inputNome) inputNome.value = templateNome;
 
     // Highlight selected item
     document.querySelectorAll('.template-item').forEach(item => {
