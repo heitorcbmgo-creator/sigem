@@ -193,7 +193,15 @@
 {% endblock %}
 
 {% block extra_css %}
+<!-- Tom Select -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap4.min.css" rel="stylesheet">
 <style>
+/* Tom Select - ajuste visual para o SIGEM */
+.ts-wrapper.form-control { padding: 0; height: auto; border: none; }
+.ts-control { border: 1px solid var(--sigem-gray-200, #dee2e6); border-radius: 6px; min-height: 38px; }
+.ts-wrapper.focus .ts-control { border-color: var(--sigem-primary, #0d6efd); box-shadow: 0 0 0 2px rgba(13,110,253,.15); }
+.ts-dropdown { border: 1px solid var(--sigem-gray-200, #dee2e6); border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.ts-dropdown .option.selected { background: var(--sigem-primary, #0d6efd); }
 /* Modal Global */
 .modal-overlay {
     position: fixed;
@@ -287,6 +295,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Tom Select -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
 let tipoAtual = '{% if user.is_admin %}oficiais{% else %}missoes{% endif %}';
 

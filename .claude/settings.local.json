@@ -20,7 +20,12 @@
       "Read(//wsl.localhost/Ubuntu/home/heitorbp/**)",
       "Read(//home/heitorbp/sigem/**)",
       "Read(//c/Users/heito/**)",
-      "Read(///wsl.localhost/Ubuntu//**)"
+      "Read(///wsl.localhost/Ubuntu//**)",
+      "Bash(wsl -d Ubuntu bash -c \"ls /home/heitorbp/sigem/templates/ 2>&1\")",
+      "Bash(wsl -d Ubuntu bash -c \"grep -n 'extra_js\\\\|extra_css\\\\|block\\\\s*extra\\\\|</body\\\\|</html' /home/heitorbp/sigem/templates/base.html | tail -20\")",
+      "Bash(wsl -d Ubuntu bash -c \"head -10 /home/heitorbp/sigem/templates/pages/admin_painel.html\")",
+      "Bash(wsl -d Ubuntu bash -c \"grep -n 'hx-trigger\\\\|hx-get\\\\|hx-target\\\\|setActiveTab\\\\|tab-content' /home/heitorbp/sigem/templates/pages/admin_painel.html | head -20\")",
+      "Bash(wsl -d Ubuntu bash -c \"grep -n 'extra_css\\\\|extra_js\\\\|endblock' /home/heitorbp/sigem/templates/pages/admin_painel.html\")"
     ],
     "additionalDirectories": [
       "\\home\\heitorbp\\sigem\\missoes",

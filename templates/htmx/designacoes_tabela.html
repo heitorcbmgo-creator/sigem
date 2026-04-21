@@ -258,7 +258,7 @@ setTimeout(() => {
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Missão *</label>
-                        <select name="missao_id" id="select-missao" class="form-control" required onchange="carregarFuncoesDaMissao()">
+                        <select name="missao_id" id="select-missao" class="form-control" required>
                             <option value="">Selecione...</option>
                             {% for m in missoes_disponiveis %}
                             <option value="{{ m.id }}">{{ m.nome_completo }}</option>
@@ -326,8 +326,22 @@ setTimeout(() => {
 {% endif %}
 
 <script>
-// Armazena funções da missão selecionada
 let funcoesDisponiveis = [];
+let tsMissaoDesig = null;
+let tsOficialDesig = null;
+
+// Inicializar Tom Select nos selects do formulário
+tsMissaoDesig = new TomSelect('#select-missao', {
+    placeholder: 'Digite para buscar missão...',
+    maxOptions: null,
+    dropdownParent: 'body',
+    onChange: function(value) { carregarFuncoesDaMissao(); }
+});
+tsOficialDesig = new TomSelect('#select-oficial', {
+    placeholder: 'Digite para buscar oficial...',
+    maxOptions: null,
+    dropdownParent: 'body',
+});
 
 function novaDesignacao() {
     document.getElementById('form-designacao-titulo').textContent = 'Nova Designação';
@@ -338,13 +352,14 @@ function novaDesignacao() {
     document.getElementById('display-soma').value = '';
     document.getElementById('select-resultado').value = '';
     funcoesDisponiveis = [];
+    if (tsMissaoDesig) tsMissaoDesig.clear(true);
+    if (tsOficialDesig) tsOficialDesig.clear(true);
     document.getElementById('designacao-form').setAttribute('hx-post', '{% url "htmx_designacao_criar" %}');
     document.getElementById('form-designacao').style.display = 'block';
     document.getElementById('form-designacao').scrollIntoView({behavior: 'smooth'});
     htmx.process(document.getElementById('designacao-form'));
 }
 
-// Atualizar resultado inline (sem recarregar a página)
 function atualizarResultado(select) {
     const designacaoId = select.dataset.designacaoId;
     const resultado = select.value;
@@ -360,14 +375,10 @@ function atualizarResultado(select) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Feedback visual temporário
             select.style.backgroundColor = '#d4edda';
-            setTimeout(() => {
-                select.style.backgroundColor = '';
-            }, 1000);
+            setTimeout(() => { select.style.backgroundColor = ''; }, 1000);
         } else {
             alert('Erro ao atualizar resultado: ' + data.error);
-            // Reverter seleção
             select.value = data.valor_anterior || '';
         }
     })
@@ -389,7 +400,6 @@ function carregarFuncoesDaMissao() {
         return;
     }
 
-    // Buscar funções da missão
     fetch(`/htmx/funcoes/buscar-por-missao/?missao_id=${missaoId}`)
         .then(response => response.json())
         .then(data => {
@@ -409,7 +419,6 @@ function carregarFuncoesDaMissao() {
                 });
             }
 
-            // Limpar complexidade
             document.getElementById('display-complexidade').value = '';
             document.getElementById('display-soma').value = '';
         });
@@ -434,12 +443,11 @@ function editarDesignacao(id) {
         .then(data => {
             document.getElementById('form-designacao-titulo').textContent = 'Editar Designação';
             document.getElementById('designacao_id').value = id;
-            document.getElementById('select-missao').value = data.missao_id;
-            document.getElementById('select-oficial').value = data.oficial_id;
+            if (tsMissaoDesig) tsMissaoDesig.setValue(String(data.missao_id), true);
+            if (tsOficialDesig) tsOficialDesig.setValue(String(data.oficial_id), true);
             document.getElementById('input-observacoes').value = data.observacoes || '';
             document.getElementById('select-resultado').value = data.resultado || '';
 
-            // Carregar funções da missão e selecionar a função atual
             const missaoId = data.missao_id;
             fetch(`/htmx/funcoes/buscar-por-missao/?missao_id=${missaoId}`)
                 .then(response => response.json())
@@ -454,13 +462,10 @@ function editarDesignacao(id) {
                         option.textContent = `${funcao.funcao} (${funcao.complexidade_display})`;
                         option.dataset.complexidade = funcao.complexidade_display;
                         option.dataset.soma = funcao.soma_criterios;
-                        if (funcao.id == data.funcao_id) {
-                            option.selected = true;
-                        }
+                        if (funcao.id == data.funcao_id) option.selected = true;
                         selectFuncao.appendChild(option);
                     });
 
-                    // Atualizar complexidade
                     document.getElementById('display-complexidade').value = data.complexidade_display || '';
                     document.getElementById('display-soma').value = data.funcao.soma_criterios || '';
                 });
@@ -476,6 +481,5 @@ function fecharFormDesignacao() {
     document.getElementById('form-designacao').style.display = 'none';
 }
 
-// Reinicializar ícones Lucide
 lucide.createIcons();
 </script>
